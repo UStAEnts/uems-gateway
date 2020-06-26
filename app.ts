@@ -13,4 +13,6 @@ app.get('/', (req, res) => {
     return res.send("Test Path, Get Req Received")
 });
 
+console.log("Started");
+
 module.exports = app;
