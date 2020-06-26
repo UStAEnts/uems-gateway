@@ -1,9 +1,9 @@
-var express = require('express');
-var logger = require('morgan');
+const express = require('express');
+const logger = require('morgan');
 
 console.log("Starting uems-gateway...");
 
-var app = express();
+const app = express();
 
 app.set('port', process.env.PORT || 15450);
 
