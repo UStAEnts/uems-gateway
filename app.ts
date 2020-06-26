@@ -1,6 +1,8 @@
 var express = require('express');
 var logger = require('morgan');
 
+console.log("Starting uems-gateway...");
+
 var app = express();
 
 app.set('port', process.env.PORT || 15450);
@@ -13,6 +15,12 @@ app.get('/', (req, res) => {
     return res.send("Test Path, Get Req Received")
 });
 
-console.log("Started");
+app.get('/status', (req, res) => {
+    return res.send("Ok")
+});
+
+app.listen(app.get('port'));
+
+console.log("Started uems-gateway");
 
 module.exports = app;
