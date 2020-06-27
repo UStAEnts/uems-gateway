@@ -76,6 +76,7 @@ class GatewayMessageHandler {
         this.conn = conn;
         this.send_ch = send_ch;
         this.rcv_ch = rcv_ch;
+        this.outstanding_reqs = new Map();
     
         rcv_ch.consume(rcv_queue.queue, this.gatewayInternalMessageReceived, {noAck: true});
     }
