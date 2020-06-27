@@ -1,2 +1,2 @@
-npm i @types/node
-tsc app.ts
+rm src/*.js
+tsc

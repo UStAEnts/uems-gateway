@@ -17,6 +17,7 @@
   },
   "homepage": "https://github.com/ents-crew/uems-gateway#readme",
   "dependencies": {
+    "@types/amqplib": "^0.5.13",
     "@types/node": "^14.0.14",
     "amqplib": "^0.5.6",
     "express": "^4.17.1",

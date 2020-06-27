@@ -89,6 +89,8 @@ function main() {
             app.get('/status', (req, res) => {
                 return res.send("Ok")
             });
+
+            init_finished();
         });
     });
 }
