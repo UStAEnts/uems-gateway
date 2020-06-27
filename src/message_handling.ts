@@ -4,8 +4,6 @@ import { send } from "process";
 // Handles receiving a HTTP REST request and processing that into a message 
 // to be sent onto a microservice.
 
-const EVENT_REQ_QUEUE_NAME: string = "eventReq";
-
 // The queue of messages being sent from the microservices back to the gateway.
 const RCV_INBOX_QUEUE_NAME: string = "inbox";
 
@@ -15,7 +13,8 @@ const GATEWAY_EXCHANGE: string = "gateway";
 // The exchange used for fanning / distributing requests out to the microservices.
 const REQUEST_EXCHANGE: string = "request";
 
-let send_ch = null;
+// The topic used for sending get requests to the event details microservice.
+const EVENT_DETAILS_SERVICE_TOPIC_GET: string = "events.details.get";
 
 type OutStandingReq = {
     unique_id: Number,
@@ -46,7 +45,7 @@ class GatewayMessageHandler {
                     reject(err1);
                 }
     
-                send_ch.assertExchange(REQUEST_EXCHANGE, 'fanout', {
+                send_ch.assertExchange(REQUEST_EXCHANGE, 'topic', {
                     durable: false
                 });
                 conn.createChannel(function (err2, rcv_ch) {
@@ -80,8 +79,8 @@ class GatewayMessageHandler {
     
         rcv_ch.consume(rcv_queue.queue, this.gatewayInternalMessageReceived, {noAck: true});
     }
-    
 
+    // Called whenever a message is received by the gateway from the internal microservices.
     gatewayInternalMessageReceived(msg) {
         // TODO: This is a potential security weakness point - message parsing -> json injection attacks.
 
@@ -99,12 +98,12 @@ class GatewayMessageHandler {
         correspondingReq.callback(correspondingReq.response, msg_json);
     }
 
-    publishRequestMessage = async (data) => {
-        await this.send_ch.publish(REQUEST_EXCHANGE, '', Buffer.from(JSON.stringify(data)));
+    publishRequestMessage = async (data, key: string) => {
+        this.send_ch.publish(REQUEST_EXCHANGE, key, Buffer.from(JSON.stringify(data)));
     }
 
     // Sends a request to the microservices system and waits for the response to come back. 
-    sendRequest = async (data, data_id: Number, res: Response) => {
+    sendRequest = async (key: string, data, data_id: Number, res: Response) => {
 
         // Create an object which represents a request which has been sent on by the gateway to be handled 
         // but is still awaiting a matching response.
@@ -116,7 +115,7 @@ class GatewayMessageHandler {
             }
         });
 
-        await this.publishRequestMessage(data);
+        await this.publishRequestMessage(data, key);
     }
 
     add_events_handler(req, res, next) {
@@ -128,7 +127,7 @@ class GatewayMessageHandler {
 
         console.log("Get event request received");
 
-        await this.sendRequest(req_message, req_message.ID, res);
+        await this.sendRequest(EVENT_DETAILS_SERVICE_TOPIC_GET, req_message, req_message.ID, res);
     }
     
     modify_events_handler(req, res, next) {
