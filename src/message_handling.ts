@@ -64,7 +64,13 @@ class GatewayMessageHandler {
 
                         rcv_ch.bindQueue(RCV_INBOX_QUEUE_NAME, GATEWAY_EXCHANGE, '');
 
-                        resolve(new GatewayMessageHandler(conn, send_ch, rcv_ch, queue));
+                        const mh = new GatewayMessageHandler(conn, send_ch, rcv_ch, queue);
+
+                        rcv_ch.consume(queue.queue, function(msg) {
+                            mh.gatewayInternalMessageReceived(mh, msg)
+                        }, {noAck: true});
+
+                        resolve(mh);
                     });
                 });
             });
@@ -76,18 +82,20 @@ class GatewayMessageHandler {
         this.send_ch = send_ch;
         this.rcv_ch = rcv_ch;
         this.outstanding_reqs = new Map();
-    
-        rcv_ch.consume(rcv_queue.queue, this.gatewayInternalMessageReceived, {noAck: true});
     }
 
     // Called whenever a message is received by the gateway from the internal microservices.
-    gatewayInternalMessageReceived(msg) {
+    gatewayInternalMessageReceived(mh: GatewayMessageHandler, msg) {
         // TODO: This is a potential security weakness point - message parsing -> json injection attacks.
+
+        // TODO: checks for message integrity.
 
         console.log("Internal message received");
         const msg_json = JSON.parse(msg.content);
 
-        const correspondingReq = this.outstanding_reqs.get(msg_json.ID);
+        console.log("MH: ", mh);
+
+        const correspondingReq = mh.outstanding_reqs.get(msg_json.ID);
         if (correspondingReq == undefined) {
             console.log("Request response received with unrecognised or already handled ID");
             return;
@@ -95,7 +103,7 @@ class GatewayMessageHandler {
 
         this.outstanding_reqs.delete(msg_json.ID);
 
-        correspondingReq.callback(correspondingReq.response, msg_json);
+        correspondingReq.callback(correspondingReq.response, msg_json.payload);
     }
 
     publishRequestMessage = async (data, key: string) => {
