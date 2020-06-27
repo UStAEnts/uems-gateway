@@ -41,7 +41,7 @@ function main() {
 
         const config_json = JSON.parse(data);
 
-        amqp.connect(config_json.uri + "?heartbeat=60", function(err, conn) {
+        amqp.connect(config_json.uri + "?heartbeat=60", async function(err, conn) {
             if (err) {
                 console.error("[AMQP]", err.message);
                 setTimeout(main, 2000);
@@ -58,7 +58,7 @@ function main() {
             });
             console.log("[AMQP] connected");
     
-            msgHandler = messageHandler.create(conn);
+            msgHandler = await messageHandler.GatewayMessageHandler.setup(conn);
     
             // CREATE
             app.post('/events', passport.authenticate('bearer', { session: false }), msgHandler.add_events_handler);
