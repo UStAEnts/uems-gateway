@@ -1,0 +1,3 @@
+{
+    "uri": "amqp://gateway:attackchairaccess@rabbit-uems:5672/"
+}
