@@ -21,7 +21,7 @@ module.exports = {
             'error',
             {
                 selector: 'variableLike',
-                format: ['camelCase', 'UPPER_CASE'],
+                format: ['camelCase', 'UPPER_CASE', 'PascalCase'],
             },
         ],
         '@typescript-eslint/indent': ['error', 4],
@@ -29,5 +29,6 @@ module.exports = {
         'import/order': ['off'],
         'import/prefer-default-export': ['off'],
         'max-len': ['error', 120],
+        'object-curly-newline': ['off'],
     },
 };
