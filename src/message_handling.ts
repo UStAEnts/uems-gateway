@@ -176,3 +176,17 @@ export class GatewayMessageHandler {
         console.log('Closing GatewayMessageHandler...');
     }
 }
+
+function parse_get_event_req_to_message(req) {
+    return {
+        "ID": Math.random() * 100000,
+        "name": (req.query.name === undefined) ? "" : req.query.name,
+        "start_date_before": (req.query.start_before === undefined) ? "" : req.query.start_before,
+        "start_date_after": (req.query.start_after === undefined) ? "" : req.query.start_after,
+        "end_date_before": (req.query.end_before === undefined) ? "" : req.query.end_before,
+        "end_date_after": (req.query.end_after === undefined) ? "" : req.query.end_after,
+        "venue": (req.query.venue === undefined) ? "" : req.query.venue
+    };
+}
+
+exports.GatewayMessageHandler = GatewayMessageHandler;
