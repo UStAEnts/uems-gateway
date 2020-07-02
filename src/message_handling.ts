@@ -1,23 +1,9 @@
-import { Channel, Connection, Message, Replies } from 'amqplib/callback_api';
-import { Response, Request, NextFunction } from 'express';
-import AssertQueue = Replies.AssertQueue;
-
 // Handles receiving a HTTP REST request and processing that into a message
 // to be sent onto a microservice.
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function parseGetEventRequestToMessage(req: Request) {
-    // TODO, currently returns blank - 'get all' type message.
-    const msg = {
-        ID: Math.random() * 100000,
-        name: '',
-        start_date_before: '',
-        start_date_after: '',
-        end_date_before: '',
-        end_date_after: '',
-    };
-    return msg;
-}
+import { Channel, Connection, Message, Replies } from 'amqplib/callback_api';
+import { Response, Request, NextFunction } from 'express';
+import AssertQueue = Replies.AssertQueue;
 
 // The queue of messages being sent from the microservices back to the gateway.
 const RCV_INBOX_QUEUE_NAME: string = 'inbox';
@@ -177,7 +163,7 @@ export class GatewayMessageHandler {
     }
 }
 
-function parse_get_event_req_to_message(req) {
+function parseGetEventRequestToMessage(req: Request) {
     return {
         "ID": Math.random() * 100000,
         "name": (req.query.name === undefined) ? "" : req.query.name,
