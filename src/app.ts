@@ -1,15 +1,15 @@
 // External dependencies.
-const express = require('express');
-const logger = require('morgan');
-const passport = require('passport');
-const AuthStrategy = require('passport-http-bearer').Strategy;
-const amqp = require('amqplib/callback_api');
-const fs = require('fs');
+import express from 'express';
+import logger from 'morgan';
+import passport from 'passport';
+import * as AuthStrategy from 'passport-http-bearer';
+import {Channel, connect as amqpConnect, Connection, ConsumeMessage} from "amqplib/callback_api";
+import * as fs from 'fs';
 
 // Internal dependencies.
-const messageHandler = require('./message_handling.js');
+import { Messager } from "./message_handling.js";
 
-let msgHandler = null;
+let msgHandler: Messager.GatewayMessageHandler;
 
 const app = express();
 
@@ -24,7 +24,7 @@ app.use(express.urlencoded({ extended: false }));
 // Event get requests use queries so the query parser must be enabled.
 app.set('query parser', "extended");
 
-passport.use(new AuthStrategy(
+passport.use(new AuthStrategy.Strategy(
     function(token, done) {
         // TODO, Authentication.
         return done(null, 1);
@@ -33,15 +33,15 @@ passport.use(new AuthStrategy(
 
 function main() {
     console.log("Attempting to connect to rabbit-mq...");
-    fs.readFile("rabbit-mq-config.json", function(err, data) {
+    fs.readFile("rabbit-mq-config.json", function(err, data: Buffer) {
         if (err) {
             console.error("Failed to read rabbit-mq config... exiting");
             return;
         }
 
-        const config_json = JSON.parse(data);
+        const config_json = JSON.parse(data.toString());
 
-        amqp.connect(config_json.uri + "?heartbeat=60", async function(err, conn) {
+        amqpConnect(config_json.uri + "?heartbeat=60", async function(err, conn) {
             if (err) {
                 console.error("[AMQP]", err.message);
                 setTimeout(main, 2000);
@@ -58,7 +58,7 @@ function main() {
             });
             console.log("[AMQP] connected");
     
-            msgHandler = await messageHandler.GatewayMessageHandler.setup(conn);
+            msgHandler = await Messager.GatewayMessageHandler.setup(conn);
     
             // CREATE
             app.post('/events', passport.authenticate('bearer', { session: false }), msgHandler.add_events_handler);

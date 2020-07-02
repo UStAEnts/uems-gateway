@@ -4,6 +4,7 @@
   "description": "API gateway for the UEMS system",
   "main": "index.js",
   "scripts": {
+    "build": "tsc --listEmittedFiles",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -18,7 +19,11 @@
   "homepage": "https://github.com/ents-crew/uems-gateway#readme",
   "dependencies": {
     "@types/amqplib": "^0.5.13",
+    "@types/express": "^4.17.6",
+    "@types/morgan": "^1.9.1",
     "@types/node": "^14.0.14",
+    "@types/passport": "^1.0.3",
+    "@types/passport-http-bearer": "^1.0.35",
     "amqplib": "^0.5.6",
     "express": "^4.17.1",
     "morgan": "^1.10.0",
