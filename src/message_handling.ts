@@ -101,11 +101,7 @@ export class GatewayMessageHandler {
         // TODO: This is a potential security weakness point - message parsing -> json injection attacks.
 
         // TODO: checks for message integrity.
-
-        console.log('Internal message received');
         const msgJson = JSON.parse(content);
-
-        console.log('MsgJson: ', msgJson);
 
         const correspondingReq = mh.outstanding_reqs.get(msgJson.ID);
         if (correspondingReq === undefined) {
