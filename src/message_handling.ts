@@ -105,7 +105,7 @@ export class GatewayMessageHandler {
         console.log('Internal message received');
         const msgJson = JSON.parse(content);
 
-        console.log('MH: ', mh);
+        console.log('MsgJson: ', msgJson);
 
         const correspondingReq = mh.outstanding_reqs.get(msgJson.ID);
         if (correspondingReq === undefined) {
@@ -137,7 +137,6 @@ export class GatewayMessageHandler {
         await this.publishRequestMessage(data, key);
     };
 
-    
     add_events_handler = async (req: Request, res: Response, next: NextFunction) => {
         const addMessage = parseAddEventRequestToMessage(req);
         await this.sendRequest(EVENT_DETAILS_SERVICE_TOPIC_ADD, addMessage, addMessage.ID, res);
@@ -167,6 +166,7 @@ export class GatewayMessageHandler {
 function parseGetEventRequestToMessage(req: Request) {
     return {
         "ID": Math.random() * 100000,
+        "type": "query",
         "name": (req.query.name === undefined) ? "" : req.query.name,
         "start_date_before": (req.query.start_before === undefined) ? "" : req.query.start_before,
         "start_date_after": (req.query.start_after === undefined) ? "" : req.query.start_after,
@@ -180,12 +180,21 @@ function parseGetEventRequestToMessage(req: Request) {
 // TODO, event modification using an immutable (version control) model.
 
 function parseAddEventRequestToMessage(req: Request) {
+    // TODO, rejection on malformed request.
+
+    const name = req.body.name;
+    const start_date = req.body.start_date;
+    const end_date = req.body.end_date;
+    const venue = req.body.venue;
+
     return {
         "ID": Math.random() * 100000,
-        "name": (req.query.name === undefined) ? "" : req.query.name,
+        "type": "add",
+        "name": name,
         "start_date": start_date,
         "end_date": end_date,
         "venue": venue,
+    }
 }
 
 exports.GatewayMessageHandler = GatewayMessageHandler;

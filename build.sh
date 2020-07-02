@@ -1,2 +1,1 @@
-rm src/*.js
 tsc
