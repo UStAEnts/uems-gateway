@@ -17,6 +17,9 @@ const REQUEST_EXCHANGE: string = 'request';
 // The topic used for sending get requests to the event details microservice.
 const EVENT_DETAILS_SERVICE_TOPIC_GET: string = 'events.details.get';
 
+// The topic used for sending requests to add an event.
+const EVENT_DETAILS_SERVICE_TOPIC_ADD: string = 'events.details.add';
+
 type OutStandingReq = {
     unique_id: Number,
     response: Response,
@@ -134,16 +137,14 @@ export class GatewayMessageHandler {
         await this.publishRequestMessage(data, key);
     };
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars,class-methods-use-this
-    add_events_handler(req: Request, res: Response, next: NextFunction) {
-        throw new Error('Unimplemented');
+    
+    add_events_handler = async (req: Request, res: Response, next: NextFunction) => {
+        const addMessage = parseAddEventRequestToMessage(req);
+        await this.sendRequest(EVENT_DETAILS_SERVICE_TOPIC_ADD, addMessage, addMessage.ID, res);
     }
 
     get_events_handler = async (req: Request, res: Response) => {
         const reqMessage = parseGetEventRequestToMessage(req);
-
-        console.log('Get event request received');
-
         await this.sendRequest(EVENT_DETAILS_SERVICE_TOPIC_GET, reqMessage, reqMessage.ID, res);
     };
 
@@ -173,6 +174,18 @@ function parseGetEventRequestToMessage(req: Request) {
         "end_date_after": (req.query.end_after === undefined) ? "" : req.query.end_after,
         "venue": (req.query.venue === undefined) ? "" : req.query.venue
     };
+}
+
+// TODO, unique ID's for events - returned when an event is made.
+// TODO, event modification using an immutable (version control) model.
+
+function parseAddEventRequestToMessage(req: Request) {
+    return {
+        "ID": Math.random() * 100000,
+        "name": (req.query.name === undefined) ? "" : req.query.name,
+        "start_date": start_date,
+        "end_date": end_date,
+        "venue": venue,
 }
 
 exports.GatewayMessageHandler = GatewayMessageHandler;
