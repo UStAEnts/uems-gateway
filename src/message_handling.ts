@@ -17,6 +17,12 @@ const REQUEST_EXCHANGE: string = 'request';
 // The topic used for sending get requests to the event details microservice.
 const EVENT_DETAILS_SERVICE_TOPIC_GET: string = 'events.details.get';
 
+// The topic used for sending requests to add an event.
+const EVENT_DETAILS_SERVICE_TOPIC_ADD: string = 'events.details.add';
+
+// The topic used for sending modification requests for an event.
+const EVENT_DETAILS_SERVICE_TOPIC_MODIFY: string = 'events.details.modify';
+
 type OutStandingReq = {
     unique_id: Number,
     response: Response,
@@ -98,11 +104,7 @@ export class GatewayMessageHandler {
         // TODO: This is a potential security weakness point - message parsing -> json injection attacks.
 
         // TODO: checks for message integrity.
-
-        console.log('Internal message received');
         const msgJson = JSON.parse(content);
-
-        console.log('MH: ', mh);
 
         const correspondingReq = mh.outstanding_reqs.get(msgJson.ID);
         if (correspondingReq === undefined) {
@@ -134,22 +136,19 @@ export class GatewayMessageHandler {
         await this.publishRequestMessage(data, key);
     };
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars,class-methods-use-this
-    add_events_handler(req: Request, res: Response, next: NextFunction) {
-        throw new Error('Unimplemented');
+    add_events_handler = async (req: Request, res: Response, next: NextFunction) => {
+        const addMessage = parseAddEventRequestToMessage(req);
+        await this.sendRequest(EVENT_DETAILS_SERVICE_TOPIC_ADD, addMessage, addMessage.ID, res);
     }
 
     get_events_handler = async (req: Request, res: Response) => {
         const reqMessage = parseGetEventRequestToMessage(req);
-
-        console.log('Get event request received');
-
         await this.sendRequest(EVENT_DETAILS_SERVICE_TOPIC_GET, reqMessage, reqMessage.ID, res);
     };
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars,class-methods-use-this
-    modify_events_handler(req: Request, res: Response, next: NextFunction) {
-        throw new Error('Unimplemented');
+    modify_events_handler = async (req: Request, res: Response, next: NextFunction) => {
+        const modifyMessage = parseModifyEventMessage(req);
+        await this.sendRequest(EVENT_DETAILS_SERVICE_TOPIC_MODIFY, modifyMessage, modifyMessage.ID, res);
     }
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars,class-methods-use-this
@@ -166,6 +165,7 @@ export class GatewayMessageHandler {
 function parseGetEventRequestToMessage(req: Request) {
     return {
         "ID": Math.random() * 100000,
+        "type": "query",
         "name": (req.query.name === undefined) ? "" : req.query.name,
         "start_date_before": (req.query.start_before === undefined) ? "" : req.query.start_before,
         "start_date_after": (req.query.start_after === undefined) ? "" : req.query.start_after,
@@ -173,6 +173,45 @@ function parseGetEventRequestToMessage(req: Request) {
         "end_date_after": (req.query.end_after === undefined) ? "" : req.query.end_after,
         "venue": (req.query.venue === undefined) ? "" : req.query.venue
     };
+}
+
+// TODO, unique ID's for events - returned when an event is made.
+// TODO, event modification using an immutable (version control) model.
+
+function parseAddEventRequestToMessage(req: Request) {
+    // TODO, rejection on malformed request.
+
+    const name = req.body.name;
+    const start_date = req.body.start_date;
+    const end_date = req.body.end_date;
+    const venue = req.body.venue;
+
+    return {
+        "ID": Math.random() * 100000,
+        "type": "add",
+        "name": name,
+        "start_date": start_date,
+        "end_date": end_date,
+        "venue": venue,
+    }
+}
+
+function parseModifyEventMessage(req: Request) {
+    const eventId = req.body.event_id;
+    const name = req.body.name;
+    const start_date = req.body.start_date;
+    const end_date = req.body.end_date;
+    const venue = req.body.venue;
+
+    return {
+        "ID": Math.random() * 100000,
+        "event_id": eventId,
+        "type": "modify",
+        "name": name,
+        "start_date": start_date,
+        "end_date": end_date,
+        "venue": venue,
+    }
 }
 
 exports.GatewayMessageHandler = GatewayMessageHandler;

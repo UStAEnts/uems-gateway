@@ -6,6 +6,7 @@ const AuthStrategy = require('passport-http-bearer').Strategy;
 const amqp = require('amqplib/callback_api');
 const fs = require('fs');
 
+import * as BodyParser from 'body-parser'
 import { Connection } from 'amqplib';
 import { Request, Response } from 'express';
 // Internal dependencies.
@@ -22,6 +23,7 @@ app.set('port', process.env.PORT || 15450);
 app.use(logger('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+app.use(BodyParser.json());
 
 // Event get requests use queries so the query parser must be enabled.
 app.set('query parser', 'extended');
