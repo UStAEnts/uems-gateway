@@ -6,15 +6,25 @@ const AuthStrategy = require('passport-http-bearer').Strategy;
 const amqp = require('amqplib/callback_api');
 const fs = require('fs');
 
-import * as BodyParser from 'body-parser'
+import * as Cors from 'cors';
+import * as BodyParser from 'body-parser';
 import { Connection } from 'amqplib';
 import { Request, Response } from 'express';
 // Internal dependencies.
 import { GatewayMessageHandler } from './message_handling';
 
+const corsOptions: Cors.CorsOptions = {
+    origin: 'http://localhost:15300',
+    methods: "GET,OPTIONS,PATCH,POST,DELETE",
+    optionsSuccessStatus: 200
+}
+
 let msgHandler: GatewayMessageHandler | null = null;
 
 const app = express();
+
+// Enable preflight CORS for all routes.
+app.options('*', Cors.default(corsOptions));
 
 console.log('Starting uems-gateway...');
 
@@ -87,6 +97,7 @@ function main() {
                 passport.authenticate('bearer', {
                     session: false,
                 }),
+                Cors.default(corsOptions),
                 msgHandler.get_events_handler,
             );
 
@@ -96,6 +107,8 @@ function main() {
                 passport.authenticate('bearer', {
                     session: false,
                 }),
+                Cors.default(corsOptions)
+                ,
                 msgHandler.modify_events_handler,
             );
 
@@ -105,6 +118,8 @@ function main() {
                 passport.authenticate('bearer', {
                     session: false,
                 }),
+                Cors.default(corsOptions)
+                ,
                 msgHandler.remove_events_handler,
             );
 
