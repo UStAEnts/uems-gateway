@@ -5,6 +5,7 @@ const passport = require('passport');
 const AuthStrategy = require('passport-http-bearer').Strategy;
 const amqp = require('amqplib/callback_api');
 const fs = require('fs');
+const helmet = require('helmet');
 
 import * as Cors from 'cors';
 import * as BodyParser from 'body-parser';
@@ -22,6 +23,7 @@ const corsOptions: Cors.CorsOptions = {
 let msgHandler: GatewayMessageHandler | null = null;
 
 const app = express();
+app.use(helmet());
 
 // Enable preflight CORS for all routes.
 app.options('*', Cors.default(corsOptions));
