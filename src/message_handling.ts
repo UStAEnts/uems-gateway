@@ -23,6 +23,9 @@ const EVENT_DETAILS_SERVICE_TOPIC_ADD: string = 'events.details.add';
 // The topic used for sending modification requests for an event.
 const EVENT_DETAILS_SERVICE_TOPIC_MODIFY: string = 'events.details.modify';
 
+// The topic used for sending event deletion requests.
+const EVENT_DETAILS_SERVICE_TOPIC_DELETE: string = 'events.details.delete';
+
 type OutStandingReq = {
     unique_id: Number,
     response: Response,
@@ -137,34 +140,48 @@ export class GatewayMessageHandler {
     };
 
     add_events_handler = async (req: Request, res: Response, next: NextFunction) => {
-        const addMessage = parseAddEventRequestToMessage(req);
+        const addMessage = parseAddEventRequestToMessage(req, this.generateMessageId());
         await this.sendRequest(EVENT_DETAILS_SERVICE_TOPIC_ADD, addMessage, addMessage.ID, res);
     }
 
     get_events_handler = async (req: Request, res: Response) => {
-        const reqMessage = parseGetEventRequestToMessage(req);
+        const reqMessage = parseGetEventRequestToMessage(req, this.generateMessageId());
         await this.sendRequest(EVENT_DETAILS_SERVICE_TOPIC_GET, reqMessage, reqMessage.ID, res);
     };
 
     modify_events_handler = async (req: Request, res: Response, next: NextFunction) => {
-        const modifyMessage = parseModifyEventMessage(req);
+        const modifyMessage = parseModifyEventMessage(req, this.generateMessageId());
         await this.sendRequest(EVENT_DETAILS_SERVICE_TOPIC_MODIFY, modifyMessage, modifyMessage.ID, res);
     }
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars,class-methods-use-this
-    remove_events_handler(req: Request, res: Response, next: NextFunction) {
-        throw new Error('Unimplemented');
+    remove_events_handler = async (req: Request, res: Response, next: NextFunction) => {
+        const deleteMessage = parseDeleteEventMessage(req, this.generateMessageId());
+        await this.sendRequest(EVENT_DETAILS_SERVICE_TOPIC_DELETE, deleteMessage, deleteMessage.ID, res);
     }
 
     // eslint-disable-next-line class-methods-use-this
     close() {
         console.log('Closing GatewayMessageHandler...');
     }
+
+    generateMessageId(): Number {
+        // TODO, evaluate the issues with using this mechanism
+        // This is a security issue, two messages may be assigned the same ID (if there are multiple gateways) and therefore a request by 
+        // one client might be routed back to another client thereby leaking data.
+        let id = Math.random() * 100000;
+
+        if (this.outstanding_reqs.has(id)) {
+            return this.generateMessageId();
+        } else {
+            return id;
+        }
+    }
 }
 
-function parseGetEventRequestToMessage(req: Request) {
+function parseGetEventRequestToMessage(req: Request,  msgID: Number) {
     return {
-        "ID": Math.random() * 100000,
+        "ID": msgID,
         "type": "query",
         "name": (req.query.name === undefined) ? "" : req.query.name,
         "start_date_before": (req.query.start_before === undefined) ? "" : req.query.start_before,
@@ -175,10 +192,7 @@ function parseGetEventRequestToMessage(req: Request) {
     };
 }
 
-// TODO, unique ID's for events - returned when an event is made.
-// TODO, event modification using an immutable (version control) model.
-
-function parseAddEventRequestToMessage(req: Request) {
+function parseAddEventRequestToMessage(req: Request, msgID: Number) {
     // TODO, rejection on malformed request.
 
     const name = req.body.name;
@@ -187,7 +201,7 @@ function parseAddEventRequestToMessage(req: Request) {
     const venue = req.body.venue;
 
     return {
-        "ID": Math.random() * 100000,
+        "ID": msgID,
         "type": "add",
         "name": name,
         "start_date": start_date,
@@ -196,7 +210,7 @@ function parseAddEventRequestToMessage(req: Request) {
     }
 }
 
-function parseModifyEventMessage(req: Request) {
+function parseModifyEventMessage(req: Request, msgID: Number) {
     const eventId = req.body.event_id;
     const name = req.body.name;
     const start_date = req.body.start_date;
@@ -204,13 +218,21 @@ function parseModifyEventMessage(req: Request) {
     const venue = req.body.venue;
 
     return {
-        "ID": Math.random() * 100000,
+        "ID": msgID,
         "event_id": eventId,
         "type": "modify",
         "name": name,
         "start_date": start_date,
         "end_date": end_date,
         "venue": venue,
+    }
+}
+
+function parseDeleteEventMessage(req: Request, msgID: Number) {
+    const eventId = req.body.event_id;
+    return {
+        "ID": msgID,
+        event_id: eventId
     }
 }
 
