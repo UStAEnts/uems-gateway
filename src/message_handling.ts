@@ -232,6 +232,7 @@ function parseDeleteEventMessage(req: Request, msgID: Number) {
     const eventId = req.body.event_id;
     return {
         "ID": msgID,
+        "type": "delete",
         event_id: eventId
     }
 }
