@@ -98,13 +98,13 @@ export class GatewayMessageHandler {
 
                         const mh = new GatewayMessageHandler(conn, sendCh, rcvCh, queue, mv);
 
-                        rcvCh.consume(queue.queue, (msg) => {
+                        rcvCh.consume(queue.queue, async (msg) => {
                             if (msg === null) {
                                 console.warn(`${RCV_INBOX_QUEUE_NAME} consumed a message that was NULL. Ignoring...`);
                                 return;
                             }
 
-                            mh.gatewayInternalMessageReceived(mh, msg);
+                            await mh.gatewayInternalMessageReceived(mh, msg);
                         }, { noAck: true });
 
                         resolve(mh);
@@ -125,11 +125,11 @@ export class GatewayMessageHandler {
 
     // Called whenever a message is received by the gateway from the internal microservices.
     // TODO: This is a potential security weakness point - message parsing -> json injection attacks.
-    gatewayInternalMessageReceived(mh: GatewayMessageHandler, msg: Message) {
+    async gatewayInternalMessageReceived(mh: GatewayMessageHandler, msg: Message) {
         const content = msg.content.toString('utf8');
         const msgJson = JSON.parse(content);
 
-        if (!this.message_validator.validate(msgJson)) {
+        if (! (await this.message_validator.validate(msgJson))) {
             console.log("Message with invalid schema received - message dropped");
             return;
         }
