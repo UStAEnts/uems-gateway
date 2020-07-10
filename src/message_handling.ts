@@ -4,6 +4,9 @@
 import { Channel, Connection, Message, Replies } from 'amqplib/callback_api';
 import { Response, Request, NextFunction } from 'express';
 import AssertQueue = Replies.AssertQueue;
+import Ajv from 'ajv';
+
+const fs = require('fs').promises;
 
 // The queue of messages being sent from the microservices back to the gateway.
 const RCV_INBOX_QUEUE_NAME: string = 'inbox';
@@ -33,23 +36,37 @@ type OutStandingReq = {
     // TODO: Timestamp.
 };
 
+export class MessageValidator {
+    schema_validator: Ajv.ValidateFunction;
+
+    constructor(schema: object) {
+        let ajv = new Ajv({allErrors: true});
+        this.schema_validator = ajv.compile(schema);
+    }
+
+    public async validate(msg: any): Promise<boolean> {
+        return await this.schema_validator(msg);
+    }
+}
+
 export class GatewayMessageHandler {
     // Connection to the RabbitMQ messaging system.
     conn: Connection;
 
-    // Channel for sending messages out to the microservices and receiving them back as a response.
+    // Channels for sending messages out to the microservices and receiving them back as a response.
     send_ch: Channel;
-
     rcv_ch: Channel;
 
     // Messages which have been sent on and who's responses are still being waited for.
     outstanding_reqs: Map<Number, OutStandingReq>;
 
+    message_validator: MessageValidator;
+
     // Creates a GatewayMessageHandler.
     // Includes creating the channels, exchanges and queues on the connection required.
     //
     // Returns a promise which resolves to the new GatewayMessageHandler.
-    static setup(conn: Connection): Promise<GatewayMessageHandler> {
+    static setup(conn: Connection, schemaPath: String): Promise<GatewayMessageHandler> {
         return new Promise(((resolve, reject) => {
             conn.createChannel((err1, sendCh) => {
                 if (err1) {
@@ -66,7 +83,7 @@ export class GatewayMessageHandler {
 
                     rcvCh.assertExchange(GATEWAY_EXCHANGE, 'direct');
 
-                    rcvCh.assertQueue(RCV_INBOX_QUEUE_NAME, { exclusive: true }, (err3, queue) => {
+                    rcvCh.assertQueue(RCV_INBOX_QUEUE_NAME, { exclusive: true }, async (err3, queue) => {
                         if (err3) {
                             reject(err3);
                         }
@@ -75,7 +92,10 @@ export class GatewayMessageHandler {
 
                         rcvCh.bindQueue(RCV_INBOX_QUEUE_NAME, GATEWAY_EXCHANGE, '');
 
-                        const mh = new GatewayMessageHandler(conn, sendCh, rcvCh, queue);
+                        let schema = JSON.parse((await fs.readFile(schemaPath)).toString());
+                        let mv = new MessageValidator(schema);
+
+                        const mh = new GatewayMessageHandler(conn, sendCh, rcvCh, queue, mv);
 
                         rcvCh.consume(queue.queue, (msg) => {
                             if (msg === null) {
@@ -94,20 +114,22 @@ export class GatewayMessageHandler {
     }
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    private constructor(conn: Connection, sendCh: Channel, rcvCh: Channel, rcvQueue: AssertQueue) {
+    private constructor(conn: Connection, sendCh: Channel, rcvCh: Channel, rcvQueue: AssertQueue, message_validator: MessageValidator) {
         this.conn = conn;
         this.send_ch = sendCh;
         this.rcv_ch = rcvCh;
         this.outstanding_reqs = new Map();
+        this.message_validator = message_validator;
     }
 
     // Called whenever a message is received by the gateway from the internal microservices.
+    // TODO: This is a potential security weakness point - message parsing -> json injection attacks.
     gatewayInternalMessageReceived(mh: GatewayMessageHandler, msg: Message) {
         const content = msg.content.toString('utf8');
-        // TODO: This is a potential security weakness point - message parsing -> json injection attacks.
-
-        // TODO: checks for message integrity.
         const msgJson = JSON.parse(content);
+
+
+        
 
         const correspondingReq = mh.outstanding_reqs.get(msgJson.ID);
         if (correspondingReq === undefined) {

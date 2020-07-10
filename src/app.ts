@@ -14,6 +14,9 @@ import { Request, Response } from 'express';
 // Internal dependencies.
 import { GatewayMessageHandler } from './message_handling';
 
+// A path to the .json file which describes valid internal message schema.
+const MESSAGE_SCHEMA_PATH: string = 'schema/event_response_schema.json';
+
 const corsOptions: Cors.CorsOptions = {
     origin: 'http://localhost:15300',
     methods: "GET,OPTIONS,PATCH,POST,DELETE",
@@ -78,7 +81,7 @@ function main() {
             });
             console.log('[AMQP] connected');
 
-            msgHandler = await GatewayMessageHandler.setup(conn);
+            msgHandler = await GatewayMessageHandler.setup(conn, MESSAGE_SCHEMA_PATH);
 
             // CREATE
             app.post('/events', passport.authenticate('bearer', { session: false }), msgHandler.add_events_handler);
