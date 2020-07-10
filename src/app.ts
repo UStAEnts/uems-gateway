@@ -84,7 +84,7 @@ function main() {
             msgHandler = await GatewayMessageHandler.setup(conn, MESSAGE_SCHEMA_PATH);
 
             // CREATE
-            app.post('/events', passport.authenticate('bearer', { session: false }), msgHandler.add_events_handler);
+            app.post('/events', passport.authenticate('bearer', { session: false }), msgHandler.create_event_handler);
 
             // READ
             // Examplar usage: curl -v http://127.0.0.1:15450/events/?access_token=1
@@ -103,7 +103,7 @@ function main() {
                     session: false,
                 }),
                 Cors.default(corsOptions),
-                msgHandler.get_events_handler,
+                msgHandler.read_event_handler,
             );
 
             // UPDATE
@@ -114,7 +114,7 @@ function main() {
                 }),
                 Cors.default(corsOptions)
                 ,
-                msgHandler.modify_events_handler,
+                msgHandler.update_event_handler,
             );
 
             // DELETE
@@ -125,7 +125,7 @@ function main() {
                 }),
                 Cors.default(corsOptions)
                 ,
-                msgHandler.remove_events_handler,
+                msgHandler.delete_event_handler,
             );
 
             app.get(
