@@ -60,6 +60,7 @@ export class GatewayMessageHandler {
     // Messages which have been sent on and who's responses are still being waited for.
     outstanding_reqs: Map<Number, OutStandingReq>;
 
+    // The message schema validator used to validate the structure of the json internal messages used as part of uems.
     message_validator: MessageValidator;
 
     // Creates a GatewayMessageHandler.
@@ -128,8 +129,10 @@ export class GatewayMessageHandler {
         const content = msg.content.toString('utf8');
         const msgJson = JSON.parse(content);
 
-
-        
+        if (!this.message_validator.validate(msgJson)) {
+            console.log("Message with invalid schema received - message dropped");
+            return;
+        }
 
         const correspondingReq = mh.outstanding_reqs.get(msgJson.ID);
         if (correspondingReq === undefined) {
