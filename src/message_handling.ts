@@ -5,6 +5,7 @@ import { Channel, Connection, Message, Replies } from 'amqplib/callback_api';
 import { Response, Request, NextFunction } from 'express';
 import AssertQueue = Replies.AssertQueue;
 import Ajv from 'ajv';
+import {CreateEventMsg, ReadEventMsg, UpdateEventMsg, DeleteEventMsg, EventMsg, MsgIntention, UemsDateTime, UemsDateTimeRange} from './schema/types/event_message_schema';
 
 const fs = require('fs').promises;
 
@@ -150,11 +151,11 @@ export class GatewayMessageHandler {
     };
 
     // Sends a request to the microservices system and waits for the response to come back.
-    sendRequest = async (key: string, data: any, dataID: Number, res: Response) => {
+    sendRequest = async (key: string, data: EventMsg, res: Response) => {
         // Create an object which represents a request which has been sent on by the gateway to be handled
         // but is still awaiting a matching response.
-        this.outstanding_reqs.set(dataID, {
-            unique_id: dataID,
+        this.outstanding_reqs.set(data.msg_id, {
+            unique_id: data.msg_id,
             response: res,
             callback(response: Response, responseJSON: string) {
                 response.send(responseJSON);
@@ -164,25 +165,104 @@ export class GatewayMessageHandler {
         await this.publishRequestMessage(data, key);
     };
 
-    add_events_handler = async (req: Request, res: Response, next: NextFunction) => {
-        const addMessage = parseAddEventRequestToMessage(req, this.generateMessageId());
-        await this.sendRequest(EVENT_DETAILS_SERVICE_TOPIC_ADD, addMessage, addMessage.ID, res);
+    create_event_handler = async (req: Request, res: Response, next: NextFunction) => {
+        // TODO data validation.
+        const name = req.body.name;
+        const start_date = req.body.start_date;
+        const end_date = req.body.end_date;
+        const venue = req.body.venue;
+
+        let msg: CreateEventMsg = {
+            msg_id: this.generateMessageId(),
+            status: 0, // 0 Code used 
+            msg_intention: MsgIntention.CREATE,
+            event_name: name,
+            event_start_date: start_date,
+            event_end_date: end_date,
+            venue_ids: [venue],
+            predicted_attendance: 0,
+        };
+
+        await this.sendRequest(EVENT_DETAILS_SERVICE_TOPIC_ADD, msg, res);
     }
 
-    get_events_handler = async (req: Request, res: Response) => {
-        const reqMessage = parseGetEventRequestToMessage(req, this.generateMessageId());
-        await this.sendRequest(EVENT_DETAILS_SERVICE_TOPIC_GET, reqMessage, reqMessage.ID, res);
+    read_event_handler = async (req: Request, res: Response) => {
+        let msg: ReadEventMsg = {
+            msg_id: this.generateMessageId(),
+            status: 0,
+            msg_intention: MsgIntention.READ
+        };
+
+        if (req.query.name !== undefined) {
+            msg.event_name = req.query.name.toString();
+        }
+
+        if (req.query.start_before !== undefined || req.query.start_after !== undefined) {
+            msg.event_start_date_range = {
+                start: req.query.start_before?.toString(),
+                end: req.query.start_after?.toString()
+            }
+        }
+
+        if (req.query.end_before !== undefined || req.query.end_after !== undefined) {
+            msg.event_end_date_range = {
+                start: req.query.end_before?.toString(),
+                end: req.query.end_after?.toString()
+            }
+        }
+
+        if (req.query.venue !== undefined) {
+            msg.venue_ids = [req.query.venue.toString()];
+        }
+
+        await this.sendRequest(EVENT_DETAILS_SERVICE_TOPIC_GET, msg, res);
     };
 
-    modify_events_handler = async (req: Request, res: Response, next: NextFunction) => {
-        const modifyMessage = parseModifyEventMessage(req, this.generateMessageId());
-        await this.sendRequest(EVENT_DETAILS_SERVICE_TOPIC_MODIFY, modifyMessage, modifyMessage.ID, res);
+    update_event_handler = async (req: Request, res: Response, next: NextFunction) => {
+        const eventId = req.body.event_id;
+        const name = req.body.name;
+        const start_date = req.body.start_date;
+        const end_date = req.body.end_date;
+        const venue = req.body.venue;
+
+        let msg: UpdateEventMsg = {
+            msg_id: this.generateMessageId(),
+            status: 0,
+            msg_intention: MsgIntention.UPDATE,
+            event_id: eventId
+        }
+
+        if (name !== undefined) {
+            msg.event_name = name.toString();
+        }
+
+        if (start_date !== undefined) {
+            msg.event_start_date = start_date;
+        }
+
+        if (end_date !== undefined) {
+            msg.event_end_date = end_date;
+        }
+
+        if (venue !== undefined) {
+            msg.venue_ids = [venue.toString()];
+        }
+
+        await this.sendRequest(EVENT_DETAILS_SERVICE_TOPIC_MODIFY, msg, res);
     }
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars,class-methods-use-this
-    remove_events_handler = async (req: Request, res: Response, next: NextFunction) => {
-        const deleteMessage = parseDeleteEventMessage(req, this.generateMessageId());
-        await this.sendRequest(EVENT_DETAILS_SERVICE_TOPIC_DELETE, deleteMessage, deleteMessage.ID, res);
+    delete_event_handler = async (req: Request, res: Response, next: NextFunction) => {
+        const eventId = req.body.event_id;
+
+        let msg: DeleteEventMsg = {
+            msg_id: this.generateMessageId(),
+            status: 0,
+            msg_intention: MsgIntention.DELETE,
+            event_id: eventId
+        }
+
+        await this.sendRequest(EVENT_DETAILS_SERVICE_TOPIC_DELETE, msg, res);
     }
 
     // eslint-disable-next-line class-methods-use-this
@@ -201,64 +281,6 @@ export class GatewayMessageHandler {
         } else {
             return id;
         }
-    }
-}
-
-function parseGetEventRequestToMessage(req: Request,  msgID: Number) {
-    return {
-        "ID": msgID,
-        "type": "query",
-        "name": (req.query.name === undefined) ? "" : req.query.name,
-        "start_date_before": (req.query.start_before === undefined) ? "" : req.query.start_before,
-        "start_date_after": (req.query.start_after === undefined) ? "" : req.query.start_after,
-        "end_date_before": (req.query.end_before === undefined) ? "" : req.query.end_before,
-        "end_date_after": (req.query.end_after === undefined) ? "" : req.query.end_after,
-        "venue": (req.query.venue === undefined) ? "" : req.query.venue
-    };
-}
-
-function parseAddEventRequestToMessage(req: Request, msgID: Number) {
-    // TODO, rejection on malformed request.
-
-    const name = req.body.name;
-    const start_date = req.body.start_date;
-    const end_date = req.body.end_date;
-    const venue = req.body.venue;
-
-    return {
-        "ID": msgID,
-        "type": "add",
-        "name": name,
-        "start_date": start_date,
-        "end_date": end_date,
-        "venue": venue,
-    }
-}
-
-function parseModifyEventMessage(req: Request, msgID: Number) {
-    const eventId = req.body.event_id;
-    const name = req.body.name;
-    const start_date = req.body.start_date;
-    const end_date = req.body.end_date;
-    const venue = req.body.venue;
-
-    return {
-        "ID": msgID,
-        "event_id": eventId,
-        "type": "modify",
-        "name": name,
-        "start_date": start_date,
-        "end_date": end_date,
-        "venue": venue,
-    }
-}
-
-function parseDeleteEventMessage(req: Request, msgID: Number) {
-    const eventId = req.body.event_id;
-    return {
-        "ID": msgID,
-        "type": "delete",
-        event_id: eventId
     }
 }
 
