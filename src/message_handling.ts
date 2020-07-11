@@ -6,6 +6,7 @@ import { Response, Request, NextFunction } from 'express';
 import AssertQueue = Replies.AssertQueue;
 import Ajv from 'ajv';
 import {CreateEventMsg, ReadEventMsg, UpdateEventMsg, DeleteEventMsg, EventMsg, MsgIntention, msgToJson} from './schema/types/event_message_schema';
+import {ReadRequestResponseMsg, RequestResponseMsg} from './schema/types/event_response_schema'
 
 const fs = require('fs').promises;
 
@@ -128,7 +129,7 @@ export class GatewayMessageHandler {
     // TODO: This is a potential security weakness point - message parsing -> json injection attacks.
     async gatewayInternalMessageReceived(mh: GatewayMessageHandler, msg: Message) {
         const content = msg.content.toString('utf8');
-        const msgJson = JSON.parse(content);
+        const msgJson: ReadRequestResponseMsg | RequestResponseMsg = JSON.parse(content);
 
         console.log("Message received:");
         console.log(msgJson);
@@ -147,9 +148,9 @@ export class GatewayMessageHandler {
             return;
         }
 
-        this.outstanding_reqs.delete(msgJson.ID);
+        this.outstanding_reqs.delete(msgJson.msg_id);
 
-        correspondingReq.callback(correspondingReq.response, msgJson.payload);
+        correspondingReq.callback(correspondingReq.response, msgJson.result);
     }
 
     publishRequestMessage = async (data: any, key: string) => {
@@ -286,7 +287,7 @@ export class GatewayMessageHandler {
         // one client might be routed back to another client thereby leaking data.
         let id = Math.random() * 100000;
 
-        if (this.outstanding_reqs.has(id)) {
+        if (this.outstanding_reqs.has(id)) { // Performance issue with doing this check for every message.
             return this.generateMessageId();
         } else {
             return id;
