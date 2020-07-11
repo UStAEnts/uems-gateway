@@ -49,7 +49,8 @@
                             "type": "integer",
                             "description": "The attendance of the event"
                         }
-                    }
+                    },
+                    "required": ["event_id"]
                 }
             },
             "required": ["msg_id", "status", "msg_intention", "result"]
