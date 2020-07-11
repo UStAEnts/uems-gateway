@@ -141,7 +141,7 @@ export class GatewayMessageHandler {
 
         console.log("Message passed validation");
 
-        const correspondingReq = mh.outstanding_reqs.get(msgJson.ID);
+        const correspondingReq = mh.outstanding_reqs.get(msgJson.msg_id);
         if (correspondingReq === undefined) {
             console.log('Request response received with unrecognised or already handled ID');
             return;
