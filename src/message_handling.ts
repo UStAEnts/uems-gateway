@@ -5,7 +5,7 @@ import { Channel, Connection, Message, Replies } from 'amqplib/callback_api';
 import { Response, Request, NextFunction } from 'express';
 import AssertQueue = Replies.AssertQueue;
 import Ajv from 'ajv';
-import {CreateEventMsg, ReadEventMsg, UpdateEventMsg, DeleteEventMsg, EventMsg, MsgIntention, UemsDateTime, UemsDateTimeRange} from './schema/types/event_message_schema';
+import {CreateEventMsg, ReadEventMsg, UpdateEventMsg, DeleteEventMsg, EventMsg, MsgIntention, msgToJson} from './schema/types/event_message_schema';
 
 const fs = require('fs').promises;
 
@@ -130,10 +130,16 @@ export class GatewayMessageHandler {
         const content = msg.content.toString('utf8');
         const msgJson = JSON.parse(content);
 
+        console.log("Message received:");
+        console.log(msgJson);
+
         if (! (await this.message_validator.validate(msgJson))) {
             console.log("Message with invalid schema received - message dropped");
+            console.log(this.message_validator.schema_validator.errors);
             return;
         }
+
+        console.log("Message passed validation");
 
         const correspondingReq = mh.outstanding_reqs.get(msgJson.ID);
         if (correspondingReq === undefined) {
@@ -151,16 +157,18 @@ export class GatewayMessageHandler {
     };
 
     // Sends a request to the microservices system and waits for the response to come back.
-    sendRequest = async (key: string, data: EventMsg, res: Response) => {
+    sendRequest = async (key: string, msg: EventMsg, res: Response) => {
         // Create an object which represents a request which has been sent on by the gateway to be handled
         // but is still awaiting a matching response.
-        this.outstanding_reqs.set(data.msg_id, {
-            unique_id: data.msg_id,
+        this.outstanding_reqs.set(msg.msg_id, {
+            unique_id: msg.msg_id,
             response: res,
             callback(response: Response, responseJSON: string) {
                 response.send(responseJSON);
             },
         });
+
+        let data = msgToJson(msg);
 
         await this.publishRequestMessage(data, key);
     };
@@ -197,18 +205,20 @@ export class GatewayMessageHandler {
             msg.event_name = req.query.name.toString();
         }
 
-        if (req.query.start_before !== undefined || req.query.start_after !== undefined) {
-            msg.event_start_date_range = {
-                start: req.query.start_before?.toString(),
-                end: req.query.start_after?.toString()
-            }
+        if (req.query.start_before !== undefined) {
+            msg.event_start_date_range_begin = req.query.start_before.toString();
+        }
+        
+        if (req.query.start_after !== undefined) {
+            msg.event_start_date_range_end = req.query.start_after.toString();
         }
 
-        if (req.query.end_before !== undefined || req.query.end_after !== undefined) {
-            msg.event_end_date_range = {
-                start: req.query.end_before?.toString(),
-                end: req.query.end_after?.toString()
-            }
+        if (req.query.end_before !== undefined) {
+            msg.event_end_date_range_begin = req.query.end_before.toString();
+        }
+
+        if (req.query.end_after !== undefined) {
+            msg.event_end_date_range_end = req.query.end_after.toString();
         }
 
         if (req.query.venue !== undefined) {
