@@ -1,29 +1,33 @@
 // External dependencies.
-const express = require('express');
-const logger = require('morgan');
-const passport = require('passport');
+const fs = require('fs').promises;
+const passport = require('passport'); // Passport is used for handling external endpoint authentication.
 const AuthStrategy = require('passport-http-bearer').Strategy;
-const amqp = require('amqplib/callback_api');
-const fs = require('fs');
-const helmet = require('helmet');
 
-import * as Cors from 'cors';
-import * as BodyParser from 'body-parser';
-import { Connection } from 'amqplib';
-import { Request, Response } from 'express';
+import helmet from 'helmet';
+import express from 'express';
+import logger from 'morgan';
+import * as Cors from 'cors'; // Cors library used to handle CORS on external endpoints.
+import * as BodyParser from 'body-parser'; // Bodyparser used to handle JSON content in messages.
+import amqp from 'amqplib/callback_api';
+
 // Internal dependencies.
-import { GatewayMessageHandler } from './message_handling';
+import { Gateway } from './message_handling';
+import { UemsAuth } from './authentication';
 
 // A path to the .json file which describes valid internal message schema.
 const MESSAGE_SCHEMA_PATH: string = 'schema/event_response_schema.json';
 
+const RABBIT_MQ_CONFIG: string = 'rabbit-mq-config.json';
+
+// CORS configuration.
 const corsOptions: Cors.CorsOptions = {
     origin: 'http://localhost:15300',
     methods: 'GET,OPTIONS,PATCH,POST,DELETE',
     optionsSuccessStatus: 200,
 };
 
-let msgHandler: GatewayMessageHandler | null = null;
+// Authentication configuration.
+passport.use(new AuthStrategy(UemsAuth.authFunction));
 
 const app = express();
 app.use(helmet());
@@ -43,70 +47,22 @@ app.use(BodyParser.json());
 // Event get requests use queries so the query parser must be enabled.
 app.set('query parser', 'extended');
 
-passport.use(new AuthStrategy(
-    // TODO, Authentication.
-    (token: any, done: Function) => done(null, 1),
-));
-
 function initFinished() {
     app.listen(app.get('port'));
 
     console.log('Started uems-gateway');
 }
 
-// Defines the endpoints for the UEMS gateway external API.
-//
-// Setup as defined in https://xiomi.stoplight.io/docs/uems-gateway-api/reference/kill-me.yaml
-//
-// Args: msgHandler: The message handler which handles the endpoint requests.
-// Return: None
-function registerEndpoints(msgHandler: GatewayMessageHandler) {
-    app.post('/events', passport.authenticate('bearer', { session: false }), msgHandler.create_event_handler);
-    app.get('/events', passport.authenticate('bearer', { session: false }), Cors.default(corsOptions), msgHandler.read_event_handler);
-
-    // UPDATE
-    app.patch(
-        '/events',
-        passport.authenticate('bearer', {
-            session: false,
-        }),
-        Cors.default(corsOptions),
-        msgHandler.update_event_handler,
-    );
-
-    // DELETE
-    app.delete(
-        '/events',
-        passport.authenticate('bearer', {
-            session: false,
-        }),
-        Cors.default(corsOptions),
-        msgHandler.delete_event_handler,
-    );
-
-    app.get(
-        '/',
-        (req: Request, res: Response) => res.send('Test Path, Get Req Received'),
-    );
-
-    app.get(
-        '/status',
-        (req: Request, res: Response) => res.send('Ok'),
-    );
-}
-
 function main() {
     console.log('Attempting to connect to rabbit-mq...');
-    fs.readFile('rabbit-mq-config.json', 'utf8', (err: Error, data: string) => {
-        if (err) {
-            console.error('Failed to read rabbit-mq config... exiting');
-            return;
-        }
 
-        const configJson = JSON.parse(data);
+    fs.readFile(RABBIT_MQ_CONFIG).then((data: Buffer) => {
+        const configJson = JSON.parse(data.toString());
 
-        amqp.connect(`${configJson.uri}?heartbeat=60`, async (error: Error, conn: Connection) => {
+        amqp.connect(`${configJson.uri}?heartbeat=60`, (error: Error, conn: amqp.Connection) => {
             if (error) {
+                // Attempt reconnect if initial messaging connection fails. This is useful if gateway
+                // is started before messaging system.
                 console.error('[AMQP]', error.message);
                 setTimeout(main, 2000);
                 return;
@@ -122,19 +78,18 @@ function main() {
             });
             console.log('[AMQP] connected');
 
-            msgHandler = await GatewayMessageHandler.setup(conn, MESSAGE_SCHEMA_PATH);
+            Gateway.GatewayMessageHandler.setup(conn, MESSAGE_SCHEMA_PATH).then((mh: Gateway.GatewayMessageHandler) => {
+                mh.registerEndpoints(app, passport, corsOptions);
 
-            registerEndpoints(msgHandler);
-
-            initFinished();
+                initFinished();
+            });
         });
+    }).catch((reason: any) => {
+        console.error('Failed to read rabbit-mq config... exiting');
+        console.error(reason);
     });
 }
 
 main();
-
-process.on('exit', () => {
-    if (msgHandler !== null) msgHandler.close();
-});
 
 module.exports = app;

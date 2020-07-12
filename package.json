@@ -7,8 +7,7 @@
     "build": "tsc --listEmittedFiles",
     "start:old": "node -r source-map-support/register --trace-warnings ./build/app.js",
     "start": "npm run build && npm run start:old",
-    "lint": "eslint --ext .ts ./",
-    "test": "npm run build && mocha build/test/*.test.js"
+    "lint": "eslint --ext .ts ./"
   },
   "repository": {
     "type": "git",
@@ -24,10 +23,14 @@
     "@types/amqplib": "^0.5.13",
     "@types/body-parser": "^1.19.0",
     "@types/cors": "^2.8.6",
+    "@types/helmet": "0.0.47",
     "@types/mocha": "^7.0.2",
+    "@types/morgan": "^1.9.1",
     "@types/node": "^14.0.14",
+    "@types/passport": "^1.0.4",
     "ajv": "^6.12.3",
     "amqplib": "^0.5.6",
+    "body-parser": "^1.19.0",
     "cors": "^2.8.5",
     "eslint-plugin-react-hooks": "^4.0.5",
     "express": "^4.17.1",

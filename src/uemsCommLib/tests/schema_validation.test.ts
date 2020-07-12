@@ -1,7 +1,7 @@
 const assert = require('assert');
 
 import 'mocha';
-import { MessageValidator } from '../message_handling';
+import { MessageValidator } from '../messaging/MessageValidator';
 
 // A path to the .json file which describes valid message schema.
 const MESSAGE_SCHEMA_PATH: string = 'schema/event_response_schema.json';
