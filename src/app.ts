@@ -19,9 +19,9 @@ const MESSAGE_SCHEMA_PATH: string = 'schema/event_response_schema.json';
 
 const corsOptions: Cors.CorsOptions = {
     origin: 'http://localhost:15300',
-    methods: "GET,OPTIONS,PATCH,POST,DELETE",
-    optionsSuccessStatus: 200
-}
+    methods: 'GET,OPTIONS,PATCH,POST,DELETE',
+    optionsSuccessStatus: 200,
+};
 
 let msgHandler: GatewayMessageHandler | null = null;
 
@@ -54,6 +54,47 @@ function initFinished() {
     console.log('Started uems-gateway');
 }
 
+// Defines the endpoints for the UEMS gateway external API.
+//
+// Setup as defined in https://xiomi.stoplight.io/docs/uems-gateway-api/reference/kill-me.yaml
+//
+// Args: msgHandler: The message handler which handles the endpoint requests.
+// Return: None
+function registerEndpoints(msgHandler: GatewayMessageHandler) {
+    app.post('/events', passport.authenticate('bearer', { session: false }), msgHandler.create_event_handler);
+    app.get('/events', passport.authenticate('bearer', { session: false }), Cors.default(corsOptions), msgHandler.read_event_handler);
+
+    // UPDATE
+    app.patch(
+        '/events',
+        passport.authenticate('bearer', {
+            session: false,
+        }),
+        Cors.default(corsOptions),
+        msgHandler.update_event_handler,
+    );
+
+    // DELETE
+    app.delete(
+        '/events',
+        passport.authenticate('bearer', {
+            session: false,
+        }),
+        Cors.default(corsOptions),
+        msgHandler.delete_event_handler,
+    );
+
+    app.get(
+        '/',
+        (req: Request, res: Response) => res.send('Test Path, Get Req Received'),
+    );
+
+    app.get(
+        '/status',
+        (req: Request, res: Response) => res.send('Ok'),
+    );
+}
+
 function main() {
     console.log('Attempting to connect to rabbit-mq...');
     fs.readFile('rabbit-mq-config.json', 'utf8', (err: Error, data: string) => {
@@ -83,60 +124,7 @@ function main() {
 
             msgHandler = await GatewayMessageHandler.setup(conn, MESSAGE_SCHEMA_PATH);
 
-            // CREATE
-            app.post('/events', passport.authenticate('bearer', { session: false }), msgHandler.create_event_handler);
-
-            // READ
-            // Examplar usage: curl -v http://127.0.0.1:15450/events/?access_token=1
-            //
-            // GET query params:
-            // access_token: The access token used for authentication (currently unused but required).
-            // name: Human readable name, default = all.
-            // start_date_before: The event must have a start date after start_date_after and before start_date_before.
-            // start_date_after:  The default is all events.
-            // end_date_before: The event must have an end date after end_date_after and before end_date_before.
-            // end_date_after:  The default is all events.
-            //
-            app.get(
-                '/events',
-                passport.authenticate('bearer', {
-                    session: false,
-                }),
-                Cors.default(corsOptions),
-                msgHandler.read_event_handler,
-            );
-
-            // UPDATE
-            app.patch(
-                '/events',
-                passport.authenticate('bearer', {
-                    session: false,
-                }),
-                Cors.default(corsOptions)
-                ,
-                msgHandler.update_event_handler,
-            );
-
-            // DELETE
-            app.delete(
-                '/events',
-                passport.authenticate('bearer', {
-                    session: false,
-                }),
-                Cors.default(corsOptions)
-                ,
-                msgHandler.delete_event_handler,
-            );
-
-            app.get(
-                '/',
-                (req: Request, res: Response) => res.send('Test Path, Get Req Received'),
-            );
-
-            app.get(
-                '/status',
-                (req: Request, res: Response) => res.send('Ok'),
-            );
+            registerEndpoints(msgHandler);
 
             initFinished();
         });
