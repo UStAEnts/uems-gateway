@@ -6,9 +6,12 @@ import { Response, Request, Application } from 'express';
 import { PassportStatic } from 'passport'; // Passport is used for handling external endpoint authentication.
 import * as Cors from 'cors'; // Cors library used to handle CORS on external endpoints.
 import { MessageValidator } from './uemsCommLib/messaging/MessageValidator';
-import { ReadRequestResponseMsg, RequestResponseMsg } from './uemsCommLib/messaging/types/event_response_schema';
-import { EventMsg, CreateEventMsg, ReadEventMsg, UpdateEventMsg, DeleteEventMsg, msgToJson, MsgIntention }
+import { ReadRequestResponseMsg, RequestResponseMsg, MsgStatus }
+    from './uemsCommLib/messaging/types/event_response_schema';
+import { EventMsg, ReadEventMsg, DeleteEventMsg, msgToJson, MsgIntention }
     from './uemsCommLib/messaging/types/event_message_schema';
+import * as HttpStatus from 'http-status-codes';
+import { EventResponse, InternalEventToEventResponse } from './types/GatewayTypes';
 
 const fs = require('fs').promises;
 
@@ -25,10 +28,10 @@ const REQUEST_EXCHANGE: string = 'request';
 const EVENT_DETAILS_SERVICE_TOPIC_GET: string = 'events.details.get';
 
 // The topic used for sending requests to add an event.
-const EVENT_DETAILS_SERVICE_TOPIC_ADD: string = 'events.details.add';
+// const EVENT_DETAILS_SERVICE_TOPIC_ADD: string = 'events.details.add';
 
 // The topic used for sending modification requests for an event.
-const EVENT_DETAILS_SERVICE_TOPIC_MODIFY: string = 'events.details.modify';
+// const EVENT_DETAILS_SERVICE_TOPIC_MODIFY: string = 'events.details.modify';
 
 // The topic used for sending event deletion requests.
 const EVENT_DETAILS_SERVICE_TOPIC_DELETE: string = 'events.details.delete';
@@ -41,6 +44,9 @@ type OutStandingReq = {
 };
 
 export namespace Gateway {
+    type ReadRequestCallback = ((httpRes: Response, reqResponse: ReadRequestResponseMsg, status: Number) => void);
+    type RequestCallback = ((httpRes: Response, reqResponse: RequestResponseMsg, status: Number) => void);
+
     export class GatewayMessageHandler {
         // Connection to the RabbitMQ messaging system.
         conn: Connection;
@@ -121,25 +127,26 @@ export namespace Gateway {
         // Args: msgHandler: The message handler which handles the endpoint requests.
         // Return: None
         registerEndpoints(app: Application, auth: PassportStatic, corsOptions: any) {
-            app.post('/events', auth.authenticate('bearer', { session: false }), this.create_event_handler);
+            // app.post('/events', auth.authenticate('bearer', { session: false }), this.create_event_handler);
+            // GET /events
             app.get(
                 '/events',
                 auth.authenticate('bearer', {
                     session: false,
                 }),
                 Cors.default(corsOptions),
-                this.read_event_handler,
+                this.get_events_handler,
             );
 
-            // UPDATE
-            app.patch(
-                '/events',
-                auth.authenticate('bearer', {
-                    session: false,
-                }),
-                Cors.default(corsOptions),
-                this.update_event_handler,
-            );
+            // // UPDATE
+            // app.patch(
+            //     '/events',
+            //     auth.authenticate('bearer', {
+            //         session: false,
+            //     }),
+            //     Cors.default(corsOptions),
+            //     this.update_event_handler,
+            // );
 
             // DELETE /events/{id}
             app.delete(
@@ -168,24 +175,19 @@ export namespace Gateway {
             const content = msg.content.toString('utf8');
             const msgJson: ReadRequestResponseMsg | RequestResponseMsg = JSON.parse(content);
 
-            console.log('Message received:');
-            console.log(msgJson);
-
             if (!(await this.messageValidator.validate(msgJson))) {
-                console.log('Message with invalid schema received - message dropped');
+                console.warn('Message with invalid schema received - message dropped');
                 return;
             }
 
-            console.log('Message passed validation');
-
             const correspondingReq = mh.outstanding_reqs.get(msgJson.msg_id);
             if (correspondingReq === undefined) {
-                console.log('Request response received with unrecognised or already handled ID');
+                console.warn('Request response received with unrecognised or already handled ID, dropped');
                 return;
             }
 
             this.outstanding_reqs.delete(msgJson.msg_id);
-            correspondingReq.callback(correspondingReq.response, msgJson.result);
+            correspondingReq.callback(correspondingReq.response, msgJson);
         }
 
         publishRequestMessage = async (data: any, key: string) => {
@@ -193,39 +195,41 @@ export namespace Gateway {
         };
 
         // Sends a request to the microservices system and waits for the response to come back.
-        sendRequest = async (key: string, msg: EventMsg, res: Response) => {
+        sendRequest = async (
+            key: string,
+            msg: EventMsg,
+            res: Response,
+            callback: ReadRequestCallback | RequestCallback) => {
             // Create an object which represents a request which has been sent on by the gateway to be handled
             // but is still awaiting a matching response.
             this.outstanding_reqs.set(msg.msg_id, {
                 unique_id: msg.msg_id,
                 response: res,
-                callback(response: Response, responseJSON: string) {
-                    response.send(responseJSON);
-                },
+                callback,
             });
 
             const data = msgToJson(msg);
             await this.publishRequestMessage(data, key);
         };
 
-        create_event_handler = async (req: Request, res: Response) => {
-            // TODO data validation.
-            const { name, startDate, endDate, venue } = req.body;
-            const msg: CreateEventMsg = {
-                msg_id: this.generateMessageId(),
-                status: 0, // 0 Code used
-                msg_intention: MsgIntention.CREATE,
-                event_name: name,
-                event_start_date: startDate,
-                event_end_date: endDate,
-                venue_ids: [venue],
-                predicted_attendance: 0,
-            };
+        // create_event_handler = async (req: Request, res: Response) => {
+        //     // TODO data validation.
+        //     const { name, startDate, endDate, venue } = req.body;
+        //     const msg: CreateEventMsg = {
+        //         msg_id: this.generateMessageId(),
+        //         status: 0, // 0 Code used
+        //         msg_intention: MsgIntention.CREATE,
+        //         event_name: name,
+        //         event_start_date: startDate,
+        //         event_end_date: endDate,
+        //         venue_ids: [venue],
+        //         predicted_attendance: 0,
+        //     };
 
-            await this.sendRequest(EVENT_DETAILS_SERVICE_TOPIC_ADD, msg, res);
-        };
+        //     await this.sendRequest(EVENT_DETAILS_SERVICE_TOPIC_ADD, msg, res);
+        // };
 
-        read_event_handler = async (req: Request, res: Response) => {
+        get_events_handler = async (req: Request, res: Response) => {
             const msg: ReadEventMsg = {
                 msg_id: this.generateMessageId(),
                 status: 0,
@@ -256,40 +260,68 @@ export namespace Gateway {
                 msg.venue_ids = [req.query.venue.toString()];
             }
 
-            await this.sendRequest(EVENT_DETAILS_SERVICE_TOPIC_GET, msg, res);
-        };
-
-        update_event_handler = async (req: Request, res: Response) => {
-            const { eventId, name, startDate, endDate, venue } = req.body;
-
-            const msg: UpdateEventMsg = {
-                msg_id: this.generateMessageId(),
-                status: 0,
-                msg_intention: MsgIntention.UPDATE,
-                event_id: eventId,
+            const callback: ReadRequestCallback = (
+                httpRes: Response<any>,
+                reqResponse: ReadRequestResponseMsg,
+            ) => {
+                if (reqResponse.status === MsgStatus.SUCCESS) {
+                    const result: EventResponse[] = reqResponse.result.map(InternalEventToEventResponse);
+                    httpRes.status(HttpStatus.OK).send(result);
+                } else {
+                    console.log(reqResponse);
+                    // Note this return code (503) isn't officially defined yet.
+                    httpRes.status(HttpStatus.SERVICE_UNAVAILABLE).send({
+                        code: '',
+                        message: 'Failed to delete event',
+                    });
+                }
             };
 
-            if (name !== undefined) {
-                msg.event_name = name.toString();
-            }
-
-            if (startDate !== undefined) {
-                msg.event_start_date = startDate;
-            }
-
-            if (endDate !== undefined) {
-                msg.event_end_date = endDate;
-            }
-
-            if (venue !== undefined) {
-                msg.venue_ids = [venue.toString()];
-            }
-
-            await this.sendRequest(EVENT_DETAILS_SERVICE_TOPIC_MODIFY, msg, res);
+            await this.sendRequest(EVENT_DETAILS_SERVICE_TOPIC_GET, msg, res, callback);
         };
 
+        // update_event_handler = async (req: Request, res: Response) => {
+        //     const { eventId, name, startDate, endDate, venue } = req.body;
+
+        //     const msg: UpdateEventMsg = {
+        //         msg_id: this.generateMessageId(),
+        //         status: 0,
+        //         msg_intention: MsgIntention.UPDATE,
+        //         event_id: eventId,
+        //     };
+
+        //     if (name !== undefined) {
+        //         msg.event_name = name.toString();
+        //     }
+
+        //     if (startDate !== undefined) {
+        //         msg.event_start_date = startDate;
+        //     }
+
+        //     if (endDate !== undefined) {
+        //         msg.event_end_date = endDate;
+        //     }
+
+        //     if (venue !== undefined) {
+        //         msg.venue_ids = [venue.toString()];
+        //     }
+
+        //     const callback: RequestCallback = (httpRes: Response<any>, reqResponse: RequestResponseMsg) => {
+        //         if (reqResponse.status === MsgStatus.SUCCESS) {
+        //             httpRes.status(HttpStatus.NO_CONTENT).send();
+        //         } else {
+        //             httpRes.status(HttpStatus.NOT_FOUND).send({
+        //                 code: '',
+        //                 message: 'Failed to delete event',
+        //             });
+        //         }
+        //     };
+
+        //     await this.sendRequest(EVENT_DETAILS_SERVICE_TOPIC_MODIFY, msg, res, callback);
+        // };
+
         delete_event_handler = async (req: Request, res: Response) => {
-            const eventId = req.body.event_id;
+            const eventId = req.params.id;
 
             const msg: DeleteEventMsg = {
                 msg_id: this.generateMessageId(),
@@ -298,7 +330,22 @@ export namespace Gateway {
                 event_id: eventId,
             };
 
-            await this.sendRequest(EVENT_DETAILS_SERVICE_TOPIC_DELETE, msg, res);
+            const callback: RequestCallback = (
+                httpRes: Response<any>,
+                reqResponse: RequestResponseMsg,
+                status: Number,
+            ) => {
+                if (status === MsgStatus.SUCCESS) {
+                    httpRes.status(HttpStatus.NO_CONTENT).send();
+                } else {
+                    httpRes.status(HttpStatus.NOT_FOUND).send({
+                        code: '',
+                        message: 'Failed to delete event',
+                    });
+                }
+            };
+
+            await this.sendRequest(EVENT_DETAILS_SERVICE_TOPIC_DELETE, msg, res, callback);
         };
 
         generateMessageId(): Number {
