@@ -11,8 +11,8 @@ import * as BodyParser from 'body-parser'; // Bodyparser used to handle JSON con
 import amqp from 'amqplib/callback_api';
 
 // Internal dependencies.
-import { Gateway } from './message_handling';
-import { UemsAuth } from './authentication';
+import { Gateway } from './Gateway';
+import { UemsAuth } from './UemsAuth';
 
 // A path to the .json file which describes valid internal message schema.
 const MESSAGE_SCHEMA_PATH: string = 'schema/event_response_schema.json';

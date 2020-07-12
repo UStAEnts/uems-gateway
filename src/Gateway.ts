@@ -173,7 +173,6 @@ export namespace Gateway {
 
             if (!(await this.messageValidator.validate(msgJson))) {
                 console.log('Message with invalid schema received - message dropped');
-                console.log(this.messageValidator.schema_validator.errors);
                 return;
             }
 

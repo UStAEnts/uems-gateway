@@ -7,16 +7,14 @@
 import Ajv from 'ajv';
 
 export class MessageValidator {
-    schema_validator: Ajv.ValidateFunction;
+    schemaValidator: Ajv.ValidateFunction;
 
     constructor(schema: object) {
         const ajv = new Ajv({ allErrors: true });
-        this.schema_validator = ajv.compile(schema);
+        this.schemaValidator = ajv.compile(schema);
     }
 
     public async validate(msg: any): Promise<boolean> {
-        return this.schema_validator(msg);
+        return this.schemaValidator(msg);
     }
 }
-
-module.exports = MessageValidator;
