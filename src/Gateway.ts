@@ -240,25 +240,30 @@ export namespace Gateway {
                 msg.event_name = req.query.name.toString();
             }
 
-            if (req.query.start_before !== undefined) {
-                msg.event_start_date_range_begin = req.query.start_before.toString();
+            if (req.query.startbefore !== undefined) {
+                msg.event_start_date_range_begin = req.query.startbefore.toString();
             }
 
-            if (req.query.start_after !== undefined) {
-                msg.event_start_date_range_end = req.query.start_after.toString();
+            if (req.query.startafter !== undefined) {
+                msg.event_start_date_range_end = req.query.startafter.toString();
             }
 
-            if (req.query.end_before !== undefined) {
-                msg.event_end_date_range_begin = req.query.end_before.toString();
+            if (req.query.endbefore !== undefined) {
+                msg.event_end_date_range_begin = req.query.endbefore.toString();
             }
 
-            if (req.query.end_after !== undefined) {
-                msg.event_end_date_range_end = req.query.end_after.toString();
+            if (req.query.endafter !== undefined) {
+                msg.event_end_date_range_end = req.query.endafter.toString();
             }
 
             if (req.query.venue !== undefined) {
                 msg.venue_ids = [req.query.venue.toString()];
             }
+
+            console.log('Query');
+            console.log(req.query);
+            console.log('Message');
+            console.log(msg);
 
             const callback: ReadRequestCallback = (
                 httpRes: Response<any>,
