@@ -5,11 +5,11 @@ import { Channel, Connection, Message } from 'amqplib/callback_api';
 import { Response, Request, Application } from 'express';
 import { PassportStatic } from 'passport'; // Passport is used for handling external endpoint authentication.
 import * as Cors from 'cors'; // Cors library used to handle CORS on external endpoints.
-import { MessageValidator } from './uemsCommLib/messaging/MessageValidator';
+import { MessageValidator } from '../../uemsCommLib/src/messaging/MessageValidator';
 import { ReadRequestResponseMsg, RequestResponseMsg, MsgStatus }
-    from './uemsCommLib/messaging/types/event_response_schema';
+    from '../../uemsCommLib/src/messaging/types/event_response_schema';
 import { EventMsg, ReadEventMsg, DeleteEventMsg, msgToJson, MsgIntention }
-    from './uemsCommLib/messaging/types/event_message_schema';
+    from '../../uemsCommLib/src/messaging/types/event_message_schema';
 import * as HttpStatus from 'http-status-codes';
 import { EventResponse, InternalEventToEventResponse } from './types/GatewayTypes';
 
