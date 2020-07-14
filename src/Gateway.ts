@@ -5,11 +5,9 @@ import { Channel, Connection, Message } from 'amqplib/callback_api';
 import { Response, Request, Application } from 'express';
 import { PassportStatic } from 'passport'; // Passport is used for handling external endpoint authentication.
 import * as Cors from 'cors'; // Cors library used to handle CORS on external endpoints.
-import { MessageValidator, EventRes, EventMsg } from '@uems/uemscommlib';
+import { EventRes, EventMsg, EventResponseValidator } from '@uems/uemscommlib';
 import * as HttpStatus from 'http-status-codes';
 import { EventResponse, InternalEventToEventResponse } from './types/GatewayTypes';
-
-const fs = require('fs').promises;
 
 // The queue of messages being sent from the microservices back to the gateway.
 const RCV_INBOX_QUEUE_NAME: string = 'inbox';
@@ -59,13 +57,13 @@ export namespace Gateway {
         outstanding_reqs: Map<Number, OutStandingReq>;
 
         // Used to validate the structure of the internal messages used as part of uems.
-        messageValidator: MessageValidator.MessageValidator;
+        messageValidator: EventResponseValidator;
 
         // Creates a GatewayMessageHandler.
         // Includes creating the channels, exchanges and queues on the connection required.
         //
         // Returns a promise which resolves to the new GatewayMessageHandler.
-        static setup(conn: Connection, schemaPath: String): Promise<GatewayMessageHandler> {
+        static setup(conn: Connection): Promise<GatewayMessageHandler> {
             return new Promise(((resolve, reject) => {
                 conn.createChannel((err1, sendCh) => {
                     if (err1) {
@@ -91,8 +89,7 @@ export namespace Gateway {
 
                             rcvCh.bindQueue(RCV_INBOX_QUEUE_NAME, GATEWAY_EXCHANGE, '');
 
-                            const schema = JSON.parse((await fs.readFile(schemaPath)).toString());
-                            const mv = new MessageValidator.MessageValidator(schema);
+                            const mv = await EventResponseValidator.setup();
                             const mh = new GatewayMessageHandler(conn, sendCh, rcvCh, mv);
 
                             rcvCh.consume(queue.queue, async (msg) => {
@@ -114,7 +111,7 @@ export namespace Gateway {
             conn: Connection,
             sendCh: Channel,
             rcvCh: Channel,
-            messageValidator: MessageValidator.MessageValidator,
+            messageValidator: EventResponseValidator,
         ) {
             this.conn = conn;
             this.send_ch = sendCh;

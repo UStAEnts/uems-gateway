@@ -1,6 +1,6 @@
 // The gateway types as defined by the external API.
 
-import { InternalEvent } from '../../../uemsCommLib/src/messaging/types/event_response_schema';
+import { EventRes } from '@uems/uemscommlib';
 
 export type EventResponse = {
     id: string,
@@ -9,7 +9,7 @@ export type EventResponse = {
     endDate: Number
 };
 
-export function InternalEventToEventResponse(ie: InternalEvent): EventResponse {
+export function InternalEventToEventResponse(ie: EventRes.InternalEvent): EventResponse {
     return {
         id: ie.event_id,
         name: ie.event_name,

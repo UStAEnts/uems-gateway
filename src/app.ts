@@ -14,9 +14,6 @@ import amqp from 'amqplib/callback_api';
 import { Gateway } from './Gateway';
 import { UemsAuth } from './UemsAuth';
 
-// A path to the .json file which describes valid internal message schema.
-const MESSAGE_SCHEMA_PATH: string = 'schema/event_response_schema.json';
-
 const RABBIT_MQ_CONFIG: string = 'rabbit-mq-config.json';
 
 // CORS configuration.
@@ -78,7 +75,7 @@ function main() {
             });
             console.log('[AMQP] connected');
 
-            Gateway.GatewayMessageHandler.setup(conn, MESSAGE_SCHEMA_PATH).then((mh: Gateway.GatewayMessageHandler) => {
+            Gateway.GatewayMessageHandler.setup(conn).then((mh: Gateway.GatewayMessageHandler) => {
                 mh.registerEndpoints(app, passport, corsOptions);
 
                 initFinished();
