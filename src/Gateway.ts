@@ -5,11 +5,7 @@ import { Channel, Connection, Message } from 'amqplib/callback_api';
 import { Response, Request, Application } from 'express';
 import { PassportStatic } from 'passport'; // Passport is used for handling external endpoint authentication.
 import * as Cors from 'cors'; // Cors library used to handle CORS on external endpoints.
-import { MessageValidator } from '../../uemsCommLib/src/messaging/MessageValidator';
-import { ReadRequestResponseMsg, RequestResponseMsg, MsgStatus }
-    from '../../uemsCommLib/src/messaging/types/event_response_schema';
-import { EventMsg, ReadEventMsg, DeleteEventMsg, msgToJson, MsgIntention }
-    from '../../uemsCommLib/src/messaging/types/event_message_schema';
+import { MessageValidator, EventRes, EventMsg } from '@uems/uemscommlib';
 import * as HttpStatus from 'http-status-codes';
 import { EventResponse, InternalEventToEventResponse } from './types/GatewayTypes';
 
@@ -44,8 +40,10 @@ type OutStandingReq = {
 };
 
 export namespace Gateway {
-    type ReadRequestCallback = ((httpRes: Response, reqResponse: ReadRequestResponseMsg, status: Number) => void);
-    type RequestCallback = ((httpRes: Response, reqResponse: RequestResponseMsg, status: Number) => void);
+    type ReadRequestCallback = (
+        (httpRes: Response, reqResponse: EventRes.ReadRequestResponseMsg, status: Number) => void
+    );
+    type RequestCallback = ((httpRes: Response, reqResponse: EventRes.RequestResponseMsg, status: Number) => void);
 
     export class GatewayMessageHandler {
         // Connection to the RabbitMQ messaging system.
@@ -61,7 +59,7 @@ export namespace Gateway {
         outstanding_reqs: Map<Number, OutStandingReq>;
 
         // Used to validate the structure of the internal messages used as part of uems.
-        messageValidator: MessageValidator;
+        messageValidator: MessageValidator.MessageValidator;
 
         // Creates a GatewayMessageHandler.
         // Includes creating the channels, exchanges and queues on the connection required.
@@ -94,7 +92,7 @@ export namespace Gateway {
                             rcvCh.bindQueue(RCV_INBOX_QUEUE_NAME, GATEWAY_EXCHANGE, '');
 
                             const schema = JSON.parse((await fs.readFile(schemaPath)).toString());
-                            const mv = new MessageValidator(schema);
+                            const mv = new MessageValidator.MessageValidator(schema);
                             const mh = new GatewayMessageHandler(conn, sendCh, rcvCh, mv);
 
                             rcvCh.consume(queue.queue, async (msg) => {
@@ -112,7 +110,12 @@ export namespace Gateway {
         }
 
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        private constructor(conn: Connection, sendCh: Channel, rcvCh: Channel, messageValidator: MessageValidator) {
+        private constructor(
+            conn: Connection,
+            sendCh: Channel,
+            rcvCh: Channel,
+            messageValidator: MessageValidator.MessageValidator,
+        ) {
             this.conn = conn;
             this.send_ch = sendCh;
             this.rcv_ch = rcvCh;
@@ -173,7 +176,7 @@ export namespace Gateway {
         // TODO: This is a potential security weakness point - message parsing -> json injection attacks.
         async gatewayInternalMessageReceived(mh: GatewayMessageHandler, msg: Message) {
             const content = msg.content.toString('utf8');
-            const msgJson: ReadRequestResponseMsg | RequestResponseMsg = JSON.parse(content);
+            const msgJson: EventRes.ReadRequestResponseMsg | EventRes.RequestResponseMsg = JSON.parse(content);
 
             if (!(await this.messageValidator.validate(msgJson))) {
                 console.warn('Message with invalid schema received - message dropped');
@@ -197,7 +200,7 @@ export namespace Gateway {
         // Sends a request to the microservices system and waits for the response to come back.
         sendRequest = async (
             key: string,
-            msg: EventMsg,
+            msg: EventMsg.EventMsg,
             res: Response,
             callback: ReadRequestCallback | RequestCallback) => {
             // Create an object which represents a request which has been sent on by the gateway to be handled
@@ -208,7 +211,7 @@ export namespace Gateway {
                 callback,
             });
 
-            const data = msgToJson(msg);
+            const data = EventMsg.msgToJson(msg);
             await this.publishRequestMessage(data, key);
         };
 
@@ -230,10 +233,10 @@ export namespace Gateway {
         // };
 
         get_events_handler = async (req: Request, res: Response) => {
-            const msg: ReadEventMsg = {
+            const msg: EventMsg.ReadEventMsg = {
                 msg_id: this.generateMessageId(),
                 status: 0,
-                msg_intention: MsgIntention.READ,
+                msg_intention: EventMsg.MsgIntention.READ,
             };
 
             if (req.query.name !== undefined) {
@@ -267,9 +270,9 @@ export namespace Gateway {
 
             const callback: ReadRequestCallback = (
                 httpRes: Response<any>,
-                reqResponse: ReadRequestResponseMsg,
+                reqResponse: EventRes.ReadRequestResponseMsg,
             ) => {
-                if (reqResponse.status === MsgStatus.SUCCESS) {
+                if (reqResponse.status === EventRes.MsgStatus.SUCCESS) {
                     const result: EventResponse[] = reqResponse.result.map(InternalEventToEventResponse);
                     httpRes.status(HttpStatus.OK).send(result);
                 } else {
@@ -328,19 +331,19 @@ export namespace Gateway {
         delete_event_handler = async (req: Request, res: Response) => {
             const eventId = req.params.id;
 
-            const msg: DeleteEventMsg = {
+            const msg: EventMsg.DeleteEventMsg = {
                 msg_id: this.generateMessageId(),
                 status: 0,
-                msg_intention: MsgIntention.DELETE,
+                msg_intention: EventMsg.MsgIntention.DELETE,
                 event_id: eventId,
             };
 
             const callback: RequestCallback = (
                 httpRes: Response<any>,
-                reqResponse: RequestResponseMsg,
+                reqResponse: EventRes.RequestResponseMsg,
                 status: Number,
             ) => {
-                if (status === MsgStatus.SUCCESS) {
+                if (status === EventRes.MsgStatus.SUCCESS) {
                     httpRes.status(HttpStatus.NO_CONTENT).send();
                 } else {
                     httpRes.status(HttpStatus.NOT_FOUND).send({
