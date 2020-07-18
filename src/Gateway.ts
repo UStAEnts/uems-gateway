@@ -7,7 +7,7 @@ import { PassportStatic } from 'passport'; // Passport is used for handling exte
 import * as Cors from 'cors'; // Cors library used to handle CORS on external endpoints.
 import { EventRes, EventMsg, EventResponseValidator } from '@uems/uemscommlib';
 import * as HttpStatus from 'http-status-codes';
-import { EventResponse, InternalEventToEventResponse } from './types/GatewayTypes';
+import { EventResponse, InternalEventToEventResponse, CreateEventResponse } from './types/GatewayTypes';
 
 // The queue of messages being sent from the microservices back to the gateway.
 const RCV_INBOX_QUEUE_NAME: string = 'inbox';
@@ -22,7 +22,7 @@ const REQUEST_EXCHANGE: string = 'request';
 const EVENT_DETAILS_SERVICE_TOPIC_GET: string = 'events.details.get';
 
 // The topic used for sending requests to add an event.
-// const EVENT_DETAILS_SERVICE_TOPIC_ADD: string = 'events.details.add';
+const EVENT_DETAILS_SERVICE_TOPIC_CREATE: string = 'events.details.create';
 
 // The topic used for sending modification requests for an event.
 // const EVENT_DETAILS_SERVICE_TOPIC_MODIFY: string = 'events.details.modify';
@@ -128,6 +128,15 @@ export namespace Gateway {
         // Return: None
         registerEndpoints(app: Application, auth: PassportStatic, corsOptions: any) {
             // app.post('/events', auth.authenticate('bearer', { session: false }), this.create_event_handler);
+            app.post(
+                '/events',
+                auth.authenticate('bearer', {
+                    session: false,
+                }),
+                Cors.default(corsOptions),
+                this.create_event_handler,
+            );
+
             // GET /events
             app.get(
                 '/events',
@@ -212,22 +221,46 @@ export namespace Gateway {
             await this.publishRequestMessage(data, key);
         };
 
-        // create_event_handler = async (req: Request, res: Response) => {
-        //     // TODO data validation.
-        //     const { name, startDate, endDate, venue } = req.body;
-        //     const msg: CreateEventMsg = {
-        //         msg_id: this.generateMessageId(),
-        //         status: 0, // 0 Code used
-        //         msg_intention: MsgIntention.CREATE,
-        //         event_name: name,
-        //         event_start_date: startDate,
-        //         event_end_date: endDate,
-        //         venue_ids: [venue],
-        //         predicted_attendance: 0,
-        //     };
+        create_event_handler = async (req: Request, res: Response) => {
+            const { name, startDate, endDate } = req.body;
+            const msg: EventMsg.CreateEventMsg = {
+                msg_id: this.generateMessageId(),
+                status: 0, // 0 Code used when the status is still to be decided.
+                msg_intention: EventMsg.MsgIntention.CREATE,
+                event_name: name,
+                event_start_date: startDate,
+                event_end_date: endDate,
+                venue_ids: [''], // Placeholder as venue assignment not in API yet.
+                predicted_attendance: 0, // Placeholder.
+            };
 
-        //     await this.sendRequest(EVENT_DETAILS_SERVICE_TOPIC_ADD, msg, res);
-        // };
+            const callback: RequestCallback = (
+                httpRes: Response<any>,
+                reqResponse: EventRes.RequestResponseMsg,
+            ) => {
+                if (reqResponse.status === EventRes.MsgStatus.SUCCESS) {
+                    const result: CreateEventResponse = {
+                        status: 'OK',
+                        result: {
+                            id: reqResponse.result[0],
+                            name: '',
+                            startDate: 0,
+                            endDate: 0,
+                        },
+                    };
+                    httpRes.status(HttpStatus.CREATED).send(result);
+                } else {
+                    // Note this return code (503) isn't officially defined yet.
+                    httpRes.status(HttpStatus.SERVICE_UNAVAILABLE).send({
+                        status: 'FAIL',
+                        code: '',
+                        message: 'Failed to create event',
+                    });
+                }
+            };
+
+            await this.sendRequest(EVENT_DETAILS_SERVICE_TOPIC_CREATE, msg, res, callback);
+        };
 
         get_events_handler = async (req: Request, res: Response) => {
             const msg: EventMsg.ReadEventMsg = {

@@ -9,6 +9,11 @@ export type EventResponse = {
     endDate: Number
 };
 
+export type CreateEventResponse = {
+    status: string,
+    result: EventResponse,
+};
+
 export function InternalEventToEventResponse(ie: EventRes.InternalEvent): EventResponse {
     return {
         id: ie.event_id,
