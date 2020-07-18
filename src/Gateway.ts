@@ -241,29 +241,24 @@ export namespace Gateway {
             }
 
             if (req.query.startbefore !== undefined) {
-                msg.event_start_date_range_begin = req.query.startbefore.toString();
+                msg.event_start_date_range_begin = parseInt(req.query.startbefore.toString(), 10);
             }
 
             if (req.query.startafter !== undefined) {
-                msg.event_start_date_range_end = req.query.startafter.toString();
+                msg.event_start_date_range_end = parseInt(req.query.startafter.toString(), 10);
             }
 
             if (req.query.endbefore !== undefined) {
-                msg.event_end_date_range_begin = req.query.endbefore.toString();
+                msg.event_end_date_range_begin = parseInt(req.query.endbefore.toString(), 10);
             }
 
             if (req.query.endafter !== undefined) {
-                msg.event_end_date_range_end = req.query.endafter.toString();
+                msg.event_end_date_range_end = parseInt(req.query.endafter.toString(), 10);
             }
 
             if (req.query.venue !== undefined) {
                 msg.venue_ids = [req.query.venue.toString()];
             }
-
-            console.log('Query');
-            console.log(req.query);
-            console.log('Message');
-            console.log(msg);
 
             const callback: ReadRequestCallback = (
                 httpRes: Response<any>,
