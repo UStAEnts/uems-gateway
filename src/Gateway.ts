@@ -25,7 +25,7 @@ const EVENT_DETAILS_SERVICE_TOPIC_GET: string = 'events.details.get';
 const EVENT_DETAILS_SERVICE_TOPIC_CREATE: string = 'events.details.create';
 
 // The topic used for sending modification requests for an event.
-// const EVENT_DETAILS_SERVICE_TOPIC_MODIFY: string = 'events.details.modify';
+const EVENT_DETAILS_SERVICE_TOPIC_UPDATE: string = 'events.details.update';
 
 // The topic used for sending event deletion requests.
 const EVENT_DETAILS_SERVICE_TOPIC_DELETE: string = 'events.details.delete';
@@ -147,15 +147,15 @@ export namespace Gateway {
                 this.get_events_handler,
             );
 
-            // // UPDATE
-            // app.patch(
-            //     '/events',
-            //     auth.authenticate('bearer', {
-            //         session: false,
-            //     }),
-            //     Cors.default(corsOptions),
-            //     this.update_event_handler,
-            // );
+            // UPDATE /events/{id}
+            app.patch(
+                '/events/:id',
+                auth.authenticate('bearer', {
+                    session: false,
+                }),
+                Cors.default(corsOptions),
+                this.update_event_handler,
+            );
 
             // DELETE /events/{id}
             app.delete(
@@ -313,45 +313,55 @@ export namespace Gateway {
             await this.sendRequest(EVENT_DETAILS_SERVICE_TOPIC_GET, msg, res, callback);
         };
 
-        // update_event_handler = async (req: Request, res: Response) => {
-        //     const { eventId, name, startDate, endDate, venue } = req.body;
+        update_event_handler = async (req: Request, res: Response) => {
+            const eventId = req.params.id;
 
-        //     const msg: UpdateEventMsg = {
-        //         msg_id: this.generateMessageId(),
-        //         status: 0,
-        //         msg_intention: MsgIntention.UPDATE,
-        //         event_id: eventId,
-        //     };
+            const msg: EventMsg.UpdateEventMsg = {
+                msg_id: this.generateMessageId(),
+                status: 0,
+                msg_intention: EventMsg.MsgIntention.UPDATE,
+                event_id: eventId,
+            };
 
-        //     if (name !== undefined) {
-        //         msg.event_name = name.toString();
-        //     }
+            const { name, startDate, endDate } = req.body;
 
-        //     if (startDate !== undefined) {
-        //         msg.event_start_date = startDate;
-        //     }
+            if (name !== undefined) {
+                msg.event_name = name.toString();
+            }
 
-        //     if (endDate !== undefined) {
-        //         msg.event_end_date = endDate;
-        //     }
+            if (startDate !== undefined) {
+                msg.event_start_date = startDate;
+            }
 
-        //     if (venue !== undefined) {
-        //         msg.venue_ids = [venue.toString()];
-        //     }
+            if (endDate !== undefined) {
+                msg.event_end_date = endDate;
+            }
 
-        //     const callback: RequestCallback = (httpRes: Response<any>, reqResponse: RequestResponseMsg) => {
-        //         if (reqResponse.status === MsgStatus.SUCCESS) {
-        //             httpRes.status(HttpStatus.NO_CONTENT).send();
-        //         } else {
-        //             httpRes.status(HttpStatus.NOT_FOUND).send({
-        //                 code: '',
-        //                 message: 'Failed to delete event',
-        //             });
-        //         }
-        //     };
+            const callback: RequestCallback = (
+                httpRes: Response<any>,
+                reqResponse: EventRes.RequestResponseMsg,
+                status: Number,
+            ) => {
+                if (status === EventRes.MsgStatus.SUCCESS) {
+                    httpRes.status(HttpStatus.OK).send({
+                        status: 'OK',
+                        result: {
+                            id: reqResponse.result[0],
+                            name: '',
+                            startDate: 0,
+                            endDate: 0,
+                        },
+                    });
+                } else {
+                    httpRes.status(HttpStatus.NOT_FOUND).send({
+                        code: '',
+                        message: 'Failed to update event',
+                    });
+                }
+            };
 
-        //     await this.sendRequest(EVENT_DETAILS_SERVICE_TOPIC_MODIFY, msg, res, callback);
-        // };
+            await this.sendRequest(EVENT_DETAILS_SERVICE_TOPIC_UPDATE, msg, res, callback);
+        };
 
         delete_event_handler = async (req: Request, res: Response) => {
             const eventId = req.params.id;
