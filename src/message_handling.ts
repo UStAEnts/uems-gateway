@@ -4,6 +4,11 @@
 import { Channel, Connection, Message, Replies } from 'amqplib/callback_api';
 import { Response, Request, NextFunction } from 'express';
 import AssertQueue = Replies.AssertQueue;
+import Ajv from 'ajv';
+import {CreateEventMsg, ReadEventMsg, UpdateEventMsg, DeleteEventMsg, EventMsg, MsgIntention, msgToJson} from './schema/types/event_message_schema';
+import {ReadRequestResponseMsg, RequestResponseMsg} from './schema/types/event_response_schema'
+
+const fs = require('fs').promises;
 
 // The queue of messages being sent from the microservices back to the gateway.
 const RCV_INBOX_QUEUE_NAME: string = 'inbox';
@@ -33,23 +38,38 @@ type OutStandingReq = {
     // TODO: Timestamp.
 };
 
+export class MessageValidator {
+    schema_validator: Ajv.ValidateFunction;
+
+    constructor(schema: object) {
+        let ajv = new Ajv({allErrors: true});
+        this.schema_validator = ajv.compile(schema);
+    }
+
+    public async validate(msg: any): Promise<boolean> {
+        return await this.schema_validator(msg);
+    }
+}
+
 export class GatewayMessageHandler {
     // Connection to the RabbitMQ messaging system.
     conn: Connection;
 
-    // Channel for sending messages out to the microservices and receiving them back as a response.
+    // Channels for sending messages out to the microservices and receiving them back as a response.
     send_ch: Channel;
-
     rcv_ch: Channel;
 
     // Messages which have been sent on and who's responses are still being waited for.
     outstanding_reqs: Map<Number, OutStandingReq>;
 
+    // The message schema validator used to validate the structure of the json internal messages used as part of uems.
+    message_validator: MessageValidator;
+
     // Creates a GatewayMessageHandler.
     // Includes creating the channels, exchanges and queues on the connection required.
     //
     // Returns a promise which resolves to the new GatewayMessageHandler.
-    static setup(conn: Connection): Promise<GatewayMessageHandler> {
+    static setup(conn: Connection, schemaPath: String): Promise<GatewayMessageHandler> {
         return new Promise(((resolve, reject) => {
             conn.createChannel((err1, sendCh) => {
                 if (err1) {
@@ -66,7 +86,7 @@ export class GatewayMessageHandler {
 
                     rcvCh.assertExchange(GATEWAY_EXCHANGE, 'direct');
 
-                    rcvCh.assertQueue(RCV_INBOX_QUEUE_NAME, { exclusive: true }, (err3, queue) => {
+                    rcvCh.assertQueue(RCV_INBOX_QUEUE_NAME, { exclusive: true }, async (err3, queue) => {
                         if (err3) {
                             reject(err3);
                         }
@@ -75,15 +95,18 @@ export class GatewayMessageHandler {
 
                         rcvCh.bindQueue(RCV_INBOX_QUEUE_NAME, GATEWAY_EXCHANGE, '');
 
-                        const mh = new GatewayMessageHandler(conn, sendCh, rcvCh, queue);
+                        let schema = JSON.parse((await fs.readFile(schemaPath)).toString());
+                        let mv = new MessageValidator(schema);
 
-                        rcvCh.consume(queue.queue, (msg) => {
+                        const mh = new GatewayMessageHandler(conn, sendCh, rcvCh, queue, mv);
+
+                        rcvCh.consume(queue.queue, async (msg) => {
                             if (msg === null) {
                                 console.warn(`${RCV_INBOX_QUEUE_NAME} consumed a message that was NULL. Ignoring...`);
                                 return;
                             }
 
-                            mh.gatewayInternalMessageReceived(mh, msg);
+                            await mh.gatewayInternalMessageReceived(mh, msg);
                         }, { noAck: true });
 
                         resolve(mh);
@@ -94,30 +117,40 @@ export class GatewayMessageHandler {
     }
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    private constructor(conn: Connection, sendCh: Channel, rcvCh: Channel, rcvQueue: AssertQueue) {
+    private constructor(conn: Connection, sendCh: Channel, rcvCh: Channel, rcvQueue: AssertQueue, message_validator: MessageValidator) {
         this.conn = conn;
         this.send_ch = sendCh;
         this.rcv_ch = rcvCh;
         this.outstanding_reqs = new Map();
+        this.message_validator = message_validator;
     }
 
     // Called whenever a message is received by the gateway from the internal microservices.
-    gatewayInternalMessageReceived(mh: GatewayMessageHandler, msg: Message) {
+    // TODO: This is a potential security weakness point - message parsing -> json injection attacks.
+    async gatewayInternalMessageReceived(mh: GatewayMessageHandler, msg: Message) {
         const content = msg.content.toString('utf8');
-        // TODO: This is a potential security weakness point - message parsing -> json injection attacks.
+        const msgJson: ReadRequestResponseMsg | RequestResponseMsg = JSON.parse(content);
 
-        // TODO: checks for message integrity.
-        const msgJson = JSON.parse(content);
+        console.log("Message received:");
+        console.log(msgJson);
 
-        const correspondingReq = mh.outstanding_reqs.get(msgJson.ID);
+        if (! (await this.message_validator.validate(msgJson))) {
+            console.log("Message with invalid schema received - message dropped");
+            console.log(this.message_validator.schema_validator.errors);
+            return;
+        }
+
+        console.log("Message passed validation");
+
+        const correspondingReq = mh.outstanding_reqs.get(msgJson.msg_id);
         if (correspondingReq === undefined) {
             console.log('Request response received with unrecognised or already handled ID');
             return;
         }
 
-        this.outstanding_reqs.delete(msgJson.ID);
+        this.outstanding_reqs.delete(msgJson.msg_id);
 
-        correspondingReq.callback(correspondingReq.response, msgJson.payload);
+        correspondingReq.callback(correspondingReq.response, msgJson.result);
     }
 
     publishRequestMessage = async (data: any, key: string) => {
@@ -125,39 +158,122 @@ export class GatewayMessageHandler {
     };
 
     // Sends a request to the microservices system and waits for the response to come back.
-    sendRequest = async (key: string, data: any, dataID: Number, res: Response) => {
+    sendRequest = async (key: string, msg: EventMsg, res: Response) => {
         // Create an object which represents a request which has been sent on by the gateway to be handled
         // but is still awaiting a matching response.
-        this.outstanding_reqs.set(dataID, {
-            unique_id: dataID,
+        this.outstanding_reqs.set(msg.msg_id, {
+            unique_id: msg.msg_id,
             response: res,
             callback(response: Response, responseJSON: string) {
                 response.send(responseJSON);
             },
         });
 
+        let data = msgToJson(msg);
+
         await this.publishRequestMessage(data, key);
     };
 
-    add_events_handler = async (req: Request, res: Response, next: NextFunction) => {
-        const addMessage = parseAddEventRequestToMessage(req, this.generateMessageId());
-        await this.sendRequest(EVENT_DETAILS_SERVICE_TOPIC_ADD, addMessage, addMessage.ID, res);
+    create_event_handler = async (req: Request, res: Response, next: NextFunction) => {
+        // TODO data validation.
+        const name = req.body.name;
+        const start_date = req.body.start_date;
+        const end_date = req.body.end_date;
+        const venue = req.body.venue;
+
+        let msg: CreateEventMsg = {
+            msg_id: this.generateMessageId(),
+            status: 0, // 0 Code used 
+            msg_intention: MsgIntention.CREATE,
+            event_name: name,
+            event_start_date: start_date,
+            event_end_date: end_date,
+            venue_ids: [venue],
+            predicted_attendance: 0,
+        };
+
+        await this.sendRequest(EVENT_DETAILS_SERVICE_TOPIC_ADD, msg, res);
     }
 
-    get_events_handler = async (req: Request, res: Response) => {
-        const reqMessage = parseGetEventRequestToMessage(req, this.generateMessageId());
-        await this.sendRequest(EVENT_DETAILS_SERVICE_TOPIC_GET, reqMessage, reqMessage.ID, res);
+    read_event_handler = async (req: Request, res: Response) => {
+        let msg: ReadEventMsg = {
+            msg_id: this.generateMessageId(),
+            status: 0,
+            msg_intention: MsgIntention.READ
+        };
+
+        if (req.query.name !== undefined) {
+            msg.event_name = req.query.name.toString();
+        }
+
+        if (req.query.start_before !== undefined) {
+            msg.event_start_date_range_begin = req.query.start_before.toString();
+        }
+        
+        if (req.query.start_after !== undefined) {
+            msg.event_start_date_range_end = req.query.start_after.toString();
+        }
+
+        if (req.query.end_before !== undefined) {
+            msg.event_end_date_range_begin = req.query.end_before.toString();
+        }
+
+        if (req.query.end_after !== undefined) {
+            msg.event_end_date_range_end = req.query.end_after.toString();
+        }
+
+        if (req.query.venue !== undefined) {
+            msg.venue_ids = [req.query.venue.toString()];
+        }
+
+        await this.sendRequest(EVENT_DETAILS_SERVICE_TOPIC_GET, msg, res);
     };
 
-    modify_events_handler = async (req: Request, res: Response, next: NextFunction) => {
-        const modifyMessage = parseModifyEventMessage(req, this.generateMessageId());
-        await this.sendRequest(EVENT_DETAILS_SERVICE_TOPIC_MODIFY, modifyMessage, modifyMessage.ID, res);
+    update_event_handler = async (req: Request, res: Response, next: NextFunction) => {
+        const eventId = req.body.event_id;
+        const name = req.body.name;
+        const start_date = req.body.start_date;
+        const end_date = req.body.end_date;
+        const venue = req.body.venue;
+
+        let msg: UpdateEventMsg = {
+            msg_id: this.generateMessageId(),
+            status: 0,
+            msg_intention: MsgIntention.UPDATE,
+            event_id: eventId
+        }
+
+        if (name !== undefined) {
+            msg.event_name = name.toString();
+        }
+
+        if (start_date !== undefined) {
+            msg.event_start_date = start_date;
+        }
+
+        if (end_date !== undefined) {
+            msg.event_end_date = end_date;
+        }
+
+        if (venue !== undefined) {
+            msg.venue_ids = [venue.toString()];
+        }
+
+        await this.sendRequest(EVENT_DETAILS_SERVICE_TOPIC_MODIFY, msg, res);
     }
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars,class-methods-use-this
-    remove_events_handler = async (req: Request, res: Response, next: NextFunction) => {
-        const deleteMessage = parseDeleteEventMessage(req, this.generateMessageId());
-        await this.sendRequest(EVENT_DETAILS_SERVICE_TOPIC_DELETE, deleteMessage, deleteMessage.ID, res);
+    delete_event_handler = async (req: Request, res: Response, next: NextFunction) => {
+        const eventId = req.body.event_id;
+
+        let msg: DeleteEventMsg = {
+            msg_id: this.generateMessageId(),
+            status: 0,
+            msg_intention: MsgIntention.DELETE,
+            event_id: eventId
+        }
+
+        await this.sendRequest(EVENT_DETAILS_SERVICE_TOPIC_DELETE, msg, res);
     }
 
     // eslint-disable-next-line class-methods-use-this
@@ -171,69 +287,11 @@ export class GatewayMessageHandler {
         // one client might be routed back to another client thereby leaking data.
         let id = Math.random() * 100000;
 
-        if (this.outstanding_reqs.has(id)) {
+        if (this.outstanding_reqs.has(id)) { // Performance issue with doing this check for every message.
             return this.generateMessageId();
         } else {
             return id;
         }
-    }
-}
-
-function parseGetEventRequestToMessage(req: Request,  msgID: Number) {
-    return {
-        "ID": msgID,
-        "type": "query",
-        "name": (req.query.name === undefined) ? "" : req.query.name,
-        "start_date_before": (req.query.start_before === undefined) ? "" : req.query.start_before,
-        "start_date_after": (req.query.start_after === undefined) ? "" : req.query.start_after,
-        "end_date_before": (req.query.end_before === undefined) ? "" : req.query.end_before,
-        "end_date_after": (req.query.end_after === undefined) ? "" : req.query.end_after,
-        "venue": (req.query.venue === undefined) ? "" : req.query.venue
-    };
-}
-
-function parseAddEventRequestToMessage(req: Request, msgID: Number) {
-    // TODO, rejection on malformed request.
-
-    const name = req.body.name;
-    const start_date = req.body.start_date;
-    const end_date = req.body.end_date;
-    const venue = req.body.venue;
-
-    return {
-        "ID": msgID,
-        "type": "add",
-        "name": name,
-        "start_date": start_date,
-        "end_date": end_date,
-        "venue": venue,
-    }
-}
-
-function parseModifyEventMessage(req: Request, msgID: Number) {
-    const eventId = req.body.event_id;
-    const name = req.body.name;
-    const start_date = req.body.start_date;
-    const end_date = req.body.end_date;
-    const venue = req.body.venue;
-
-    return {
-        "ID": msgID,
-        "event_id": eventId,
-        "type": "modify",
-        "name": name,
-        "start_date": start_date,
-        "end_date": end_date,
-        "venue": venue,
-    }
-}
-
-function parseDeleteEventMessage(req: Request, msgID: Number) {
-    const eventId = req.body.event_id;
-    return {
-        "ID": msgID,
-        "type": "delete",
-        event_id: eventId
     }
 }
 
