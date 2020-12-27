@@ -11,6 +11,7 @@ import { UemsAuth } from './UemsAuth';
 import { GatewayMk2 } from './Gateway';
 import { VenueGatewayInterface } from './attachments/venues/VenueGatewayInterface';
 import { EventGatewayAttachment } from './attachments/events/EventGatewayAttachment';
+import { SystemGatewayInterface } from "./attachments/system/SystemGatewayInterface";
 
 const fs = require('fs').promises;
 const passport = require('passport'); // Passport is used for handling external endpoint authentication.
@@ -77,6 +78,7 @@ function main() {
             ]).then((handler) => {
                 handler.registerEndpoints(new VenueGatewayInterface());
                 handler.registerEndpoints(new EventGatewayAttachment());
+                handler.registerEndpoints(new SystemGatewayInterface());
 
                 initFinished();
             }).catch((err) => {
