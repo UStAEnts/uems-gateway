@@ -1,9 +1,9 @@
-import { GatewayMk2 } from "../../Gateway";
+import { GatewayMk2 } from '../../Gateway';
 import GatewayAttachmentInterface = GatewayMk2.GatewayAttachmentInterface;
 
 export class SystemGatewayInterface implements GatewayAttachmentInterface {
 
-    generateInterfaces(send: GatewayMk2.SendRequestFunction): GatewayMk2.GatewayInterfaceActionType[] | Promise<GatewayMk2.GatewayInterfaceActionType[]> {
+    generateInterfaces(): GatewayMk2.GatewayInterfaceActionType[] | Promise<GatewayMk2.GatewayInterfaceActionType[]> {
         return [
             {
                 action: 'get',
