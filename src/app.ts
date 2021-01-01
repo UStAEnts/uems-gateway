@@ -5,13 +5,18 @@ import logger from 'morgan';
 import * as Cors from 'cors'; // Cors library used to handle CORS on external endpoints.
 import * as BodyParser from 'body-parser'; // Bodyparser used to handle JSON content in messages.
 import amqp from 'amqplib';
+import cors from 'cors';
 
 // Internal dependencies.
 import { UemsAuth } from './UemsAuth';
 import { GatewayMk2 } from './Gateway';
-import { VenueGatewayInterface } from './attachments/venues/VenueGatewayInterface';
-import { EventGatewayAttachment } from './attachments/events/EventGatewayAttachment';
-import { SystemGatewayInterface } from "./attachments/system/SystemGatewayInterface";
+import { VenueGatewayInterface } from './attachments/attachments/VenueGatewayInterface';
+import { EventGatewayAttachment } from './attachments/attachments/EventGatewayAttachment';
+import { SystemGatewayInterface } from './attachments/attachments/SystemGatewayInterface';
+import { EntStateGatewayInterface } from './attachments/attachments/EntStateGatewayInterface';
+import { UserGatewayInterface } from './attachments/attachments/UserGatewayInterface';
+import { EquipmentGatewayInterface } from './attachments/attachments/EquipmentGatewayInterface';
+import { StateGatewayInterface } from './attachments/attachments/StateGatewayInterface';
 
 const fs = require('fs').promises;
 const passport = require('passport'); // Passport is used for handling external endpoint authentication.
@@ -21,7 +26,7 @@ const RABBIT_MQ_CONFIG: string = 'rabbit-mq-config.json';
 
 // CORS configuration.
 const corsOptions: Cors.CorsOptions = {
-    origin: 'http://localhost:15300',
+    origin: '*',
     methods: 'GET,OPTIONS,PATCH,POST,DELETE',
     optionsSuccessStatus: 200,
 };
@@ -33,7 +38,9 @@ const app = express();
 app.use(helmet());
 
 // Enable preflight CORS for all routes.
-app.options('*', Cors.default(corsOptions));
+// @ts-ignore
+app.options('*', cors(corsOptions));
+app.use(cors(corsOptions));
 
 console.log('Starting uems-gateway...');
 
@@ -79,6 +86,10 @@ function main() {
                 handler.registerEndpoints(new VenueGatewayInterface());
                 handler.registerEndpoints(new EventGatewayAttachment());
                 handler.registerEndpoints(new SystemGatewayInterface());
+                handler.registerEndpoints(new EntStateGatewayInterface());
+                handler.registerEndpoints(new StateGatewayInterface());
+                handler.registerEndpoints(new UserGatewayInterface());
+                handler.registerEndpoints(new EquipmentGatewayInterface());
 
                 initFinished();
             }).catch((err) => {
