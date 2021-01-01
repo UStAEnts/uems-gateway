@@ -12,11 +12,11 @@ import { UemsAuth } from './UemsAuth';
 import { GatewayMk2 } from './Gateway';
 import { VenueGatewayInterface } from './attachments/attachments/VenueGatewayInterface';
 import { EventGatewayAttachment } from './attachments/attachments/EventGatewayAttachment';
-import { SystemGatewayInterface } from './attachments/attachments/SystemGatewayInterface';
 import { EntStateGatewayInterface } from './attachments/attachments/EntStateGatewayInterface';
 import { UserGatewayInterface } from './attachments/attachments/UserGatewayInterface';
 import { EquipmentGatewayInterface } from './attachments/attachments/EquipmentGatewayInterface';
 import { StateGatewayInterface } from './attachments/attachments/StateGatewayInterface';
+import { SystemGatewayInterface } from './attachments/system/SystemGatewayInterface';
 
 const fs = require('fs').promises;
 const passport = require('passport'); // Passport is used for handling external endpoint authentication.
