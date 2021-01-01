@@ -1,10 +1,8 @@
 // The gateway types as defined by the external API.
 
-import { EventRes } from '@uems/uemscommlib';
-import { EntStateValidators } from '@uems/uemscommlib/build/ent/EntStateValidators';
-import EntStateRepresentation = EntStateValidators.EntStateRepresentation;
-import { StateValidators } from '@uems/uemscommlib/build/state/StateValidators';
-import StateRepresentation = StateValidators.StateRepresentation;
+import { EntStateResponse, EventRes, StateResponse } from '@uems/uemscommlib';
+import InternalEntState = EntStateResponse.InternalEntState;
+import InternalState = StateResponse.InternalState;
 
 export type EventResponse = {
     id: string,
@@ -12,8 +10,8 @@ export type EventResponse = {
     startDate: Number,
     endDate: Number,
     attendance: number,
-    ents?: EntStateRepresentation,
-    state?: StateRepresentation,
+    ents?: InternalEntState,
+    state?: InternalState,
 };
 
 export type CreateEventResponse = {

@@ -1,21 +1,15 @@
 import { Request, Response } from 'express';
-import { MsgIntention } from '@uems/uemscommlib/build/messaging/types/event_message_schema';
-import { MsgStatus } from '@uems/uemscommlib/build/messaging/types/event_response_schema';
 import { GatewayMk2 } from '../../Gateway';
 import { MessageUtilities } from '../../utilities/MessageUtilities';
-import { VenueValidators } from '@uems/uemscommlib/build/venues/VenueValidators';
 import { ErrorCodes } from '../../constants/ErrorCodes';
 import { constants } from 'http2';
-import { VenueResponse } from '@uems/uemscommlib';
+import { MessageIntention, MsgStatus, VenueResponse, VenueResponseValidator } from '@uems/uemscommlib';
+import { EntityResolver } from "../../resolver/EntityResolver";
 import SendRequestFunction = GatewayMk2.SendRequestFunction;
 import GatewayAttachmentInterface = GatewayMk2.GatewayAttachmentInterface;
 import GatewayInterfaceActionType = GatewayMk2.GatewayInterfaceActionType;
-import VenueResponseValidator = VenueValidators.VenueResponseValidator;
 import MinimalMessageType = GatewayMk2.MinimalMessageType;
-import VenueResponseMessage = VenueResponse.VenueResponseMessage;
 import VenueReadResponseMessage = VenueResponse.VenueReadResponseMessage;
-import { EntityResolver } from "../../resolver/EntityResolver";
-import { ifError } from "assert";
 
 export class VenueGatewayInterface implements GatewayAttachmentInterface {
     private readonly VENUE_CREATE_KEY = 'venues.create';
@@ -106,7 +100,7 @@ export class VenueGatewayInterface implements GatewayAttachmentInterface {
         return (request: Request, response: Response) => {
             const outgoingMessage: any = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
-                msg_intention: MsgIntention.READ,
+                msg_intention: MessageIntention.READ,
                 status: 0,
             };
 
@@ -130,7 +124,7 @@ export class VenueGatewayInterface implements GatewayAttachmentInterface {
         return (request: Request, response: Response) => {
             const outgoingMessage: any = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
-                msg_intention: MsgIntention.DELETE,
+                msg_intention: MessageIntention.DELETE,
                 status: 0,
             };
 
@@ -154,7 +148,7 @@ export class VenueGatewayInterface implements GatewayAttachmentInterface {
         return (request: Request, response: Response) => {
             const outgoingMessage: any = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
-                msg_intention: MsgIntention.CREATE,
+                msg_intention: MessageIntention.CREATE,
                 status: 0,
             };
 
@@ -234,7 +228,7 @@ export class VenueGatewayInterface implements GatewayAttachmentInterface {
         return (request: Request, response: Response) => {
             const outgoingMessage: any = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
-                msg_intention: MsgIntention.READ,
+                msg_intention: MessageIntention.READ,
                 status: 0,
             };
 
@@ -272,7 +266,7 @@ export class VenueGatewayInterface implements GatewayAttachmentInterface {
         return (request: Request, response: Response) => {
             const outgoingMessage: any = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
-                msg_intention: MsgIntention.UPDATE,
+                msg_intention: MessageIntention.UPDATE,
                 status: 0,
             };
 

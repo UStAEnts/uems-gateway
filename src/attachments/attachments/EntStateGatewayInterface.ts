@@ -1,16 +1,12 @@
 import { GatewayMk2 } from '../../Gateway';
-import { EntStateValidators } from '@uems/uemscommlib/build/ent/EntStateValidators';
 import { Request, Response } from 'express';
 import { MessageUtilities } from '../../utilities/MessageUtilities';
 import { constants } from 'http2';
-import { MsgIntention } from '@uems/uemscommlib/build/messaging/types/event_message_schema';
-import { EntStateResponse } from '@uems/uemscommlib';
-import { MsgStatus } from '@uems/uemscommlib/build/messaging/types/event_response_schema';
+import { EntStateResponse, MsgStatus, EntStateResponseValidator, EntStateMessage } from '@uems/uemscommlib';
 import { ErrorCodes } from '../../constants/ErrorCodes';
 import GatewayAttachmentInterface = GatewayMk2.GatewayAttachmentInterface;
-import EntStateResponseValidator = EntStateValidators.EntStateResponseValidator;
 import SendRequestFunction = GatewayMk2.SendRequestFunction;
-import EntStateReadSchema = EntStateValidators.EntStateReadSchema;
+import EntStateReadSchema = EntStateMessage.ReadEntStateMessage;
 import MinimalMessageType = GatewayMk2.MinimalMessageType;
 import EntStateResponseMessage = EntStateResponse.EntStateResponseMessage;
 
@@ -104,7 +100,7 @@ export class EntStateGatewayInterface implements GatewayAttachmentInterface {
         return async (req: Request, res: Response) => {
             const outgoing: any = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
-                msg_intention: MsgIntention.READ,
+                msg_intention: 'READ',
                 status: 0,
             };
 
@@ -135,7 +131,7 @@ export class EntStateGatewayInterface implements GatewayAttachmentInterface {
         return async (req: Request, res: Response) => {
             const outgoingMessage: any = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
-                msg_intention: MsgIntention.READ,
+                msg_intention: 'READ',
                 status: 0,
             };
 
@@ -163,7 +159,7 @@ export class EntStateGatewayInterface implements GatewayAttachmentInterface {
         return async (req: Request, res: Response) => {
             const outgoingMessage: any = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
-                msg_intention: MsgIntention.CREATE,
+                msg_intention: 'CREATE',
                 status: 0,
             };
 
@@ -200,7 +196,7 @@ export class EntStateGatewayInterface implements GatewayAttachmentInterface {
         return async (req: Request, res: Response) => {
             const outgoingMessage: any = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
-                msg_intention: MsgIntention.DELETE,
+                msg_intention: 'DELETE',
                 status: 0,
             };
 
@@ -228,7 +224,7 @@ export class EntStateGatewayInterface implements GatewayAttachmentInterface {
         return async (req: Request, res: Response) => {
             const outgoing: any = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
-                msg_intention: MsgIntention.UPDATE,
+                msg_intention: 'UPDATE',
                 status: 0,
             };
 

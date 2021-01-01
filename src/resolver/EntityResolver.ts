@@ -1,24 +1,19 @@
 import { GatewayMk2 } from '../Gateway';
 import { MessageUtilities } from '../utilities/MessageUtilities';
-import { MsgStatus } from '@uems/uemscommlib/build/messaging/types/event_response_schema';
-import { VenueValidators } from '@uems/uemscommlib/build/venues/VenueValidators';
 import { VenueGatewayInterface } from '../attachments/attachments/VenueGatewayInterface';
-import { UserValidators } from '@uems/uemscommlib/build/user/UserValidators';
 import { UserGatewayInterface } from '../attachments/attachments/UserGatewayInterface';
-import { EntStateValidators } from '@uems/uemscommlib/build/ent/EntStateValidators';
 import { EntStateGatewayInterface } from '../attachments/attachments/EntStateGatewayInterface';
-import { EquipmentValidators } from '@uems/uemscommlib/build/equipment/EquipmentValidators';
 import { EquipmentGatewayInterface } from '../attachments/attachments/EquipmentGatewayInterface';
 import { StateGatewayInterface } from '../attachments/attachments/StateGatewayInterface';
-import { StateValidators } from '@uems/uemscommlib/build/state/StateValidators';
 import MinimalMessageType = GatewayMk2.MinimalMessageType;
 import has = MessageUtilities.has;
 import GatewayMessageHandler = GatewayMk2.GatewayMessageHandler;
-import VenueRepresentation = VenueValidators.VenueRepresentation;
-import UserRepresentation = UserValidators.UserRepresentation;
-import EntStateRepresentation = EntStateValidators.EntStateRepresentation;
-import EquipmentRepresentation = EquipmentValidators.EquipmentRepresentation;
-import StateRepresentation = StateValidators.StateRepresentation;
+import { EntStateResponse, EquipmentResponse, MsgStatus, StateResponse, UserResponse, VenueResponse } from "@uems/uemscommlib";
+import InternalEntState = EntStateResponse.InternalEntState;
+import InternalEquipment = EquipmentResponse.InternalEquipment;
+import InternalState = StateResponse.InternalState;
+import InternalUser = UserResponse.InternalUser;
+import InternalVenue = VenueResponse.InternalVenue;
 
 export class EntityResolver {
     private _pendingMessageIDs: {
@@ -100,23 +95,23 @@ export class EntityResolver {
         });
     }
 
-    public resolveEntState = (id: string): Promise<EntStateRepresentation> => this
+    public resolveEntState = (id: string): Promise<InternalEntState> => this
         .resolve(id, EntStateGatewayInterface.ENT_STATE_READ_KEY);
 
-    public resolveEquipment = (id: string): Promise<EquipmentRepresentation> => this
+    public resolveEquipment = (id: string): Promise<InternalEquipment> => this
         .resolve(id, EquipmentGatewayInterface.EQUIPMENT_READ_KEY);
 
     // TODO:?
     // public resolveEvent = (id: string): Promise<InternalEvent> => this
     //     .resolve(id, EventGatewayAttachment);
 
-    public resolveState = (id: string): Promise<StateRepresentation> => this
+    public resolveState = (id: string): Promise<InternalState> => this
         .resolve(id, StateGatewayInterface.STATE_READ_KEY);
 
-    public resolveUser = (id: string): Promise<UserRepresentation> => this
+    public resolveUser = (id: string): Promise<InternalUser> => this
         .resolve(id, UserGatewayInterface.USER_READ_KEY);
 
-    public resolveVenue = (id: string): Promise<VenueRepresentation> => this
+    public resolveVenue = (id: string): Promise<InternalVenue> => this
         .resolve(id, VenueGatewayInterface.VENUE_READ_KEY);
 
     private resolveGenericSet = async <X, T extends X[], V extends { id: string }>(
@@ -144,33 +139,33 @@ export class EntityResolver {
         });
     };
 
-    public resolveEntStateSet = async (entState: { [key: string]: any, ents?: string | EntStateRepresentation }[]) => {
+    public resolveEntStateSet = async (entState: { [key: string]: any, ents?: string | InternalEntState }[]) => {
         await this.resolveGenericSet(
             entState, 'ents' as string, this.resolveEntState,
         );
     };
 
     public resolveEquipmentSet = async (
-        equipmentType: { [key: string]: any, equipment?: string | EquipmentRepresentation }[],
+        equipmentType: { [key: string]: any, equipment?: string | InternalEquipment }[],
     ) => {
         await this.resolveGenericSet(
             equipmentType, 'equipment' as string, this.resolveEquipment,
         );
     };
 
-    public resolveStateSet = async (stateType: { [key: string]: any, state?: string | StateRepresentation }[]) => {
+    public resolveStateSet = async (stateType: { [key: string]: any, state?: string | InternalState }[]) => {
         await this.resolveGenericSet(
             stateType, 'state' as string, this.resolveState,
         );
     };
 
-    public resolveUserSet = async (userType: { [key: string]: any, user?: string | UserRepresentation }[]) => {
+    public resolveUserSet = async (userType: { [key: string]: any, user?: string | InternalUser }[]) => {
         await this.resolveGenericSet(
             userType, 'user' as string, this.resolveUser,
         );
     };
 
-    public resolveVenueSet = async (venueType: { [key: string]: any, venue?: string | VenueRepresentation }[]) => {
+    public resolveVenueSet = async (venueType: { [key: string]: any, venue?: string | InternalVenue }[]) => {
         await this.resolveGenericSet(
             venueType, 'venue' as string, this.resolveVenue,
         );

@@ -1,19 +1,15 @@
 import { GatewayMk2 } from '../../Gateway';
-import { EntStateValidators } from '@uems/uemscommlib/build/ent/EntStateValidators';
 import { Request, Response } from 'express';
 import { MessageUtilities } from '../../utilities/MessageUtilities';
 import { constants } from 'http2';
-import { MsgIntention } from '@uems/uemscommlib/build/messaging/types/event_message_schema';
-import { EntStateResponse } from '@uems/uemscommlib';
-import { MsgStatus } from '@uems/uemscommlib/build/messaging/types/event_response_schema';
+import { EntStateMessage, MessageIntention, MsgStatus, StateResponse, StateResponseValidator } from '@uems/uemscommlib';
 import { ErrorCodes } from '../../constants/ErrorCodes';
-import { StateValidators } from "@uems/uemscommlib/build/state/StateValidators";
 import GatewayAttachmentInterface = GatewayMk2.GatewayAttachmentInterface;
 import SendRequestFunction = GatewayMk2.SendRequestFunction;
-import EntStateReadSchema = EntStateValidators.EntStateReadSchema;
 import MinimalMessageType = GatewayMk2.MinimalMessageType;
-import EntStateResponseMessage = EntStateResponse.EntStateResponseMessage;
-import StateResponseValidator = StateValidators.StateResponseValidator;
+import StateResponseMessage = StateResponse.StateResponseMessage;
+import ReadEntStateMessage = EntStateMessage.ReadEntStateMessage;
+
 
 export class StateGatewayInterface implements GatewayAttachmentInterface {
     private readonly STATE_CREATE_KEY = 'states.details.create';
@@ -67,7 +63,7 @@ export class StateGatewayInterface implements GatewayAttachmentInterface {
 
     private static handleDefaultResponse(http: Response, timestamp: number, raw: MinimalMessageType, status: number) {
         MessageUtilities.identifierConsumed(raw.msg_id);
-        const response = raw as EntStateResponseMessage;
+        const response = raw as StateResponseMessage;
 
         if (status === MsgStatus.SUCCESS) {
             http
@@ -82,7 +78,7 @@ export class StateGatewayInterface implements GatewayAttachmentInterface {
 
     private static handleReadSingleResponse(http: Response, time: number, raw: MinimalMessageType, status: number) {
         MessageUtilities.identifierConsumed(raw.msg_id);
-        const response = raw as EntStateResponseMessage;
+        const response = raw as StateResponseMessage;
 
         if (status === MsgStatus.SUCCESS) {
             if (response.result.length !== 1) {
@@ -105,12 +101,12 @@ export class StateGatewayInterface implements GatewayAttachmentInterface {
         return async (req: Request, res: Response) => {
             const outgoing: any = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
-                msg_intention: MsgIntention.READ,
+                msg_intention: MessageIntention.READ,
                 status: 0,
             };
 
             const parameters = req.query;
-            const validProperties: (keyof EntStateReadSchema)[] = [
+            const validProperties: (keyof ReadEntStateMessage)[] = [
                 'name',
                 'icon',
                 'color',
@@ -136,7 +132,7 @@ export class StateGatewayInterface implements GatewayAttachmentInterface {
         return async (req: Request, res: Response) => {
             const outgoingMessage: any = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
-                msg_intention: MsgIntention.READ,
+                msg_intention: MessageIntention.READ,
                 status: 0,
             };
 
@@ -164,7 +160,7 @@ export class StateGatewayInterface implements GatewayAttachmentInterface {
         return async (req: Request, res: Response) => {
             const outgoingMessage: any = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
-                msg_intention: MsgIntention.CREATE,
+                msg_intention: MessageIntention.CREATE,
                 status: 0,
             };
 
@@ -201,7 +197,7 @@ export class StateGatewayInterface implements GatewayAttachmentInterface {
         return async (req: Request, res: Response) => {
             const outgoingMessage: any = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
-                msg_intention: MsgIntention.DELETE,
+                msg_intention: MessageIntention.DELETE,
                 status: 0,
             };
 
@@ -229,7 +225,7 @@ export class StateGatewayInterface implements GatewayAttachmentInterface {
         return async (req: Request, res: Response) => {
             const outgoing: any = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
-                msg_intention: MsgIntention.UPDATE,
+                msg_intention: MessageIntention.UPDATE,
                 status: 0,
             };
 
@@ -246,7 +242,7 @@ export class StateGatewayInterface implements GatewayAttachmentInterface {
             outgoing.id = req.params.id;
 
             const parameters = req.body;
-            const validProperties: (keyof EntStateReadSchema)[] = [
+            const validProperties: (keyof ReadEntStateMessage)[] = [
                 'name',
                 'icon',
                 'color',

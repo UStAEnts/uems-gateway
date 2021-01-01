@@ -1,4 +1,3 @@
-import { MsgStatus } from "@uems/uemscommlib/build/messaging/types/event_response_schema";
 import { Request, Response } from "express";
 import { constants } from "http2";
 

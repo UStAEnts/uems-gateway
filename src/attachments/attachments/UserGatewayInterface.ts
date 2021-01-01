@@ -2,15 +2,11 @@ import { GatewayMk2 } from '../../Gateway';
 import { Request, Response } from 'express';
 import { MessageUtilities } from '../../utilities/MessageUtilities';
 import { constants } from 'http2';
-import { MsgIntention } from '@uems/uemscommlib/build/messaging/types/event_message_schema';
-import { MsgStatus } from '@uems/uemscommlib/build/messaging/types/event_response_schema';
 import { ErrorCodes } from '../../constants/ErrorCodes';
 import GatewayAttachmentInterface = GatewayMk2.GatewayAttachmentInterface;
 import SendRequestFunction = GatewayMk2.SendRequestFunction;
 import MinimalMessageType = GatewayMk2.MinimalMessageType;
-import { UserValidators } from '@uems/uemscommlib/build/user/UserValidators';
-import UserResponseValidator = UserValidators.UserResponseValidator;
-import { UserResponse } from '@uems/uemscommlib';
+import { MessageIntention, MsgStatus, UserResponse, UserResponseValidator } from '@uems/uemscommlib';
 import UserResponseMessage = UserResponse.UserResponseMessage;
 
 export class UserGatewayInterface implements GatewayAttachmentInterface {
@@ -101,7 +97,7 @@ export class UserGatewayInterface implements GatewayAttachmentInterface {
         return async (req: Request, res: Response) => {
             const outgoing: any = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
-                msg_intention: MsgIntention.READ,
+                msg_intention: MessageIntention.READ,
                 status: 0,
             };
 
@@ -134,7 +130,7 @@ export class UserGatewayInterface implements GatewayAttachmentInterface {
         return async (req: Request, res: Response) => {
             const outgoingMessage: any = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
-                msg_intention: MsgIntention.READ,
+                msg_intention: MessageIntention.READ,
                 status: 0,
             };
 
@@ -162,7 +158,7 @@ export class UserGatewayInterface implements GatewayAttachmentInterface {
         return async (req: Request, res: Response) => {
             const outgoingMessage: any = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
-                msg_intention: MsgIntention.CREATE,
+                msg_intention: MessageIntention.CREATE,
                 status: 0,
             };
 
@@ -202,7 +198,7 @@ export class UserGatewayInterface implements GatewayAttachmentInterface {
         return async (req: Request, res: Response) => {
             const outgoingMessage: any = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
-                msg_intention: MsgIntention.DELETE,
+                msg_intention: MessageIntention.DELETE,
                 status: 0,
             };
 
@@ -230,7 +226,7 @@ export class UserGatewayInterface implements GatewayAttachmentInterface {
         return async (req: Request, res: Response) => {
             const outgoing: any = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
-                msg_intention: MsgIntention.UPDATE,
+                msg_intention: MessageIntention.UPDATE,
                 status: 0,
             };
 
