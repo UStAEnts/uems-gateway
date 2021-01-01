@@ -49,11 +49,11 @@ export namespace MessageUtilities {
      * @param object the object in which to search
      * @param key the key to find within this object
      */
-    export function has(object: any, key: string): boolean {
+    export function has(object: any, key: string | number): boolean {
         if (object === undefined || object === null) return false;
         if (key === undefined || key === null) return false;
         try {
-            return Object.prototype.hasOwnProperty.call(object, key)
+            return Object.prototype.hasOwnProperty.call(object, key);
         } catch (e) {
             return false;
         }
@@ -61,7 +61,7 @@ export namespace MessageUtilities {
 
     export function wrapInSuccess(result: any) {
         return {
-            status: MsgStatus.SUCCESS,
+            status: 'OK',
             result,
         };
     }
@@ -69,7 +69,7 @@ export namespace MessageUtilities {
     export function wrapInFailure(error: { code: string, message: string }) {
         return {
             error,
-            status: MsgStatus.FAIL,
+            status: 'FAILED',
         };
     }
 
