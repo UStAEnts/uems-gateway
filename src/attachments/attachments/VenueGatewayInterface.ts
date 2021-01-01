@@ -14,6 +14,8 @@ import VenueResponseValidator = VenueValidators.VenueResponseValidator;
 import MinimalMessageType = GatewayMk2.MinimalMessageType;
 import VenueResponseMessage = VenueResponse.VenueResponseMessage;
 import VenueReadResponseMessage = VenueResponse.VenueReadResponseMessage;
+import { EntityResolver } from "../../resolver/EntityResolver";
+import { ifError } from "assert";
 
 export class VenueGatewayInterface implements GatewayAttachmentInterface {
     private readonly VENUE_CREATE_KEY = 'venues.create';
@@ -22,11 +24,15 @@ export class VenueGatewayInterface implements GatewayAttachmentInterface {
 
     private readonly VENUE_UPDATE_KEY = 'venues.update';
 
-    private readonly VENUE_READ_KEY = 'venues.get';
+    public static readonly VENUE_READ_KEY = 'venues.get';
 
     private readonly COLOR_REGEX = /^#?([0-9A-Fa-f]{3}([0-9A-Fa-f]{3})?)$/;
 
-    public generateInterfaces(sendRequest: SendRequestFunction): GatewayInterfaceActionType[] {
+    private resolver: EntityResolver | undefined;
+
+    public generateInterfaces(sendRequest: SendRequestFunction, resolver: EntityResolver): GatewayInterfaceActionType[] {
+        this.resolver = resolver;
+
         return [
             {
                 action: 'get',
@@ -61,28 +67,40 @@ export class VenueGatewayInterface implements GatewayAttachmentInterface {
         ];
     }
 
-    private handleGetResponse(http: Response, timestamp: number, raw: MinimalMessageType, status: number) {
+    private handleGetResponse = (http: Response, timestamp: number, raw: MinimalMessageType, status: number) => {
+        if (this.resolver === undefined) throw new Error('resolver was undefined');
+
         // This message is handled
         MessageUtilities.identifierConsumed(raw.msg_id);
 
         // The response is validated to be a valid response type by the additionalValidator property
         const response = raw as VenueReadResponseMessage;
 
-        if (status === MsgStatus.SUCCESS) {
-            if (response.result.length !== 1) {
+        this.resolver.resolveUserSet(response.result)
+            .then(() => {
+                if (status === MsgStatus.SUCCESS) {
+                    if (response.result.length !== 1) {
+                        http
+                            .status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
+                            .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
+                        return;
+                    }
+
+                    http.status(constants.HTTP_STATUS_OK)
+                        .json(MessageUtilities.wrapInSuccess(response.result[0]));
+                } else {
+                    http
+                        .status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
+                        .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
+                }
+            })
+            .catch((err) => {
+                console.error('Failed to resolve users for venues', err);
                 http
                     .status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
                     .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
-                return;
-            }
-
-            http.status(constants.HTTP_STATUS_OK).json(MessageUtilities.wrapInSuccess(response.result[0]));
-        } else {
-            http
-                .status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
-                .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
-        }
-    }
+            });
+    };
 
     private handleGetRequest(sendRequest: SendRequestFunction) {
         return (request: Request, response: Response) => {
@@ -104,7 +122,7 @@ export class VenueGatewayInterface implements GatewayAttachmentInterface {
 
             outgoingMessage.id = request.params.id;
 
-            sendRequest(this.VENUE_READ_KEY, outgoingMessage, response, this.handleGetResponse);
+            sendRequest(VenueGatewayInterface.VENUE_READ_KEY, outgoingMessage, response, this.handleGetResponse);
         };
     }
 
@@ -184,21 +202,33 @@ export class VenueGatewayInterface implements GatewayAttachmentInterface {
      * @param status the status of the response (the message response)
      * @private
      */
-    private handleReadResponse(http: Response, timestamp: number, raw: MinimalMessageType, status: number) {
+    private handleReadResponse = (http: Response, timestamp: number, raw: MinimalMessageType, status: number) => {
+        if (this.resolver === undefined) throw new Error('resolver was undefined');
+
         // This message is handled
         MessageUtilities.identifierConsumed(raw.msg_id);
 
         // The response is validated to be a valid response type by the additionalValidator property
-        const response = raw as VenueResponseMessage;
+        const response = raw as VenueReadResponseMessage;
 
-        if (status === MsgStatus.SUCCESS) {
-            http.status(constants.HTTP_STATUS_OK).json(MessageUtilities.wrapInSuccess(response.result));
-        } else {
-            http
-                .status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
-                .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
-        }
-    }
+        this.resolver.resolveUserSet(response.result)
+            .then(() => {
+                if (status === MsgStatus.SUCCESS) {
+                    http.status(constants.HTTP_STATUS_OK)
+                        .json(MessageUtilities.wrapInSuccess(response.result));
+                } else {
+                    http
+                        .status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
+                        .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
+                }
+            })
+            .catch((err) => {
+                console.error('Failed to resolve users for venues', err);
+                http
+                    .status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
+                    .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
+            });
+    };
 
     private handleReadRequest(sendRequest: SendRequestFunction) {
         return (request: Request, response: Response) => {
@@ -228,12 +258,13 @@ export class VenueGatewayInterface implements GatewayAttachmentInterface {
                 }
             });
 
-            console.log(outgoingMessage);
-
-            // @ts-ignore - the definition uses number for some reason so the type doesn't match here
-            // this shouldn't cause any noticable difference
             // TODO(vitineth@gmail.com): verify why status is a non-primitive number
-            return sendRequest(this.VENUE_READ_KEY, outgoingMessage, response, this.handleReadResponse);
+            return sendRequest(
+                VenueGatewayInterface.VENUE_READ_KEY,
+                outgoingMessage,
+                response,
+                this.handleReadResponse,
+            );
         };
     }
 
