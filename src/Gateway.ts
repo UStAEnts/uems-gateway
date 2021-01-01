@@ -8,6 +8,7 @@ import { MessageValidator } from "@uems/uemscommlib/build/messaging/MessageValid
 import { MessageUtilities } from "./utilities/MessageUtilities";
 import { ErrorCodes } from "./constants/ErrorCodes";
 import { constants } from "http2";
+import { EntityResolver } from "./resolver/EntityResolver";
 
 // The queue of messages being sent from the microservices back to the gateway.
 const RCV_INBOX_QUEUE_NAME: string = 'inbox';
@@ -83,6 +84,11 @@ export namespace GatewayMk2 {
          * @private
          */
         private terminatorInterval: NodeJS.Timeout;
+        /**
+         * The entity resolver instance which will be used to intercept results for resolved entities
+         * @private
+         */
+        private resolver: EntityResolver = new EntityResolver(this);
 
         /**
          * Creates a gateway, no side effects. Marked private as the async setup function should be used instead for
@@ -125,7 +131,8 @@ export namespace GatewayMk2 {
                     console.log(`[terminator]: request being terminated: ${entry.uid}@${entry.timestamp}`);
 
                     // The request has been waiting more than 15 seconds so we tell them that it has timed out
-                    entry.response.status(constants.HTTP_STATUS_GATEWAY_TIMEOUT).json(MessageUtilities.wrapInFailure(ErrorCodes.SERVICE_TIMEOUT));
+                    entry.response.status(constants.HTTP_STATUS_GATEWAY_TIMEOUT)
+                        .json(MessageUtilities.wrapInFailure(ErrorCodes.SERVICE_TIMEOUT));
 
                     // Then remove this request from the outstanding requests
                     this.outstandingRequests.delete(key);
@@ -233,6 +240,14 @@ export namespace GatewayMk2 {
                 return;
             }
 
+            // If this message ID has been sent by the resolver, it will mark it as requiring an intercept
+            // in that case we want to send it to it to be consumed
+            if (this.resolver.intercept(json.msg_id)) {
+                MessageUtilities.identifierConsumed(json.msg_id);
+                this.resolver.consume(json);
+                return;
+            }
+
             const request = this.outstandingRequests.get(json['msg_id']);
             if (request === undefined) {
                 console.warn(`[gateway raw incoming]: message was received that did not match a pending request. has it already timed out?`);
@@ -242,25 +257,28 @@ export namespace GatewayMk2 {
             this.outstandingRequests.delete(json['msg_id']);
 
             if (request.additionalValidator !== undefined) {
-                request.additionalValidator.validate(json).then((validated) => {
-                    if (validated) {
-                        request.callback(request.response, request.timestamp, json, json['status'])
-                    } else {
-                        console.warn(`[gateway raw incoming]: message was rejected because it didn't pass the additional validator`);
-                    }
-                }).catch((err) => {
-                    console.error(`[gateway raw incoming]: message was rejected because the validator errored out`, err);
-                })
-            }else{
+                request.additionalValidator.validate(json)
+                    .then((validated) => {
+                        if (validated) {
+                            request.callback(request.response, request.timestamp, json, json['status'])
+                        } else {
+                            console.warn(`[gateway raw incoming]: message was rejected because it didn't pass the additional validator`);
+                        }
+                    })
+                    .catch((err) => {
+                        console.error(`[gateway raw incoming]: message was rejected because the validator errored out`, err);
+                    })
+            } else {
                 request.callback(request.response, request.timestamp, json, json['status'])
             }
         }
 
-        private publish(key: string, data: any) {
+        public publish(key: string, data: any) {
             return this.sendChannel.publish(REQUEST_EXCHANGE, key, Buffer.from(JSON.stringify(data)));
         }
 
         private readonly sendRequest = async (key: string, message: { msg_id: number, [key: string]: any }, response: Response, callback: RequestCallback, validator?: MessageValidator) => {
+            console.log('outgoing message', key, message);
             this.outstandingRequests.set(message.msg_id, {
                 response,
                 callback,
@@ -274,34 +292,37 @@ export namespace GatewayMk2 {
 
         public registerEndpoints(attachment: GatewayAttachmentInterface) {
             console.log(`[register endpoints]: registering endpoints with this ${this}`);
-            const pending = attachment.generateInterfaces(this.sendRequest);
-            Promise.resolve(pending).then((functions) => {
-                for (const route of functions) {
-                    const action = this._application[route.action].bind(this._application);
-                    console.log(`[register endpoints]: trying to register ${route.action} with path ${route.path} and ${this.middlewares.length} middlewares`)
-                    const path = [
-                        route.path,
-                        ...this.middlewares,
-                        (req: Request, res: Response) => {
-                            //TODO validator
-                            route.handle(req, res, () => false);
-                        },
-                    ];
+            const pending = attachment.generateInterfaces(this.sendRequest, this.resolver);
+            Promise.resolve(pending)
+                .then((functions) => {
+                    for (const route of functions) {
+                        const action = this._application[route.action].bind(this._application);
+                        console.log(`[register endpoints]: trying to register ${route.action} with path ${route.path} and ${this.middlewares.length} middlewares`)
+                        const path = [
+                            route.path,
+                            ...this.middlewares,
+                            (req: Request, res: Response) => {
+                                //TODO validator
+                                route.handle(req, res, () => false);
+                            },
+                        ];
 
-                    // @ts-ignore
-                    action.apply(this._application, path);
-                }
-            });
+                        // @ts-ignore
+                        action.apply(this._application, path);
+                    }
+                });
         }
 
         get application(): Application {
             return this._application;
         }
+
+
     }
 
     export interface GatewayAttachmentInterface {
 
-        generateInterfaces(send: SendRequestFunction): GatewayInterfaceActionType[] | Promise<GatewayInterfaceActionType[]>;
+        generateInterfaces(send: SendRequestFunction, resolver: EntityResolver): GatewayInterfaceActionType[] | Promise<GatewayInterfaceActionType[]>;
 
     }
 }
