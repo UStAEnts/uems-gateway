@@ -1,17 +1,18 @@
 import { Request, Response } from 'express';
-import { EventMsg, EventRes, EventResponseValidator } from '@uems/uemscommlib';
-import { CreateEventResponse, EventResponse, InternalEventToEventResponse } from '../../types/GatewayTypes';
-import * as HttpStatus from 'http-status-codes';
+import { EventMessage, EventResponse, EventResponseValidator, MessageIntention } from '@uems/uemscommlib';
 import { MessageUtilities } from '../../utilities/MessageUtilities';
-import { MsgIntention } from '@uems/uemscommlib/build/messaging/types/event_message_schema';
 import { GatewayMk2 } from '../../Gateway';
-import { ErrorCodes } from '../../constants/ErrorCodes';
+import { EntityResolver } from '../../resolver/EntityResolver';
+import { constants } from 'http2';
+import { GenericHandlerFunctions } from '../GenericHandlerFunctions';
 import GatewayAttachmentInterface = GatewayMk2.GatewayAttachmentInterface;
 import SendRequestFunction = GatewayMk2.SendRequestFunction;
 import GatewayInterfaceActionType = GatewayMk2.GatewayInterfaceActionType;
-import RequestCallback = GatewayMk2.RequestCallback;
-import { EntityResolver } from "../../resolver/EntityResolver";
-import { constants } from "http2";
+import DeleteEventMessage = EventMessage.DeleteEventMessage;
+import UpdateEventMessage = EventMessage.UpdateEventMessage;
+import ReadEventMessage = EventMessage.ReadEventMessage;
+import CreateEventMessage = EventMessage.CreateEventMessage;
+import EventReadResponseMessage = EventResponse.EventReadResponseMessage;
 
 // The topic used for sending get requests to the event details microservice.
 const EVENT_DETAILS_SERVICE_TOPIC_GET: string = 'events.details.get';
@@ -26,7 +27,6 @@ const EVENT_DETAILS_SERVICE_TOPIC_UPDATE: string = 'events.details.update';
 const EVENT_DETAILS_SERVICE_TOPIC_DELETE: string = 'events.details.delete';
 
 export class EventGatewayAttachment implements GatewayAttachmentInterface {
-
     // TODO: bit dangerous using ! - maybe add null checks?
     private _resolver!: EntityResolver;
 
@@ -72,40 +72,32 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
         ];
     }
 
+    private readonly DEPENDENCY_TRANSFORMER: GenericHandlerFunctions.Transformer<EventReadResponseMessage> = async (data) => {
+        await Promise.all([
+            this._resolver.resolveEntStateSet(data),
+            this._resolver.resolveStateSet(data),
+            this._resolver.resolveVenueSet(data),
+        ]);
+        return data;
+    };
+
     private static deleteEventHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
             const eventId = req.params.id;
 
-            const msg: EventMsg.DeleteEventMsg = {
+            const msg: DeleteEventMessage = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 status: 0,
-                msg_intention: EventMsg.MsgIntention.DELETE,
-                event_id: eventId,
+                msg_intention: 'DELETE',
+                id: eventId,
             };
 
-            const callback: RequestCallback = (
-                httpRes,
-                timestamp,
-                response,
-                status,
-            ) => {
-                // This is validated by the handler function
-                const reqResponse = response as EventRes.RequestResponseMsg;
-
-                // Mark this message ID as used so it can be reallocated to another request
-                MessageUtilities.identifierConsumed(reqResponse.msg_id as number);
-
-                if (status === EventRes.MsgStatus.SUCCESS) {
-                    httpRes.status(HttpStatus.NO_CONTENT)
-                        .send();
-                } else {
-                    httpRes.status(HttpStatus.NOT_FOUND)
-                        .json(ErrorCodes.FAILED);
-                }
-            };
-
-            // @ts-ignore - number/Number
-            await send(EVENT_DETAILS_SERVICE_TOPIC_DELETE, msg, res, callback);
+            await send(
+                EVENT_DETAILS_SERVICE_TOPIC_DELETE,
+                msg,
+                res,
+                GenericHandlerFunctions.handleReadSingleResponseFactory(),
+            );
         };
     }
 
@@ -113,136 +105,124 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
         return async (req: Request, res: Response) => {
             const eventId = req.params.id;
 
-            const msg: EventMsg.UpdateEventMsg = {
+            const msg: UpdateEventMessage = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 status: 0,
-                msg_intention: EventMsg.MsgIntention.UPDATE,
-                event_id: eventId,
+                msg_intention: 'UPDATE',
+                id: eventId,
             };
 
             const {
                 name,
                 startDate,
-                endDate
+                endDate,
             } = req.body;
 
             if (name !== undefined) {
-                msg.event_name = name.toString();
+                msg.name = name.toString();
             }
 
             if (startDate !== undefined) {
-                msg.event_start_date = startDate;
+                msg.start = startDate;
             }
 
             if (endDate !== undefined) {
-                msg.event_end_date = endDate;
+                msg.end = endDate;
             }
 
-            const callback: RequestCallback = (
-                httpRes,
-                timestamp,
-                response,
-                status,
-            ) => {
-                // This is validated by the handler function
-                const reqResponse = response as EventRes.RequestResponseMsg;
-
-                MessageUtilities.identifierConsumed(reqResponse.msg_id as number);
-                if (status === EventRes.MsgStatus.SUCCESS) {
-                    httpRes.status(HttpStatus.OK)
-                        .send({
-                            status: 'OK',
-                            result: {
-                                id: reqResponse.result[0],
-                                name: '',
-                                startDate: 0,
-                                endDate: 0,
-                            },
-                        });
-                } else {
-                    httpRes.status(HttpStatus.NOT_FOUND)
-                        .send(ErrorCodes.FAILED);
-                }
-            };
-
-            // @ts-ignore - Number/number
-            await send(EVENT_DETAILS_SERVICE_TOPIC_UPDATE, msg, res, callback);
+            await send(
+                EVENT_DETAILS_SERVICE_TOPIC_UPDATE,
+                msg,
+                res,
+                GenericHandlerFunctions.handleDefaultResponseFactory(),
+            );
         };
     }
 
-    private getEventsHandler = (send: SendRequestFunction) => {
-        return async (req: Request, res: Response) => {
-            const msg: EventMsg.ReadEventMsg = {
-                msg_id: MessageUtilities.generateMessageIdentifier(),
-                status: 0,
-                msg_intention: EventMsg.MsgIntention.READ,
-            };
+    private getEventsHandler = (send: SendRequestFunction) => async (req: Request, res: Response) => {
+        // TODO add failures
 
-            if (req.query.name !== undefined) {
-                msg.event_name = req.query.name.toString();
-            }
-
-            if (req.query.startbefore !== undefined) {
-                msg.event_start_date_range_begin = parseInt(req.query.startbefore.toString(), 10);
-            }
-
-            if (req.query.startafter !== undefined) {
-                msg.event_start_date_range_end = parseInt(req.query.startafter.toString(), 10);
-            }
-
-            if (req.query.endbefore !== undefined) {
-                msg.event_end_date_range_begin = parseInt(req.query.endbefore.toString(), 10);
-            }
-
-            if (req.query.endafter !== undefined) {
-                msg.event_end_date_range_end = parseInt(req.query.endafter.toString(), 10);
-            }
-
-            if (req.query.venue !== undefined) {
-                msg.venue_ids = [req.query.venue.toString()];
-            }
-
-            const callback: RequestCallback = (
-                httpRes,
-                timestamp,
-                response,
-                status,
-            ) => {
-                // This is validated by the handler function
-                const reqResponse = response as EventRes.ReadRequestResponseMsg;
-
-                MessageUtilities.identifierConsumed(reqResponse.msg_id as number);
-                if (status === EventRes.MsgStatus.SUCCESS) {
-                    const result: EventResponse[] = reqResponse.result.map(InternalEventToEventResponse);
-                    // Now we need to map it twice, not ideal but oh well, TODO: come up with a better way to do this?
-                    this._resolver.resolveEntStateSet(result)
-                        .then(() => this._resolver.resolveStateSet(result))
-                        .then(() => this._resolver.resolveVenueSet(result))
-                        .then(() => {
-                            httpRes.status(HttpStatus.OK)
-                                .send({
-                                    status: 'OK',
-                                    result,
-                                });
-                        });
-                } else {
-                    console.log(reqResponse);
-                    // Note this return code (503) isn't officially defined yet.
-                    httpRes.status(HttpStatus.SERVICE_UNAVAILABLE)
-                        .send(ErrorCodes.FAILED);
-                }
-            };
-
-            // @ts-ignore - Number not number
-            await send(EVENT_DETAILS_SERVICE_TOPIC_GET, msg, res, callback);
+        const msg: ReadEventMessage = {
+            msg_id: MessageUtilities.generateMessageIdentifier(),
+            status: 0,
+            msg_intention: 'READ',
         };
-    }
+
+        if (req.query.name !== undefined) {
+            msg.name = req.query.name.toString();
+        }
+
+        if (req.query.start !== undefined) {
+            msg.start = parseInt(req.query.start.toString(), 10);
+        }
+
+        if (req.query.end !== undefined) {
+            msg.end = parseInt(req.query.end.toString(), 10);
+        }
+
+        if (req.query.attendance !== undefined) {
+            msg.attendance = parseInt(req.query.attendance.toString(), 10);
+        }
+
+        if (req.query.venueIDs !== undefined && typeof (req.query.venueIDs) === 'string') {
+            if (req.query.venueCriteria !== undefined) {
+                if (req.query.venueCriteria === 'all') {
+                    msg.allVenues = req.query.venueIDs.split(',');
+                } else if (req.query.venueCriteria === 'any') {
+                    msg.anyVenues = req.query.venueIDs.split(',');
+                }
+            } else {
+                msg.venueIDs = req.query.venueIDs.split(',');
+            }
+        }
+
+        if (req.query.entsID !== undefined && typeof (req.query.entsID) === 'string') {
+            msg.entsID = req.query.entsID;
+        }
+
+        if (req.query.stateID !== undefined && typeof (req.query.stateID) === 'string') {
+            msg.stateID = req.query.stateID;
+        }
+
+        if (req.query.startafter !== undefined) {
+            msg.startRangeBegin = parseInt(req.query.startafter.toString(), 10);
+        }
+
+        if (req.query.startbefore !== undefined) {
+            msg.startRangeEnd = parseInt(req.query.startbefore.toString(), 10);
+        }
+
+        if (req.query.endafter !== undefined) {
+            msg.endRangeBegin = parseInt(req.query.endafter.toString(), 10);
+        }
+
+        if (req.query.endbefore !== undefined) {
+            msg.endRangeEnd = parseInt(req.query.endbefore.toString(), 10);
+        }
+
+        if (req.query.attendanceGreater !== undefined) {
+            msg.attendanceRangeBegin = parseInt(req.query.attendanceGreater.toString(), 10);
+        }
+
+        if (req.query.attendanceLess !== undefined) {
+            msg.attendanceRangeEnd = parseInt(req.query.attendanceLess.toString(), 10);
+        }
+
+        await send(
+            EVENT_DETAILS_SERVICE_TOPIC_GET,
+            msg,
+            res,
+            GenericHandlerFunctions.handleDefaultResponseFactory(
+                this.DEPENDENCY_TRANSFORMER,
+            ),
+        );
+    };
 
     private getEventHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
             const outgoingMessage: any = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
-                msg_intention: MsgIntention.READ,
+                msg_intention: MessageIntention.READ,
                 status: 0,
             };
 
@@ -256,46 +236,6 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
                 return;
             }
 
-            const callback: RequestCallback = (
-                httpRes,
-                timestamp,
-                response,
-                status,
-            ) => {
-                // This is validated by the handler function
-                const reqResponse = response as EventRes.ReadRequestResponseMsg;
-
-                MessageUtilities.identifierConsumed(reqResponse.msg_id as number);
-                if (status === EventRes.MsgStatus.SUCCESS) {
-                    const result: EventResponse[] = reqResponse.result.map(InternalEventToEventResponse);
-                    console.log(result);
-                    if (result.length !== 1){
-                        httpRes.status(HttpStatus.NOT_FOUND)
-                            .send(ErrorCodes.FAILED);
-                        return;
-                    }
-                    // Now we need to map it twice, not ideal but oh well, TODO: come up with a better way to do this?
-                    this._resolver.resolveEntStateSet(result)
-                        .then(() => this._resolver.resolveStateSet(result))
-                        .then(() => this._resolver.resolveVenueSet(result))
-                        .then(() => {
-                            httpRes.status(HttpStatus.OK)
-                                .send({
-                                    status: 'OK',
-                                    result: {
-                                        event: result[0],
-                                        changelog: [],
-                                    },
-                                });
-                        });
-                } else {
-                    console.log(reqResponse);
-                    // Note this return code (503) isn't officially defined yet.
-                    httpRes.status(HttpStatus.SERVICE_UNAVAILABLE)
-                        .send(ErrorCodes.FAILED);
-                }
-            };
-
             outgoingMessage.event_id = req.params.id;
 
             console.log(outgoingMessage);
@@ -304,7 +244,9 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
                 EVENT_DETAILS_SERVICE_TOPIC_GET,
                 outgoingMessage,
                 res,
-                callback,
+                GenericHandlerFunctions.handleReadSingleResponseFactory(
+                    this.DEPENDENCY_TRANSFORMER,
+                ),
             );
         };
     }
@@ -314,52 +256,25 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
             const {
                 name,
                 startDate,
-                endDate
+                endDate,
             } = request.body;
-            const msg: EventMsg.CreateEventMsg = {
+            const msg: CreateEventMessage = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 status: 0, // 0 Code used when the status is still to be decided.
-                msg_intention: MsgIntention.CREATE,
-                event_name: name,
-                event_start_date: startDate,
-                event_end_date: endDate,
-                venue_ids: [''], // Placeholder as venue assignment not in API yet.
-                predicted_attendance: 0, // Placeholder.
+                msg_intention: 'CREATE',
+                name,
+                start: startDate,
+                end: endDate,
+                venueIDs: [''], // Placeholder as venue assignment not in API yet.
+                attendance: 0, // Placeholder.
             };
 
-            const callback: RequestCallback = (
-                httpRes,
-                timestamp,
-                response,
-                status,
-            ) => {
-                // This is validated by the handler function
-                const reqResponse = response as EventRes.RequestResponseMsg;
-
-                MessageUtilities.identifierConsumed(reqResponse.msg_id as number);
-                if (status === EventRes.MsgStatus.SUCCESS) {
-                    // TODO: the fuck?
-                    const result: CreateEventResponse = {
-                        status: 'OK',
-                        result: {
-                            id: reqResponse.result[0],
-                            name: '',
-                            startDate: 0,
-                            endDate: 0,
-                            attendance: 0,
-                        },
-                    };
-                    httpRes.status(HttpStatus.CREATED)
-                        .send(result);
-                } else {
-                    // Note this return code (503) isn't officially defined yet.
-                    httpRes.status(HttpStatus.SERVICE_UNAVAILABLE)
-                        .send(ErrorCodes.FAILED);
-                }
-            };
-
-            // @ts-ignore - why are we using Number?
-            await send(EVENT_DETAILS_SERVICE_TOPIC_CREATE, msg, res, callback);
+            await send(
+                EVENT_DETAILS_SERVICE_TOPIC_CREATE,
+                msg,
+                res,
+                GenericHandlerFunctions.handleDefaultResponseFactory(),
+            );
         };
     }
 }
