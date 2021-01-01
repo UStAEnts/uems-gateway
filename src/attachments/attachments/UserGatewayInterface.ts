@@ -2,12 +2,10 @@ import { GatewayMk2 } from '../../Gateway';
 import { Request, Response } from 'express';
 import { MessageUtilities } from '../../utilities/MessageUtilities';
 import { constants } from 'http2';
-import { ErrorCodes } from '../../constants/ErrorCodes';
+import { MessageIntention, UserResponseValidator } from '@uems/uemscommlib';
+import { GenericHandlerFunctions } from '../GenericHandlerFunctions';
 import GatewayAttachmentInterface = GatewayMk2.GatewayAttachmentInterface;
 import SendRequestFunction = GatewayMk2.SendRequestFunction;
-import MinimalMessageType = GatewayMk2.MinimalMessageType;
-import { MessageIntention, MsgStatus, UserResponse, UserResponseValidator } from '@uems/uemscommlib';
-import UserResponseMessage = UserResponse.UserResponseMessage;
 
 export class UserGatewayInterface implements GatewayAttachmentInterface {
     private readonly USER_CREATE_KEY = 'user.details.create';
@@ -57,42 +55,6 @@ export class UserGatewayInterface implements GatewayAttachmentInterface {
         ];
     }
 
-    private static handleDefaultResponse(http: Response, timestamp: number, raw: MinimalMessageType, status: number) {
-        MessageUtilities.identifierConsumed(raw.msg_id);
-        const response = raw as UserResponseMessage;
-
-        if (status === MsgStatus.SUCCESS) {
-            http
-                .status(constants.HTTP_STATUS_OK)
-                .json(MessageUtilities.wrapInSuccess(response.result));
-        } else {
-            http
-                .status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
-                .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
-        }
-    }
-
-    private static handleReadSingleResponse(http: Response, time: number, raw: MinimalMessageType, status: number) {
-        MessageUtilities.identifierConsumed(raw.msg_id);
-        const response = raw as UserResponseMessage;
-
-        if (status === MsgStatus.SUCCESS) {
-            if (response.result.length !== 1) {
-                http
-                    .status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
-                    .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
-            }
-
-            http
-                .status(constants.HTTP_STATUS_OK)
-                .json(MessageUtilities.wrapInSuccess(response.result[0]));
-        } else {
-            http
-                .status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
-                .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
-        }
-    }
-
     private queryEventsHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
             const outgoing: any = {
@@ -121,7 +83,7 @@ export class UserGatewayInterface implements GatewayAttachmentInterface {
                 UserGatewayInterface.USER_READ_KEY,
                 outgoing,
                 res,
-                UserGatewayInterface.handleDefaultResponse,
+                GenericHandlerFunctions.handleDefaultResponseFactory(),
             );
         };
     }
@@ -149,7 +111,7 @@ export class UserGatewayInterface implements GatewayAttachmentInterface {
                 UserGatewayInterface.USER_READ_KEY,
                 outgoingMessage,
                 res,
-                UserGatewayInterface.handleReadSingleResponse,
+                GenericHandlerFunctions.handleReadSingleResponseFactory(),
             );
         };
     }
@@ -189,7 +151,7 @@ export class UserGatewayInterface implements GatewayAttachmentInterface {
                 this.USER_CREATE_KEY,
                 outgoingMessage,
                 res,
-                UserGatewayInterface.handleDefaultResponse,
+                GenericHandlerFunctions.handleDefaultResponseFactory(),
             );
         };
     }
@@ -217,7 +179,7 @@ export class UserGatewayInterface implements GatewayAttachmentInterface {
                 this.USER_DELETE_KEY,
                 outgoingMessage,
                 res,
-                UserGatewayInterface.handleReadSingleResponse,
+                GenericHandlerFunctions.handleReadSingleResponseFactory(),
             );
         };
     }
@@ -264,7 +226,7 @@ export class UserGatewayInterface implements GatewayAttachmentInterface {
                 this.USER_UPDATE_KEY,
                 outgoing,
                 res,
-                UserGatewayInterface.handleDefaultResponse,
+                GenericHandlerFunctions.handleDefaultResponseFactory(),
             );
         };
     }

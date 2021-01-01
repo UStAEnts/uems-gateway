@@ -2,14 +2,11 @@ import { GatewayMk2 } from '../../Gateway';
 import { Request, Response } from 'express';
 import { MessageUtilities } from '../../utilities/MessageUtilities';
 import { constants } from 'http2';
-import { EntStateMessage, MessageIntention, MsgStatus, StateResponse, StateResponseValidator } from '@uems/uemscommlib';
-import { ErrorCodes } from '../../constants/ErrorCodes';
+import { EntStateMessage, MessageIntention, StateResponseValidator } from '@uems/uemscommlib';
+import { GenericHandlerFunctions } from '../GenericHandlerFunctions';
 import GatewayAttachmentInterface = GatewayMk2.GatewayAttachmentInterface;
 import SendRequestFunction = GatewayMk2.SendRequestFunction;
-import MinimalMessageType = GatewayMk2.MinimalMessageType;
-import StateResponseMessage = StateResponse.StateResponseMessage;
 import ReadEntStateMessage = EntStateMessage.ReadEntStateMessage;
-
 
 export class StateGatewayInterface implements GatewayAttachmentInterface {
     private readonly STATE_CREATE_KEY = 'states.details.create';
@@ -61,42 +58,6 @@ export class StateGatewayInterface implements GatewayAttachmentInterface {
         ];
     }
 
-    private static handleDefaultResponse(http: Response, timestamp: number, raw: MinimalMessageType, status: number) {
-        MessageUtilities.identifierConsumed(raw.msg_id);
-        const response = raw as StateResponseMessage;
-
-        if (status === MsgStatus.SUCCESS) {
-            http
-                .status(constants.HTTP_STATUS_OK)
-                .json(MessageUtilities.wrapInSuccess(response.result));
-        } else {
-            http
-                .status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
-                .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
-        }
-    }
-
-    private static handleReadSingleResponse(http: Response, time: number, raw: MinimalMessageType, status: number) {
-        MessageUtilities.identifierConsumed(raw.msg_id);
-        const response = raw as StateResponseMessage;
-
-        if (status === MsgStatus.SUCCESS) {
-            if (response.result.length !== 1) {
-                http
-                    .status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
-                    .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
-            }
-
-            http
-                .status(constants.HTTP_STATUS_OK)
-                .json(MessageUtilities.wrapInSuccess(response.result[0]));
-        } else {
-            http
-                .status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
-                .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
-        }
-    }
-
     private queryEventsHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
             const outgoing: any = {
@@ -123,7 +84,7 @@ export class StateGatewayInterface implements GatewayAttachmentInterface {
                 StateGatewayInterface.STATE_READ_KEY,
                 outgoing,
                 res,
-                StateGatewayInterface.handleDefaultResponse,
+                GenericHandlerFunctions.handleDefaultResponseFactory(),
             );
         };
     }
@@ -151,7 +112,7 @@ export class StateGatewayInterface implements GatewayAttachmentInterface {
                 StateGatewayInterface.STATE_READ_KEY,
                 outgoingMessage,
                 res,
-                StateGatewayInterface.handleReadSingleResponse,
+                GenericHandlerFunctions.handleReadSingleResponseFactory(),
             );
         };
     }
@@ -188,7 +149,7 @@ export class StateGatewayInterface implements GatewayAttachmentInterface {
                 this.STATE_CREATE_KEY,
                 outgoingMessage,
                 res,
-                StateGatewayInterface.handleDefaultResponse,
+                GenericHandlerFunctions.handleDefaultResponseFactory(),
             );
         };
     }
@@ -216,7 +177,7 @@ export class StateGatewayInterface implements GatewayAttachmentInterface {
                 this.STATE_DELETE_KEY,
                 outgoingMessage,
                 res,
-                StateGatewayInterface.handleReadSingleResponse,
+                GenericHandlerFunctions.handleReadSingleResponseFactory(),
             );
         };
     }
@@ -261,7 +222,7 @@ export class StateGatewayInterface implements GatewayAttachmentInterface {
                 this.STATE_UPDATE_KEY,
                 outgoing,
                 res,
-                StateGatewayInterface.handleDefaultResponse,
+                GenericHandlerFunctions.handleDefaultResponseFactory(),
             );
         };
     }

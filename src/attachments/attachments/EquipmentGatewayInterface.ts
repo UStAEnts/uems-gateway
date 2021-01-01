@@ -2,12 +2,10 @@ import { GatewayMk2 } from '../../Gateway';
 import { Request, Response } from 'express';
 import { MessageUtilities } from '../../utilities/MessageUtilities';
 import { constants } from 'http2';
-import { ErrorCodes } from '../../constants/ErrorCodes';
-import { UserResponse, MsgStatus, EquipmentResponseValidator, MessageIntention } from '@uems/uemscommlib';
+import { EquipmentResponseValidator, MessageIntention } from '@uems/uemscommlib';
+import { GenericHandlerFunctions } from '../GenericHandlerFunctions';
 import GatewayAttachmentInterface = GatewayMk2.GatewayAttachmentInterface;
 import SendRequestFunction = GatewayMk2.SendRequestFunction;
-import MinimalMessageType = GatewayMk2.MinimalMessageType;
-import UserResponseMessage = UserResponse.UserResponseMessage;
 
 export class EquipmentGatewayInterface implements GatewayAttachmentInterface {
     private readonly EQUIPMENT_CREATE_KEY = 'equipment.details.create';
@@ -57,42 +55,6 @@ export class EquipmentGatewayInterface implements GatewayAttachmentInterface {
         ];
     }
 
-    private static handleDefaultResponse(http: Response, timestamp: number, raw: MinimalMessageType, status: number) {
-        MessageUtilities.identifierConsumed(raw.msg_id);
-        const response = raw as UserResponseMessage;
-
-        if (status === MsgStatus.SUCCESS) {
-            http
-                .status(constants.HTTP_STATUS_OK)
-                .json(MessageUtilities.wrapInSuccess(response.result));
-        } else {
-            http
-                .status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
-                .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
-        }
-    }
-
-    private static handleReadSingleResponse(http: Response, time: number, raw: MinimalMessageType, status: number) {
-        MessageUtilities.identifierConsumed(raw.msg_id);
-        const response = raw as UserResponseMessage;
-
-        if (status === MsgStatus.SUCCESS) {
-            if (response.result.length !== 1) {
-                http
-                    .status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
-                    .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
-            }
-
-            http
-                .status(constants.HTTP_STATUS_OK)
-                .json(MessageUtilities.wrapInSuccess(response.result[0]));
-        } else {
-            http
-                .status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
-                .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
-        }
-    }
-
     private queryEventsHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
             const outgoing: any = {
@@ -127,7 +89,7 @@ export class EquipmentGatewayInterface implements GatewayAttachmentInterface {
                 EquipmentGatewayInterface.EQUIPMENT_READ_KEY,
                 outgoing,
                 res,
-                EquipmentGatewayInterface.handleDefaultResponse,
+                GenericHandlerFunctions.handleDefaultResponseFactory(),
             );
         };
     }
@@ -155,7 +117,7 @@ export class EquipmentGatewayInterface implements GatewayAttachmentInterface {
                 EquipmentGatewayInterface.EQUIPMENT_READ_KEY,
                 outgoingMessage,
                 res,
-                EquipmentGatewayInterface.handleReadSingleResponse,
+                GenericHandlerFunctions.handleReadSingleResponseFactory(),
             );
         };
     }
@@ -214,7 +176,7 @@ export class EquipmentGatewayInterface implements GatewayAttachmentInterface {
                 this.EQUIPMENT_CREATE_KEY,
                 outgoingMessage,
                 res,
-                EquipmentGatewayInterface.handleDefaultResponse,
+                GenericHandlerFunctions.handleDefaultResponseFactory(),
             );
         };
     }
@@ -242,7 +204,7 @@ export class EquipmentGatewayInterface implements GatewayAttachmentInterface {
                 this.EQUIPMENT_DELETE_KEY,
                 outgoingMessage,
                 res,
-                EquipmentGatewayInterface.handleReadSingleResponse,
+                GenericHandlerFunctions.handleReadSingleResponseFactory(),
             );
         };
     }
@@ -315,7 +277,7 @@ export class EquipmentGatewayInterface implements GatewayAttachmentInterface {
                 this.EQUIPMENT_UPDATE_KEY,
                 outgoing,
                 res,
-                EquipmentGatewayInterface.handleDefaultResponse,
+                GenericHandlerFunctions.handleDefaultResponseFactory(),
             );
         };
     }

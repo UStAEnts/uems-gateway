@@ -1,14 +1,13 @@
 import { Request, Response } from 'express';
 import { GatewayMk2 } from '../../Gateway';
 import { MessageUtilities } from '../../utilities/MessageUtilities';
-import { ErrorCodes } from '../../constants/ErrorCodes';
 import { constants } from 'http2';
-import { MessageIntention, MsgStatus, VenueResponse, VenueResponseValidator } from '@uems/uemscommlib';
-import { EntityResolver } from "../../resolver/EntityResolver";
+import { MessageIntention, VenueResponse, VenueResponseValidator } from '@uems/uemscommlib';
+import { EntityResolver } from '../../resolver/EntityResolver';
+import { GenericHandlerFunctions } from '../GenericHandlerFunctions';
 import SendRequestFunction = GatewayMk2.SendRequestFunction;
 import GatewayAttachmentInterface = GatewayMk2.GatewayAttachmentInterface;
 import GatewayInterfaceActionType = GatewayMk2.GatewayInterfaceActionType;
-import MinimalMessageType = GatewayMk2.MinimalMessageType;
 import VenueReadResponseMessage = VenueResponse.VenueReadResponseMessage;
 
 export class VenueGatewayInterface implements GatewayAttachmentInterface {
@@ -61,39 +60,10 @@ export class VenueGatewayInterface implements GatewayAttachmentInterface {
         ];
     }
 
-    private handleGetResponse = (http: Response, timestamp: number, raw: MinimalMessageType, status: number) => {
-        if (this.resolver === undefined) throw new Error('resolver was undefined');
-
-        // This message is handled
-        MessageUtilities.identifierConsumed(raw.msg_id);
-
-        // The response is validated to be a valid response type by the additionalValidator property
-        const response = raw as VenueReadResponseMessage;
-
-        this.resolver.resolveUserSet(response.result)
-            .then(() => {
-                if (status === MsgStatus.SUCCESS) {
-                    if (response.result.length !== 1) {
-                        http
-                            .status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
-                            .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
-                        return;
-                    }
-
-                    http.status(constants.HTTP_STATUS_OK)
-                        .json(MessageUtilities.wrapInSuccess(response.result[0]));
-                } else {
-                    http
-                        .status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
-                        .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
-                }
-            })
-            .catch((err) => {
-                console.error('Failed to resolve users for venues', err);
-                http
-                    .status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
-                    .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
-            });
+    private readonly USER_RESOLVE_TRANSFORMER: GenericHandlerFunctions.Transformer<VenueReadResponseMessage> = async (data) => {
+        if (this.resolver === undefined) return data;
+        await this.resolver.resolveUserSet(data);
+        return data;
     };
 
     private handleGetRequest(sendRequest: SendRequestFunction) {
@@ -116,7 +86,12 @@ export class VenueGatewayInterface implements GatewayAttachmentInterface {
 
             outgoingMessage.id = request.params.id;
 
-            sendRequest(VenueGatewayInterface.VENUE_READ_KEY, outgoingMessage, response, this.handleGetResponse);
+            sendRequest(
+                VenueGatewayInterface.VENUE_READ_KEY,
+                outgoingMessage,
+                response,
+                GenericHandlerFunctions.handleReadSingleResponseFactory(this.USER_RESOLVE_TRANSFORMER),
+            );
         };
     }
 
@@ -140,7 +115,12 @@ export class VenueGatewayInterface implements GatewayAttachmentInterface {
 
             outgoingMessage.id = request.params.id;
 
-            sendRequest(this.VENUE_DELETE_KEY, outgoingMessage, response, this.handleReadResponse);
+            sendRequest(
+                this.VENUE_DELETE_KEY,
+                outgoingMessage,
+                response,
+                GenericHandlerFunctions.handleReadSingleResponseFactory(),
+            );
         };
     }
 
@@ -184,45 +164,14 @@ export class VenueGatewayInterface implements GatewayAttachmentInterface {
                 }
             });
 
-            sendRequest(this.VENUE_CREATE_KEY, outgoingMessage, response, this.handleReadResponse);
+            sendRequest(
+                this.VENUE_CREATE_KEY,
+                outgoingMessage,
+                response,
+                GenericHandlerFunctions.handleDefaultResponseFactory(),
+            );
         };
     }
-
-    /**
-     * Handles the incoming message from the venue microservice, returning them to the response
-     * @param http the cached response from the http server
-     * @param timestamp the timestamp at which the request was received
-     * @param raw the raw response
-     * @param status the status of the response (the message response)
-     * @private
-     */
-    private handleReadResponse = (http: Response, timestamp: number, raw: MinimalMessageType, status: number) => {
-        if (this.resolver === undefined) throw new Error('resolver was undefined');
-
-        // This message is handled
-        MessageUtilities.identifierConsumed(raw.msg_id);
-
-        // The response is validated to be a valid response type by the additionalValidator property
-        const response = raw as VenueReadResponseMessage;
-
-        this.resolver.resolveUserSet(response.result)
-            .then(() => {
-                if (status === MsgStatus.SUCCESS) {
-                    http.status(constants.HTTP_STATUS_OK)
-                        .json(MessageUtilities.wrapInSuccess(response.result));
-                } else {
-                    http
-                        .status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
-                        .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
-                }
-            })
-            .catch((err) => {
-                console.error('Failed to resolve users for venues', err);
-                http
-                    .status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
-                    .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
-            });
-    };
 
     private handleReadRequest(sendRequest: SendRequestFunction) {
         return (request: Request, response: Response) => {
@@ -252,12 +201,11 @@ export class VenueGatewayInterface implements GatewayAttachmentInterface {
                 }
             });
 
-            // TODO(vitineth@gmail.com): verify why status is a non-primitive number
-            return sendRequest(
+            sendRequest(
                 VenueGatewayInterface.VENUE_READ_KEY,
                 outgoingMessage,
                 response,
-                this.handleReadResponse,
+                GenericHandlerFunctions.handleReadSingleResponseFactory(this.USER_RESOLVE_TRANSFORMER),
             );
         };
     }
@@ -301,10 +249,12 @@ export class VenueGatewayInterface implements GatewayAttachmentInterface {
 
             console.log(outgoingMessage);
 
-            // @ts-ignore - the definition uses number for some reason so the type doesn't match here
-            // this shouldn't cause any noticable difference
-            // TODO(vitineth@gmail.com): verify why status is a non-primitive number
-            return sendRequest(this.VENUE_UPDATE_KEY, outgoingMessage, response, this.handleReadResponse);
+            sendRequest(
+                this.VENUE_UPDATE_KEY,
+                outgoingMessage,
+                response,
+                GenericHandlerFunctions.handleDefaultResponseFactory(),
+            );
         };
     }
 }

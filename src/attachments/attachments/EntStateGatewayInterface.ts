@@ -9,6 +9,7 @@ import SendRequestFunction = GatewayMk2.SendRequestFunction;
 import EntStateReadSchema = EntStateMessage.ReadEntStateMessage;
 import MinimalMessageType = GatewayMk2.MinimalMessageType;
 import EntStateResponseMessage = EntStateResponse.EntStateResponseMessage;
+import { GenericHandlerFunctions } from "../GenericHandlerFunctions";
 
 export class EntStateGatewayInterface implements GatewayAttachmentInterface {
     private readonly ENT_STATE_CREATE_KEY = 'ents.details.create';
@@ -60,42 +61,6 @@ export class EntStateGatewayInterface implements GatewayAttachmentInterface {
         ];
     }
 
-    private static handleDefaultResponse(http: Response, timestamp: number, raw: MinimalMessageType, status: number) {
-        MessageUtilities.identifierConsumed(raw.msg_id);
-        const response = raw as EntStateResponseMessage;
-
-        if (status === MsgStatus.SUCCESS) {
-            http
-                .status(constants.HTTP_STATUS_OK)
-                .json(MessageUtilities.wrapInSuccess(response.result));
-        } else {
-            http
-                .status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
-                .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
-        }
-    }
-
-    private static handleReadSingleResponse(http: Response, time: number, raw: MinimalMessageType, status: number) {
-        MessageUtilities.identifierConsumed(raw.msg_id);
-        const response = raw as EntStateResponseMessage;
-
-        if (status === MsgStatus.SUCCESS) {
-            if (response.result.length !== 1) {
-                http
-                    .status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
-                    .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
-            }
-
-            http
-                .status(constants.HTTP_STATUS_OK)
-                .json(MessageUtilities.wrapInSuccess(response.result[0]));
-        } else {
-            http
-                .status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
-                .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
-        }
-    }
-
     private queryEventsHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
             const outgoing: any = {
@@ -122,7 +87,7 @@ export class EntStateGatewayInterface implements GatewayAttachmentInterface {
                 EntStateGatewayInterface.ENT_STATE_READ_KEY,
                 outgoing,
                 res,
-                EntStateGatewayInterface.handleDefaultResponse,
+                GenericHandlerFunctions.handleDefaultResponseFactory(),
             );
         };
     }
@@ -150,7 +115,7 @@ export class EntStateGatewayInterface implements GatewayAttachmentInterface {
                 EntStateGatewayInterface.ENT_STATE_READ_KEY,
                 outgoingMessage,
                 res,
-                EntStateGatewayInterface.handleReadSingleResponse,
+                GenericHandlerFunctions.handleReadSingleResponseFactory(),
             );
         };
     }
@@ -187,7 +152,7 @@ export class EntStateGatewayInterface implements GatewayAttachmentInterface {
                 this.ENT_STATE_CREATE_KEY,
                 outgoingMessage,
                 res,
-                EntStateGatewayInterface.handleDefaultResponse,
+                GenericHandlerFunctions.handleDefaultResponseFactory(),
             );
         };
     }
@@ -215,7 +180,7 @@ export class EntStateGatewayInterface implements GatewayAttachmentInterface {
                 this.ENT_STATE_DELETE_KEY,
                 outgoingMessage,
                 res,
-                EntStateGatewayInterface.handleReadSingleResponse,
+                GenericHandlerFunctions.handleReadSingleResponseFactory(),
             );
         };
     }
@@ -260,7 +225,7 @@ export class EntStateGatewayInterface implements GatewayAttachmentInterface {
                 this.ENT_STATE_UPDATE_KEY,
                 outgoing,
                 res,
-                EntStateGatewayInterface.handleDefaultResponse,
+                GenericHandlerFunctions.handleDefaultResponseFactory(),
             );
         };
     }
