@@ -72,6 +72,18 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
                 handle: EventGatewayAttachment.deleteEventHandler(send),
                 additionalValidator: validator,
             },
+            {
+                action: 'get',
+                path: '/states/:id/events',
+                handle: this.getEventsByState(send),
+                additionalValidator: validator,
+            },
+            {
+                action: 'get',
+                path: '/venues/:id/events',
+                handle: this.getEventsByVenue(send),
+                additionalValidator: validator,
+            },
         ];
     }
 
@@ -393,4 +405,67 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
             );
         };
     }
+
+    private getEventsByState = (send: SendRequestFunction) => async (req: Request, res: Response) => {
+        // TODO add failures
+
+        const msg: ReadEventMessage = {
+            msg_id: MessageUtilities.generateMessageIdentifier(),
+            status: 0,
+            msg_intention: 'READ',
+        };
+
+        if (!MessageUtilities.has(req.params, 'id')) {
+            res
+                .status(constants.HTTP_STATUS_BAD_REQUEST)
+                .json(MessageUtilities.wrapInFailure({
+                    message: 'missing parameter id',
+                    code: 'BAD_REQUEST_MISSING_PARAM',
+                }));
+            return;
+        }
+
+        msg.stateID = req.params.id;
+
+        await send(
+            EVENT_DETAILS_SERVICE_TOPIC_GET,
+            msg,
+            res,
+            GenericHandlerFunctions.handleDefaultResponseFactory(
+                this.DEPENDENCY_TRANSFORMER,
+            ),
+        );
+    };
+
+    private getEventsByVenue = (send: SendRequestFunction) => async (req: Request, res: Response) => {
+        // TODO add failures
+
+        const msg: ReadEventMessage = {
+            msg_id: MessageUtilities.generateMessageIdentifier(),
+            status: 0,
+            msg_intention: 'READ',
+        };
+
+        if (!MessageUtilities.has(req.params, 'id')) {
+            res
+                .status(constants.HTTP_STATUS_BAD_REQUEST)
+                .json(MessageUtilities.wrapInFailure({
+                    message: 'missing parameter id',
+                    code: 'BAD_REQUEST_MISSING_PARAM',
+                }));
+            return;
+        }
+
+        msg.anyVenues = [req.params.id];
+
+        await send(
+            EVENT_DETAILS_SERVICE_TOPIC_GET,
+            msg,
+            res,
+            GenericHandlerFunctions.handleDefaultResponseFactory(
+                this.DEPENDENCY_TRANSFORMER,
+            ),
+        );
+    };
+
 }
