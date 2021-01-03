@@ -32,8 +32,8 @@ function handleDefaultResponse<T extends { result: any[] }>(
                 });
         } else {
             http
-                .status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
-                .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
+                .status(constants.HTTP_STATUS_OK)
+                .json(MessageUtilities.wrapInSuccess(response.result));
         }
     } else {
         http
@@ -54,6 +54,8 @@ function handleReadSingleResponse<T extends { result: any[] }>(
 
     if (status === MsgStatus.SUCCESS) {
         if (response.result.length !== 1) {
+            console.warn('Failing response because an invalid number of results, expected 1 got',
+                response.result.length);
             http
                 .status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
                 .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
@@ -75,10 +77,11 @@ function handleReadSingleResponse<T extends { result: any[] }>(
                 });
         } else {
             http
-                .status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
-                .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
+                .status(constants.HTTP_STATUS_OK)
+                .json(MessageUtilities.wrapInSuccess(response.result[0]));
         }
     } else {
+        console.warn('Response is failing because status was', status, 'when', MsgStatus.SUCCESS, 'was expected');
         http
             .status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
             .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
