@@ -8,12 +8,14 @@ import { StateGatewayInterface } from '../attachments/attachments/StateGatewayIn
 import MinimalMessageType = GatewayMk2.MinimalMessageType;
 import has = MessageUtilities.has;
 import GatewayMessageHandler = GatewayMk2.GatewayMessageHandler;
-import { EntStateResponse, EquipmentResponse, MsgStatus, StateResponse, UserResponse, VenueResponse } from "@uems/uemscommlib";
+import { EntStateResponse, EquipmentResponse, MsgStatus, StateResponse, UserResponse, VenueResponse } from '@uems/uemscommlib';
 import InternalEntState = EntStateResponse.InternalEntState;
 import InternalEquipment = EquipmentResponse.InternalEquipment;
 import InternalState = StateResponse.InternalState;
 import InternalUser = UserResponse.InternalUser;
 import InternalVenue = VenueResponse.InternalVenue;
+import ShallowInternalEquipment = EquipmentResponse.ShallowInternalEquipment;
+import ShallowInternalVenue = VenueResponse.ShallowInternalVenue;
 
 export class EntityResolver {
     private _pendingMessageIDs: {
@@ -98,8 +100,20 @@ export class EntityResolver {
     public resolveEntState = (id: string): Promise<InternalEntState> => this
         .resolve(id, EntStateGatewayInterface.ENT_STATE_READ_KEY);
 
-    public resolveEquipment = (id: string): Promise<InternalEquipment> => this
-        .resolve(id, EquipmentGatewayInterface.EQUIPMENT_READ_KEY);
+    public resolveEquipment = async (id: string): Promise<InternalEquipment> => {
+        // Load the equipment
+        const shallowEquipment: ShallowInternalEquipment = await this.resolve(
+            id,
+            EquipmentGatewayInterface.EQUIPMENT_READ_KEY,
+        );
+
+        // Then resolve the user
+        const output: InternalEquipment = shallowEquipment;
+        output.manager = await this.resolve<InternalUser>(shallowEquipment.manager, UserGatewayInterface.USER_READ_KEY);
+
+        // And return it all
+        return output;
+    };
 
     // TODO:?
     // public resolveEvent = (id: string): Promise<InternalEvent> => this
@@ -111,8 +125,17 @@ export class EntityResolver {
     public resolveUser = (id: string): Promise<InternalUser> => this
         .resolve(id, UserGatewayInterface.USER_READ_KEY);
 
-    public resolveVenue = (id: string): Promise<InternalVenue> => this
-        .resolve(id, VenueGatewayInterface.VENUE_READ_KEY);
+    public resolveVenue = async (id: string): Promise<InternalVenue> => {
+        // Load raw venue
+        const shallowVenue: ShallowInternalVenue = await this.resolve(id, VenueGatewayInterface.VENUE_READ_KEY);
+
+        // Then create an output and resolve the user
+        const output: InternalVenue = shallowVenue as unknown as InternalVenue; // Intentional need to convert the types
+        output.user = await this.resolve<InternalUser>(shallowVenue.user, UserGatewayInterface.USER_READ_KEY);
+
+        // And return the resolved entity
+        return output;
+    };
 
     private resolveGenericSet = async <X, T extends X[], V extends { id: string }>(
         type: T,
@@ -139,35 +162,9 @@ export class EntityResolver {
         });
     };
 
-    public resolveEntStateSet = async (entState: { [key: string]: any, ents?: string | InternalEntState }[]) => {
-        await this.resolveGenericSet(
-            entState, 'ents' as string, this.resolveEntState,
-        );
-    };
-
-    public resolveEquipmentSet = async (
-        equipmentType: { [key: string]: any, equipment?: string | InternalEquipment }[],
-    ) => {
-        await this.resolveGenericSet(
-            equipmentType, 'equipment' as string, this.resolveEquipment,
-        );
-    };
-
-    public resolveStateSet = async (stateType: { [key: string]: any, state?: string | InternalState }[]) => {
-        await this.resolveGenericSet(
-            stateType, 'state' as string, this.resolveState,
-        );
-    };
-
     public resolveUserSet = async (userType: { [key: string]: any, user?: string | InternalUser }[]) => {
         await this.resolveGenericSet(
             userType, 'user' as string, this.resolveUser,
-        );
-    };
-
-    public resolveVenueSet = async (venueType: { [key: string]: any, venue?: string | InternalVenue }[]) => {
-        await this.resolveGenericSet(
-            venueType, 'venue' as string, this.resolveVenue,
         );
     };
 }
