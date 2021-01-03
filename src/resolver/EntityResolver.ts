@@ -162,9 +162,4 @@ export class EntityResolver {
         });
     };
 
-    public resolveUserSet = async (userType: { [key: string]: any, user?: string | InternalUser }[]) => {
-        await this.resolveGenericSet(
-            userType, 'user' as string, this.resolveUser,
-        );
-    };
 }
