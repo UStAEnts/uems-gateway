@@ -148,22 +148,69 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
                 id: eventId,
             };
 
+            console.log(req.body.attendance, typeof (req.body.attendance));
+
+            const validate = MessageUtilities.verifyParameters(
+                req,
+                res,
+                [],
+                {
+                    name: (x) => typeof (x) === 'string' || typeof (x) === 'undefined',
+                    start: (x) => typeof (x) === 'number' || typeof (x) === 'undefined',
+                    end: (x) => typeof (x) === 'number' || typeof (x) === 'undefined',
+                    attendance: (x) => typeof (x) === 'number' || typeof (x) === 'undefined',
+                    addVenues: (x) => Array.isArray(x) || typeof (x) === 'undefined',
+                    removeVenues: (x) => Array.isArray(x) || typeof (x) === 'undefined',
+                    ents: (x) => typeof (x) === 'string' || typeof (x) === 'undefined',
+                    state: (x) => typeof (x) === 'string' || typeof (x) === 'undefined',
+                },
+            );
+
+            if (!validate) {
+                return;
+            }
+
             const {
                 name,
-                startDate,
-                endDate,
+                start,
+                end,
+                attendance,
+                addVenues,
+                removeVenues,
+                ents,
+                state,
             } = req.body;
 
             if (name !== undefined) {
                 msg.name = name.toString();
             }
 
-            if (startDate !== undefined) {
-                msg.start = startDate;
+            if (start !== undefined) {
+                msg.start = start;
             }
 
-            if (endDate !== undefined) {
-                msg.end = endDate;
+            if (end !== undefined) {
+                msg.end = end;
+            }
+
+            if (attendance !== undefined) {
+                msg.attendance = attendance;
+            }
+
+            if (addVenues !== undefined) {
+                msg.addVenues = addVenues;
+            }
+
+            if (removeVenues !== undefined) {
+                msg.removeVenues = removeVenues;
+            }
+
+            if (ents !== undefined) {
+                msg.entsID = ents;
+            }
+
+            if (state !== undefined) {
+                msg.stateID = state;
             }
 
             await send(
