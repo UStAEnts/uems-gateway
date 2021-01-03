@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { EventMessage, EventResponse, EventResponseValidator, MessageIntention } from '@uems/uemscommlib';
+import { EventMessage, EventResponse, EventResponseValidator, MessageIntention, VenueResponse } from '@uems/uemscommlib';
 import { MessageUtilities } from '../../utilities/MessageUtilities';
 import { GatewayMk2 } from '../../Gateway';
 import { EntityResolver } from '../../resolver/EntityResolver';
@@ -13,6 +13,9 @@ import UpdateEventMessage = EventMessage.UpdateEventMessage;
 import ReadEventMessage = EventMessage.ReadEventMessage;
 import CreateEventMessage = EventMessage.CreateEventMessage;
 import EventReadResponseMessage = EventResponse.EventReadResponseMessage;
+import InternalVenue = VenueResponse.InternalVenue;
+import InternalEvent = EventResponse.InternalEvent;
+import ShallowInternalEvent = EventResponse.ShallowInternalEvent;
 
 // The topic used for sending get requests to the event details microservice.
 const EVENT_DETAILS_SERVICE_TOPIC_GET: string = 'events.details.get';
@@ -72,12 +75,45 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
         ];
     }
 
-    private readonly DEPENDENCY_TRANSFORMER: GenericHandlerFunctions.Transformer<EventReadResponseMessage> = async (data) => {
-        await Promise.all([
-            this._resolver.resolveEntStateSet(data),
-            this._resolver.resolveStateSet(data),
-            this._resolver.resolveVenueSet(data),
-        ]);
+    // @ts-ignore - TODO fix the types on this somehow
+    private readonly DEPENDENCY_TRANSFORMER: GenericHandlerFunctions.Transformer<EventReadResponseMessage> = async (data: ShallowInternalEvent[]) => {
+        console.log('transforming', data);
+
+        const entries: Promise<any>[] = [];
+        for (const entry of data) {
+            // RESOLVE VENUES
+            if (entry.venues === undefined) entry.venues = [];
+
+            const resolved: InternalVenue[] = [];
+            console.log('(ENTRY)', entry, entry.venues);
+            const promises = (entry.venues.filter((e) => typeof (e) === 'string') as string[])
+                .map((id) => (async () => {
+                    const venue = await this._resolver.resolveVenue(id);
+                    resolved.push(venue);
+                })());
+
+            entries.push((async () => {
+                await Promise.all(promises);
+                (entry as InternalEvent).venues = resolved;
+            })());
+
+            // THEN RESOLVE ENTS
+            if (entry.ents) {
+                entries.push((async () => {
+                    (entry as InternalEvent).ents = await this._resolver.resolveEntState(entry.ents as string);
+                })());
+            }
+
+            // THEN RESOLVE STATE
+            if (entry.state) {
+                entries.push((async () => {
+                    (entry as InternalEvent).state = await this._resolver.resolveState(entry.state as string);
+                })());
+            }
+        }
+
+        await Promise.all(entries);
+
         return data;
     };
 
