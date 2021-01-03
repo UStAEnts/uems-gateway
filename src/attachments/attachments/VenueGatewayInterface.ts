@@ -11,13 +11,13 @@ import GatewayInterfaceActionType = GatewayMk2.GatewayInterfaceActionType;
 import VenueReadResponseMessage = VenueResponse.VenueReadResponseMessage;
 
 export class VenueGatewayInterface implements GatewayAttachmentInterface {
-    private readonly VENUE_CREATE_KEY = 'venues.create';
+    private readonly VENUE_CREATE_KEY = 'venues.details.create';
 
-    private readonly VENUE_DELETE_KEY = 'venues.delete';
+    private readonly VENUE_DELETE_KEY = 'venues.details.delete';
 
-    private readonly VENUE_UPDATE_KEY = 'venues.update';
+    private readonly VENUE_UPDATE_KEY = 'venues.details.update';
 
-    public static readonly VENUE_READ_KEY = 'venues.get';
+    public static readonly VENUE_READ_KEY = 'venues.details.get';
 
     private readonly COLOR_REGEX = /^#?([0-9A-Fa-f]{3}([0-9A-Fa-f]{3})?)$/;
 
