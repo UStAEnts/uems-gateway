@@ -91,9 +91,10 @@ function handleReadSingleResponse<T extends { result: any[] }>(
 export namespace GenericHandlerFunctions {
 
     export type Transformer<T extends { result: any[] }> = (data: T['result']) => any | Promise<any>;
+    export type SingleTransformer<T extends { result: any[] }> = (data: T['result'][number]) => any | Promise<any>;
 
     export function handleDefaultResponseFactory<T extends { result: any[] }>(
-        transformer?: (data: T['result']) => any | Promise<any>,
+        transformer?: Transformer<T>,
     ) {
         return (
             http: Response,
@@ -104,7 +105,7 @@ export namespace GenericHandlerFunctions {
     }
 
     export function handleReadSingleResponseFactory<T extends { result: any[] }>(
-        transformer?: (data: T['result'][number]) => any | Promise<any>,
+        transformer?: SingleTransformer<T>,
     ) {
         return (
             http: Response,
