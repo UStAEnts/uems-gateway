@@ -236,7 +236,7 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
                 return;
             }
 
-            outgoingMessage.event_id = req.params.id;
+            outgoingMessage.id = req.params.id;
 
             console.log(outgoingMessage);
 
@@ -253,20 +253,50 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
 
     private static createEventHandler(send: SendRequestFunction) {
         return async (request: Request, res: Response) => {
+            const validate = MessageUtilities.verifyParameters(
+                request,
+                res,
+                ['name', 'attendance', 'start', 'end', 'venue'],
+                {
+                    // Required
+                    name: (x) => typeof (x) === 'string',
+                    venue: (x) => typeof (x) === 'string',
+                    start: (x) => typeof (x) === 'number',
+                    end: (x) => typeof (x) === 'number',
+                    attendance: (x) => typeof (x) === 'number',
+
+                    // Optional
+                    state: (x) => typeof (x) === 'string',
+                    ents: (x) => typeof (x) === 'string',
+                },
+            );
+
+            if (!validate) {
+                return;
+            }
+
             const {
                 name,
-                startDate,
-                endDate,
+                start,
+                end,
+                venue,
+                state,
+                ents,
+                attendance,
             } = request.body;
+
             const msg: CreateEventMessage = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 status: 0, // 0 Code used when the status is still to be decided.
                 msg_intention: 'CREATE',
+
                 name,
-                start: startDate,
-                end: endDate,
-                venueIDs: [''], // Placeholder as venue assignment not in API yet.
-                attendance: 0, // Placeholder.
+                start,
+                end,
+                venueIDs: [venue], // Placeholder as venue assignment not in API yet.
+                attendance, // Placeholder.
+                stateID: state,
+                entsID: ents,
             };
 
             await send(
