@@ -205,7 +205,7 @@ export class VenueGatewayInterface implements GatewayAttachmentInterface {
                 VenueGatewayInterface.VENUE_READ_KEY,
                 outgoingMessage,
                 response,
-                GenericHandlerFunctions.handleReadSingleResponseFactory(this.USER_RESOLVE_TRANSFORMER),
+                GenericHandlerFunctions.handleDefaultResponseFactory(this.USER_RESOLVE_TRANSFORMER),
             );
         };
     }
