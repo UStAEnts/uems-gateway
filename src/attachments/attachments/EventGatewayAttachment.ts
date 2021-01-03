@@ -245,7 +245,10 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
                 outgoingMessage,
                 res,
                 GenericHandlerFunctions.handleReadSingleResponseFactory(
-                    this.DEPENDENCY_TRANSFORMER,
+                    async (data) => ({
+                        event: (await this.DEPENDENCY_TRANSFORMER([data]))[0],
+                        changelog: [],
+                    }),
                 ),
             );
         };
