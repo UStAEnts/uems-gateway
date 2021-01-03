@@ -21,7 +21,7 @@ export class VenueGatewayInterface implements GatewayAttachmentInterface {
 
     private readonly COLOR_REGEX = /^#?([0-9A-Fa-f]{3}([0-9A-Fa-f]{3})?)$/;
 
-    private resolver: EntityResolver | undefined;
+    private resolver!: EntityResolver;
 
     public generateInterfaces(sendRequest: SendRequestFunction, resolver: EntityResolver): GatewayInterfaceActionType[] {
         this.resolver = resolver;
@@ -62,7 +62,12 @@ export class VenueGatewayInterface implements GatewayAttachmentInterface {
 
     private readonly USER_RESOLVE_TRANSFORMER: GenericHandlerFunctions.Transformer<VenueReadResponseMessage> = async (data) => {
         if (this.resolver === undefined) return data;
-        await this.resolver.resolveUserSet(data);
+        await Promise.all(
+            data.map((entry) => (async () => {
+                // Messing with types here
+                entry.user = await this.resolver?.resolveUser(entry.user as unknown as string);
+            })()),
+        );
         return data;
     };
 
@@ -90,7 +95,9 @@ export class VenueGatewayInterface implements GatewayAttachmentInterface {
                 VenueGatewayInterface.VENUE_READ_KEY,
                 outgoingMessage,
                 response,
-                GenericHandlerFunctions.handleReadSingleResponseFactory(this.USER_RESOLVE_TRANSFORMER),
+                GenericHandlerFunctions.handleReadSingleResponseFactory(
+                    async (data) => (await this.USER_RESOLVE_TRANSFORMER([data]))[0],
+                ),
             );
         };
     }
