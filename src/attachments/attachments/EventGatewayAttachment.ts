@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { EventMessage, EventResponse, EventResponseValidator, MessageIntention, VenueResponse } from '@uems/uemscommlib';
+import { CommentMessage, CommentResponse, EventMessage, EventResponse, EventResponseValidator, MessageIntention, VenueResponse } from '@uems/uemscommlib';
 import { MessageUtilities } from '../../utilities/MessageUtilities';
 import { GatewayMk2 } from '../../Gateway';
 import { EntityResolver } from '../../resolver/EntityResolver';
@@ -16,6 +16,10 @@ import EventReadResponseMessage = EventResponse.EventReadResponseMessage;
 import InternalVenue = VenueResponse.InternalVenue;
 import InternalEvent = EventResponse.InternalEvent;
 import ShallowInternalEvent = EventResponse.ShallowInternalEvent;
+import Transformer = GenericHandlerFunctions.Transformer;
+import CommentReadResponseMessage = CommentResponse.CommentReadResponseMessage;
+import ReadCommentMessage = CommentMessage.ReadCommentMessage;
+import CreateCommentMessage = CommentMessage.CreateCommentMessage;
 
 // The topic used for sending get requests to the event details microservice.
 const EVENT_DETAILS_SERVICE_TOPIC_GET: string = 'events.details.get';
@@ -42,6 +46,7 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
         this._resolver = resolver;
 
         return [
+            // EVENTS ONLY
             {
                 action: 'post',
                 path: '/events',
@@ -72,20 +77,47 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
                 handle: EventGatewayAttachment.deleteEventHandler(send),
                 additionalValidator: validator,
             },
+            // EVENT <--> STATE LINK
             {
                 action: 'get',
                 path: '/states/:id/events',
                 handle: this.getEventsByState(send),
                 additionalValidator: validator,
             },
+            // EVENT <--> VENUE LINK
             {
                 action: 'get',
                 path: '/venues/:id/events',
                 handle: this.getEventsByVenue(send),
                 additionalValidator: validator,
             },
+            // EVENT COMMENTS
+            {
+                action: 'get',
+                path: '/events/:id/comments',
+                handle: this.getCommentsForEvent(send),
+                additionalValidator: validator,
+            },
+            {
+                action: 'post',
+                path: '/events/:id/comments',
+                handle: this.postCommentsForEvent(send),
+            },
         ];
     }
+
+    private readonly RESOLVE_COMMENT: Transformer<CommentReadResponseMessage> = async (data) => {
+        await Promise.all(data.map((async (e) => {
+            e.poster = await this._resolver.resolveUser(e.poster as unknown as string);
+        })));
+
+        // Once these are processed we want to strip out any asset stuff as that's not important
+        const remove = ['assetType', 'assetID'];
+        // @ts-ignore intentionally messing with things, need a better type system
+        data.forEach((e) => remove.forEach((a) => delete e[a]));
+
+        return data;
+    };
 
     // @ts-ignore - TODO fix the types on this somehow
     private readonly DEPENDENCY_TRANSFORMER: GenericHandlerFunctions.Transformer<EventReadResponseMessage> = async (data: ShallowInternalEvent[]) => {
@@ -138,6 +170,7 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
                 status: 0,
                 msg_intention: 'DELETE',
                 id: eventId,
+                userID: req.uemsJWT.userID,
             };
 
             await send(
@@ -158,9 +191,8 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
                 status: 0,
                 msg_intention: 'UPDATE',
                 id: eventId,
+                userID: req.uemsJWT.userID,
             };
-
-            console.log(req.body.attendance, typeof (req.body.attendance));
 
             const validate = MessageUtilities.verifyParameters(
                 req,
@@ -241,6 +273,7 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
             msg_id: MessageUtilities.generateMessageIdentifier(),
             status: 0,
             msg_intention: 'READ',
+            userID: req.uemsJWT.userID,
         };
 
         if (req.query.name !== undefined) {
@@ -315,10 +348,11 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
 
     private getEventHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
-            const outgoingMessage: any = {
+            const outgoingMessage: ReadEventMessage = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
-                msg_intention: MessageIntention.READ,
+                msg_intention: 'READ',
                 status: 0,
+                userID: req.uemsJWT.userID,
             };
 
             if (!MessageUtilities.has(req.params, 'id')) {
@@ -332,8 +366,6 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
             }
 
             outgoingMessage.id = req.params.id;
-
-            console.log(outgoingMessage);
 
             await send(
                 EVENT_DETAILS_SERVICE_TOPIC_GET,
@@ -387,6 +419,7 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 status: 0, // 0 Code used when the status is still to be decided.
                 msg_intention: 'CREATE',
+                userID: request.uemsJWT.userID,
 
                 name,
                 start,
@@ -413,6 +446,7 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
             msg_id: MessageUtilities.generateMessageIdentifier(),
             status: 0,
             msg_intention: 'READ',
+            userID: req.uemsJWT.userID,
         };
 
         if (!MessageUtilities.has(req.params, 'id')) {
@@ -444,6 +478,7 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
             msg_id: MessageUtilities.generateMessageIdentifier(),
             status: 0,
             msg_intention: 'READ',
+            userID: req.uemsJWT.userID,
         };
 
         if (!MessageUtilities.has(req.params, 'id')) {
@@ -467,5 +502,86 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
             ),
         );
     };
+
+    private getCommentsForEvent = (send: SendRequestFunction) => async (req: Request, res: Response) => {
+        // TODO add failures
+
+        const msg: ReadCommentMessage = {
+            msg_id: MessageUtilities.generateMessageIdentifier(),
+            status: 0,
+            msg_intention: 'READ',
+            userID: req.uemsJWT.userID,
+        };
+
+        if (!MessageUtilities.has(req.params, 'id')) {
+            res
+                .status(constants.HTTP_STATUS_BAD_REQUEST)
+                .json(MessageUtilities.wrapInFailure({
+                    message: 'missing parameter id',
+                    code: 'BAD_REQUEST_MISSING_PARAM',
+                }));
+            return;
+        }
+
+        msg.assetType = 'event';
+        msg.assetID = req.params.id;
+
+        await send(
+            'events.comment.get',
+            msg,
+            res,
+            GenericHandlerFunctions.handleDefaultResponseFactory(
+                this.RESOLVE_COMMENT,
+            ),
+        );
+    };
+
+    private postCommentsForEvent(send: SendRequestFunction) {
+        return async (request: Request, res: Response) => {
+            const validate = MessageUtilities.verifyParameters(
+                request,
+                res,
+                ['body'],
+                {
+                    // Required
+                    category: (x) => typeof (x) === 'string',
+                    requiresAttention: (x) => typeof (x) === 'string',
+                    body: (x) => typeof (x) === 'string',
+                },
+            );
+
+            if (!validate) {
+                return;
+            }
+
+            const {
+                category,
+                requiresAttention,
+                body,
+            } = request.body;
+
+            const msg: CreateCommentMessage = {
+                msg_id: MessageUtilities.generateMessageIdentifier(),
+                status: 0, // 0 Code used when the status is still to be decided.
+                msg_intention: 'CREATE',
+                userID: request.uemsJWT.userID,
+
+                category,
+                requiresAttention,
+                body,
+
+                assetID: request.params.id,
+                assetType: 'event',
+                posterID: '5febba29be771bff36e059dd', // TODO needs swapping for actual info
+            };
+
+            await send(
+                'events.comment.create',
+                msg,
+                res,
+                GenericHandlerFunctions.handleDefaultResponseFactory(),
+            );
+        };
+    }
 
 }

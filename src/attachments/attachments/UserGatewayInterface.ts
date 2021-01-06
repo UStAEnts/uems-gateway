@@ -2,10 +2,14 @@ import { GatewayMk2 } from '../../Gateway';
 import { Request, Response } from 'express';
 import { MessageUtilities } from '../../utilities/MessageUtilities';
 import { constants } from 'http2';
-import { MessageIntention, UserResponseValidator } from '@uems/uemscommlib';
+import { MessageIntention, UserMessage, UserResponseValidator } from '@uems/uemscommlib';
 import { GenericHandlerFunctions } from '../GenericHandlerFunctions';
 import GatewayAttachmentInterface = GatewayMk2.GatewayAttachmentInterface;
 import SendRequestFunction = GatewayMk2.SendRequestFunction;
+import ReadUserMessage = UserMessage.ReadUserMessage;
+import CreateUserMessage = UserMessage.CreateUserMessage;
+import DeleteUserMessage = UserMessage.DeleteUserMessage;
+import UpdateUserMessage = UserMessage.UpdateUserMessage;
 
 export class UserGatewayInterface implements GatewayAttachmentInterface {
     private readonly USER_CREATE_KEY = 'user.details.create';
@@ -57,10 +61,11 @@ export class UserGatewayInterface implements GatewayAttachmentInterface {
 
     private queryEventsHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
-            const outgoing: any = {
+            const outgoing: ReadUserMessage = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
-                msg_intention: MessageIntention.READ,
+                msg_intention: 'READ',
                 status: 0,
+                userID: req.uemsJWT.userID,
             };
 
             const parameters = req.query;
@@ -75,6 +80,7 @@ export class UserGatewayInterface implements GatewayAttachmentInterface {
 
             validProperties.forEach((key) => {
                 if (MessageUtilities.has(parameters, key)) {
+                    // @ts-ignore
                     outgoing[key] = parameters[key];
                 }
             });
@@ -90,12 +96,6 @@ export class UserGatewayInterface implements GatewayAttachmentInterface {
 
     private getEventHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
-            const outgoingMessage: any = {
-                msg_id: MessageUtilities.generateMessageIdentifier(),
-                msg_intention: MessageIntention.READ,
-                status: 0,
-            };
-
             if (!MessageUtilities.has(req.params, 'id')) {
                 res
                     .status(constants.HTTP_STATUS_BAD_REQUEST)
@@ -106,7 +106,13 @@ export class UserGatewayInterface implements GatewayAttachmentInterface {
                 return;
             }
 
-            outgoingMessage.id = req.params.id;
+            const outgoingMessage: ReadUserMessage = {
+                msg_id: MessageUtilities.generateMessageIdentifier(),
+                msg_intention: 'READ',
+                status: 0,
+                userID: req.uemsJWT.userID,
+            };
+
             await send(
                 UserGatewayInterface.USER_READ_KEY,
                 outgoingMessage,
@@ -118,11 +124,6 @@ export class UserGatewayInterface implements GatewayAttachmentInterface {
 
     private createEventHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
-            const outgoingMessage: any = {
-                msg_id: MessageUtilities.generateMessageIdentifier(),
-                msg_intention: MessageIntention.CREATE,
-                status: 0,
-            };
 
             const validate = MessageUtilities.verifyParameters(
                 req,
@@ -133,6 +134,7 @@ export class UserGatewayInterface implements GatewayAttachmentInterface {
                     username: (x) => typeof (x) === 'string',
                     email: (x) => typeof (x) === 'string',
                     hash: (x) => typeof (x) === 'string',
+                    profile: (x) => typeof (x) === 'string',
                 },
             );
 
@@ -140,11 +142,17 @@ export class UserGatewayInterface implements GatewayAttachmentInterface {
                 return;
             }
 
-            // If all are validated, then copy them over
-            outgoingMessage.name = req.body.name;
-            outgoingMessage.username = req.body.username;
-            outgoingMessage.email = req.body.email;
-            outgoingMessage.hash = req.body.hash;
+            const outgoingMessage: CreateUserMessage = {
+                msg_id: MessageUtilities.generateMessageIdentifier(),
+                msg_intention: 'CREATE',
+                status: 0,
+                userID: req.uemsJWT.userID,
+                name: req.body.name,
+                username: req.body.username,
+                email: req.body.email,
+                hash: req.body.hash,
+            };
+
             if (req.body.profile) outgoingMessage.profile = req.body.profile;
 
             await send(
@@ -158,12 +166,6 @@ export class UserGatewayInterface implements GatewayAttachmentInterface {
 
     private deleteEventHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
-            const outgoingMessage: any = {
-                msg_id: MessageUtilities.generateMessageIdentifier(),
-                msg_intention: MessageIntention.DELETE,
-                status: 0,
-            };
-
             if (!MessageUtilities.has(req.params, 'id')) {
                 res
                     .status(constants.HTTP_STATUS_BAD_REQUEST)
@@ -174,7 +176,14 @@ export class UserGatewayInterface implements GatewayAttachmentInterface {
                 return;
             }
 
-            outgoingMessage.id = req.params.id;
+            const outgoingMessage: DeleteUserMessage = {
+                msg_id: MessageUtilities.generateMessageIdentifier(),
+                msg_intention: 'DELETE',
+                status: 0,
+                userID: req.uemsJWT.userID,
+                id: req.params.id,
+            };
+
             await send(
                 this.USER_DELETE_KEY,
                 outgoingMessage,
@@ -186,12 +195,6 @@ export class UserGatewayInterface implements GatewayAttachmentInterface {
 
     private updateEventHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
-            const outgoing: any = {
-                msg_id: MessageUtilities.generateMessageIdentifier(),
-                msg_intention: MessageIntention.UPDATE,
-                status: 0,
-            };
-
             if (!MessageUtilities.has(req.params, 'id')) {
                 res
                     .status(constants.HTTP_STATUS_BAD_REQUEST)
@@ -202,7 +205,13 @@ export class UserGatewayInterface implements GatewayAttachmentInterface {
                 return;
             }
 
-            outgoing.id = req.params.id;
+            const outgoing: UpdateUserMessage = {
+                msg_id: MessageUtilities.generateMessageIdentifier(),
+                msg_intention: 'UPDATE',
+                status: 0,
+                userID: req.uemsJWT.userID,
+                id: req.params.id,
+            };
 
             const parameters = req.body;
             const validProperties: string[] = [
@@ -215,12 +224,10 @@ export class UserGatewayInterface implements GatewayAttachmentInterface {
 
             validProperties.forEach((key) => {
                 if (MessageUtilities.has(parameters, key)) {
+                    // @ts-ignore
                     outgoing[key] = parameters[key];
                 }
             });
-
-            console.log(parameters);
-            console.log(outgoing);
 
             await send(
                 this.USER_UPDATE_KEY,

@@ -2,11 +2,15 @@ import { GatewayMk2 } from '../../Gateway';
 import { Request, Response } from 'express';
 import { MessageUtilities } from '../../utilities/MessageUtilities';
 import { constants } from 'http2';
-import { EntStateMessage, MessageIntention, StateResponseValidator } from '@uems/uemscommlib';
+import { EntStateMessage, MessageIntention, StateMessage, StateResponseValidator } from '@uems/uemscommlib';
 import { GenericHandlerFunctions } from '../GenericHandlerFunctions';
 import GatewayAttachmentInterface = GatewayMk2.GatewayAttachmentInterface;
 import SendRequestFunction = GatewayMk2.SendRequestFunction;
 import ReadEntStateMessage = EntStateMessage.ReadEntStateMessage;
+import ReadStateMessage = StateMessage.ReadStateMessage;
+import CreateStateMessage = StateMessage.CreateStateMessage;
+import DeleteStateMessage = StateMessage.DeleteStateMessage;
+import UpdateStateMessage = StateMessage.UpdateStateMessage;
 
 export class StateGatewayInterface implements GatewayAttachmentInterface {
     private readonly STATE_CREATE_KEY = 'states.details.create';
@@ -60,10 +64,11 @@ export class StateGatewayInterface implements GatewayAttachmentInterface {
 
     private queryEventsHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
-            const outgoing: any = {
+            const outgoing: ReadStateMessage = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
-                msg_intention: MessageIntention.READ,
+                msg_intention: 'READ',
                 status: 0,
+                userID: req.uemsJWT.userID,
             };
 
             const parameters = req.query;
@@ -76,6 +81,7 @@ export class StateGatewayInterface implements GatewayAttachmentInterface {
 
             validProperties.forEach((key) => {
                 if (MessageUtilities.has(parameters, key)) {
+                    // @ts-ignore
                     outgoing[key] = parameters[key];
                 }
             });
@@ -91,11 +97,6 @@ export class StateGatewayInterface implements GatewayAttachmentInterface {
 
     private getEventHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
-            const outgoingMessage: any = {
-                msg_id: MessageUtilities.generateMessageIdentifier(),
-                msg_intention: MessageIntention.READ,
-                status: 0,
-            };
 
             if (!MessageUtilities.has(req.params, 'id')) {
                 res
@@ -106,8 +107,14 @@ export class StateGatewayInterface implements GatewayAttachmentInterface {
                     }));
                 return;
             }
+            const outgoingMessage: ReadStateMessage = {
+                msg_id: MessageUtilities.generateMessageIdentifier(),
+                msg_intention: 'READ',
+                status: 0,
+                userID: req.uemsJWT.userID,
+                id: req.params.id,
+            };
 
-            outgoingMessage.id = req.params.id;
             await send(
                 StateGatewayInterface.STATE_READ_KEY,
                 outgoingMessage,
@@ -119,12 +126,6 @@ export class StateGatewayInterface implements GatewayAttachmentInterface {
 
     private createEventHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
-            const outgoingMessage: any = {
-                msg_id: MessageUtilities.generateMessageIdentifier(),
-                msg_intention: MessageIntention.CREATE,
-                status: 0,
-            };
-
             const validate = MessageUtilities.verifyParameters(
                 req,
                 res,
@@ -140,10 +141,15 @@ export class StateGatewayInterface implements GatewayAttachmentInterface {
                 return;
             }
 
-            // If all are validated, then copy them over
-            outgoingMessage.name = req.body.name;
-            outgoingMessage.color = req.body.color;
-            outgoingMessage.icon = req.body.icon;
+            const outgoingMessage: CreateStateMessage = {
+                msg_id: MessageUtilities.generateMessageIdentifier(),
+                msg_intention: 'CREATE',
+                status: 0,
+                userID: req.uemsJWT.userID,
+                color: req.body.color,
+                icon: req.body.icon,
+                name: req.body.name,
+            };
 
             await send(
                 this.STATE_CREATE_KEY,
@@ -156,12 +162,6 @@ export class StateGatewayInterface implements GatewayAttachmentInterface {
 
     private deleteEventHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
-            const outgoingMessage: any = {
-                msg_id: MessageUtilities.generateMessageIdentifier(),
-                msg_intention: MessageIntention.DELETE,
-                status: 0,
-            };
-
             if (!MessageUtilities.has(req.params, 'id')) {
                 res
                     .status(constants.HTTP_STATUS_BAD_REQUEST)
@@ -172,7 +172,14 @@ export class StateGatewayInterface implements GatewayAttachmentInterface {
                 return;
             }
 
-            outgoingMessage.id = req.params.id;
+            const outgoingMessage: DeleteStateMessage = {
+                msg_id: MessageUtilities.generateMessageIdentifier(),
+                msg_intention: 'DELETE',
+                status: 0,
+                userID: req.uemsJWT.userID,
+                id: req.params.id,
+            };
+
             await send(
                 this.STATE_DELETE_KEY,
                 outgoingMessage,
@@ -184,12 +191,6 @@ export class StateGatewayInterface implements GatewayAttachmentInterface {
 
     private updateEventHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
-            const outgoing: any = {
-                msg_id: MessageUtilities.generateMessageIdentifier(),
-                msg_intention: MessageIntention.UPDATE,
-                status: 0,
-            };
-
             if (!MessageUtilities.has(req.params, 'id')) {
                 res
                     .status(constants.HTTP_STATUS_BAD_REQUEST)
@@ -200,7 +201,13 @@ export class StateGatewayInterface implements GatewayAttachmentInterface {
                 return;
             }
 
-            outgoing.id = req.params.id;
+            const outgoing: UpdateStateMessage = {
+                msg_id: MessageUtilities.generateMessageIdentifier(),
+                msg_intention: 'UPDATE',
+                status: 0,
+                userID: req.uemsJWT.userID,
+                id: req.params.id,
+            };
 
             const parameters = req.body;
             const validProperties: (keyof ReadEntStateMessage)[] = [
@@ -211,12 +218,10 @@ export class StateGatewayInterface implements GatewayAttachmentInterface {
 
             validProperties.forEach((key) => {
                 if (MessageUtilities.has(parameters, key)) {
+                    // @ts-ignore
                     outgoing[key] = parameters[key];
                 }
             });
-
-            console.log(parameters);
-            console.log(outgoing);
 
             await send(
                 this.STATE_UPDATE_KEY,

@@ -10,6 +10,10 @@ import TopicReadSchema = TopicMessage.ReadTopicMessage;
 import MinimalMessageType = GatewayMk2.MinimalMessageType;
 import TopicResponseMessage = TopicResponse.TopicResponseMessage;
 import { GenericHandlerFunctions } from "../GenericHandlerFunctions";
+import ReadTopicMessage = TopicMessage.ReadTopicMessage;
+import CreateTopicMessage = TopicMessage.CreateTopicMessage;
+import DeleteTopicMessage = TopicMessage.DeleteTopicMessage;
+import UpdateTopicMessage = TopicMessage.UpdateTopicMessage;
 
 export class TopicGatewayInterface implements GatewayAttachmentInterface {
     private readonly TOPIC_CREATE_KEY = 'topics.details.create';
@@ -63,10 +67,11 @@ export class TopicGatewayInterface implements GatewayAttachmentInterface {
 
     private queryEventsHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
-            const outgoing: any = {
+            const outgoing: ReadTopicMessage = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 msg_intention: 'READ',
                 status: 0,
+                userID: req.uemsJWT.userID,
             };
 
             const parameters = req.query;
@@ -80,6 +85,7 @@ export class TopicGatewayInterface implements GatewayAttachmentInterface {
 
             validProperties.forEach((key) => {
                 if (MessageUtilities.has(parameters, key)) {
+                    // @ts-ignore
                     outgoing[key] = parameters[key];
                 }
             });
@@ -95,12 +101,6 @@ export class TopicGatewayInterface implements GatewayAttachmentInterface {
 
     private getEventHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
-            const outgoingMessage: any = {
-                msg_id: MessageUtilities.generateMessageIdentifier(),
-                msg_intention: 'READ',
-                status: 0,
-            };
-
             if (!MessageUtilities.has(req.params, 'id')) {
                 res
                     .status(constants.HTTP_STATUS_BAD_REQUEST)
@@ -111,7 +111,13 @@ export class TopicGatewayInterface implements GatewayAttachmentInterface {
                 return;
             }
 
-            outgoingMessage.id = req.params.id;
+            const outgoingMessage: ReadTopicMessage = {
+                msg_id: MessageUtilities.generateMessageIdentifier(),
+                msg_intention: 'READ',
+                status: 0,
+                userID: req.uemsJWT.userID,
+            };
+
             await send(
                 TopicGatewayInterface.TOPIC_READ_KEY,
                 outgoingMessage,
@@ -123,12 +129,6 @@ export class TopicGatewayInterface implements GatewayAttachmentInterface {
 
     private createEventHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
-            const outgoingMessage: any = {
-                msg_id: MessageUtilities.generateMessageIdentifier(),
-                msg_intention: 'CREATE',
-                status: 0,
-            };
-
             const validate = MessageUtilities.verifyParameters(
                 req,
                 res,
@@ -145,11 +145,16 @@ export class TopicGatewayInterface implements GatewayAttachmentInterface {
                 return;
             }
 
-            // If all are validated, then copy them over
-            outgoingMessage.name = req.body.name;
-            outgoingMessage.color = req.body.color;
-            outgoingMessage.icon = req.body.icon;
-            outgoingMessage.description = req.body.description;
+            const outgoingMessage: CreateTopicMessage = {
+                msg_id: MessageUtilities.generateMessageIdentifier(),
+                msg_intention: 'CREATE',
+                status: 0,
+                userID: req.uemsJWT.userID,
+                name: req.body.name,
+                color: req.body.color,
+                icon: req.body.icon,
+                description: req.body.description,
+            };
 
             await send(
                 this.TOPIC_CREATE_KEY,
@@ -162,12 +167,6 @@ export class TopicGatewayInterface implements GatewayAttachmentInterface {
 
     private deleteEventHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
-            const outgoingMessage: any = {
-                msg_id: MessageUtilities.generateMessageIdentifier(),
-                msg_intention: 'DELETE',
-                status: 0,
-            };
-
             if (!MessageUtilities.has(req.params, 'id')) {
                 res
                     .status(constants.HTTP_STATUS_BAD_REQUEST)
@@ -178,7 +177,14 @@ export class TopicGatewayInterface implements GatewayAttachmentInterface {
                 return;
             }
 
-            outgoingMessage.id = req.params.id;
+            const outgoingMessage: DeleteTopicMessage = {
+                msg_id: MessageUtilities.generateMessageIdentifier(),
+                msg_intention: 'DELETE',
+                status: 0,
+                userID: req.uemsJWT.userID,
+                id: req.params.id,
+            };
+
             await send(
                 this.TOPIC_DELETE_KEY,
                 outgoingMessage,
@@ -190,12 +196,6 @@ export class TopicGatewayInterface implements GatewayAttachmentInterface {
 
     private updateEventHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
-            const outgoing: any = {
-                msg_id: MessageUtilities.generateMessageIdentifier(),
-                msg_intention: 'UPDATE',
-                status: 0,
-            };
-
             if (!MessageUtilities.has(req.params, 'id')) {
                 res
                     .status(constants.HTTP_STATUS_BAD_REQUEST)
@@ -206,7 +206,13 @@ export class TopicGatewayInterface implements GatewayAttachmentInterface {
                 return;
             }
 
-            outgoing.id = req.params.id;
+            const outgoing: UpdateTopicMessage = {
+                msg_id: MessageUtilities.generateMessageIdentifier(),
+                msg_intention: 'UPDATE',
+                status: 0,
+                userID: req.uemsJWT.userID,
+                id: req.params.id,
+            };
 
             const parameters = req.body;
             const validProperties: (keyof TopicReadSchema)[] = [
@@ -218,12 +224,10 @@ export class TopicGatewayInterface implements GatewayAttachmentInterface {
 
             validProperties.forEach((key) => {
                 if (MessageUtilities.has(parameters, key)) {
+                    // @ts-ignore
                     outgoing[key] = parameters[key];
                 }
             });
-
-            console.log(parameters);
-            console.log(outgoing);
 
             await send(
                 this.TOPIC_UPDATE_KEY,

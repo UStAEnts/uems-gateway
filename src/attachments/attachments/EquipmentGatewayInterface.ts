@@ -2,10 +2,14 @@ import { GatewayMk2 } from '../../Gateway';
 import { Request, Response } from 'express';
 import { MessageUtilities } from '../../utilities/MessageUtilities';
 import { constants } from 'http2';
-import { EquipmentResponseValidator, MessageIntention } from '@uems/uemscommlib';
+import { EquipmentMessage, EquipmentResponseValidator, MessageIntention } from '@uems/uemscommlib';
 import { GenericHandlerFunctions } from '../GenericHandlerFunctions';
 import GatewayAttachmentInterface = GatewayMk2.GatewayAttachmentInterface;
 import SendRequestFunction = GatewayMk2.SendRequestFunction;
+import ReadEquipmentMessage = EquipmentMessage.ReadEquipmentMessage;
+import CreateEquipmentMessage = EquipmentMessage.CreateEquipmentMessage;
+import DeleteEquipmentMessage = EquipmentMessage.DeleteEquipmentMessage;
+import UpdateEquipmentMessage = EquipmentMessage.UpdateEquipmentMessage;
 
 export class EquipmentGatewayInterface implements GatewayAttachmentInterface {
     private readonly EQUIPMENT_CREATE_KEY = 'equipment.details.create';
@@ -57,10 +61,11 @@ export class EquipmentGatewayInterface implements GatewayAttachmentInterface {
 
     private queryEventsHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
-            const outgoing: any = {
+            const outgoing: ReadEquipmentMessage = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
-                msg_intention: MessageIntention.READ,
+                msg_intention: 'READ',
                 status: 0,
+                userID: req.uemsJWT.userID,
             };
 
             const parameters = req.query;
@@ -81,6 +86,7 @@ export class EquipmentGatewayInterface implements GatewayAttachmentInterface {
 
             validProperties.forEach((key) => {
                 if (MessageUtilities.has(parameters, key)) {
+                    // @ts-ignore
                     outgoing[key] = parameters[key];
                 }
             });
@@ -96,10 +102,11 @@ export class EquipmentGatewayInterface implements GatewayAttachmentInterface {
 
     private getEventHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
-            const outgoingMessage: any = {
+            const outgoingMessage: ReadEquipmentMessage = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
-                msg_intention: MessageIntention.READ,
+                msg_intention: 'READ',
                 status: 0,
+                userID: req.uemsJWT.userID,
             };
 
             if (!MessageUtilities.has(req.params, 'id')) {
@@ -124,12 +131,6 @@ export class EquipmentGatewayInterface implements GatewayAttachmentInterface {
 
     private createEventHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
-            const outgoingMessage: any = {
-                msg_id: MessageUtilities.generateMessageIdentifier(),
-                msg_intention: MessageIntention.CREATE,
-                status: 0,
-            };
-
             const validate = MessageUtilities.verifyParameters(
                 req,
                 res,
@@ -155,19 +156,27 @@ export class EquipmentGatewayInterface implements GatewayAttachmentInterface {
             }
 
             const copy = [
-                'name',
-                'manufacturer',
-                'model',
-                'amount',
-                'locationID',
-                'category',
                 'assetID',
                 'miscIdentifier',
                 'locationSpecifier',
             ];
 
+            const outgoingMessage: CreateEquipmentMessage = {
+                msg_id: MessageUtilities.generateMessageIdentifier(),
+                msg_intention: 'CREATE',
+                status: 0,
+                userID: req.uemsJWT.userID,
+                name: req.body.name,
+                manufacturer: req.body.manufacturer,
+                model: req.body.model,
+                amount: req.body.amount,
+                locationID: req.body.locationID,
+                category: req.body.category,
+            };
+
             for (const key of copy) {
                 if (req.body[key]) {
+                    // @ts-ignore
                     outgoingMessage[key] = req.body[key];
                 }
             }
@@ -183,11 +192,6 @@ export class EquipmentGatewayInterface implements GatewayAttachmentInterface {
 
     private deleteEventHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
-            const outgoingMessage: any = {
-                msg_id: MessageUtilities.generateMessageIdentifier(),
-                msg_intention: MessageIntention.DELETE,
-                status: 0,
-            };
 
             if (!MessageUtilities.has(req.params, 'id')) {
                 res
@@ -199,7 +203,14 @@ export class EquipmentGatewayInterface implements GatewayAttachmentInterface {
                 return;
             }
 
-            outgoingMessage.id = req.params.id;
+            const outgoingMessage: DeleteEquipmentMessage = {
+                msg_id: MessageUtilities.generateMessageIdentifier(),
+                msg_intention: 'DELETE',
+                status: 0,
+                userID: req.uemsJWT.userID,
+                id: req.params.id,
+            };
+
             await send(
                 this.EQUIPMENT_DELETE_KEY,
                 outgoingMessage,
@@ -211,12 +222,6 @@ export class EquipmentGatewayInterface implements GatewayAttachmentInterface {
 
     private updateEventHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
-            const outgoing: any = {
-                msg_id: MessageUtilities.generateMessageIdentifier(),
-                msg_intention: MessageIntention.UPDATE,
-                status: 0,
-            };
-
             // ID is carried in the parameter not the body so have to do it this way
             if (!MessageUtilities.has(req.params, 'id')) {
                 res
@@ -228,7 +233,13 @@ export class EquipmentGatewayInterface implements GatewayAttachmentInterface {
                 return;
             }
 
-            outgoing.id = req.params.id;
+            const outgoing: UpdateEquipmentMessage = {
+                msg_id: MessageUtilities.generateMessageIdentifier(),
+                msg_intention: 'UPDATE',
+                status: 0,
+                userID: req.uemsJWT.userID,
+                id: req.params.id,
+            };
 
             // Then validate the body parameters and copy them over
             const validate = MessageUtilities.verifyParameters(
@@ -269,6 +280,7 @@ export class EquipmentGatewayInterface implements GatewayAttachmentInterface {
 
             for (const key of copy) {
                 if (req.body[key]) {
+                    // @ts-ignore
                     outgoing[key] = req.body[key];
                 }
             }

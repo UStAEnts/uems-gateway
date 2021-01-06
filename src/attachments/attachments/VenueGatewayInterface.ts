@@ -2,13 +2,17 @@ import { Request, Response } from 'express';
 import { GatewayMk2 } from '../../Gateway';
 import { MessageUtilities } from '../../utilities/MessageUtilities';
 import { constants } from 'http2';
-import { MessageIntention, VenueResponse, VenueResponseValidator } from '@uems/uemscommlib';
+import { MessageIntention, VenueMessage, VenueResponse, VenueResponseValidator } from '@uems/uemscommlib';
 import { EntityResolver } from '../../resolver/EntityResolver';
 import { GenericHandlerFunctions } from '../GenericHandlerFunctions';
 import SendRequestFunction = GatewayMk2.SendRequestFunction;
 import GatewayAttachmentInterface = GatewayMk2.GatewayAttachmentInterface;
 import GatewayInterfaceActionType = GatewayMk2.GatewayInterfaceActionType;
 import VenueReadResponseMessage = VenueResponse.VenueReadResponseMessage;
+import ReadVenueMessage = VenueMessage.ReadVenueMessage;
+import DeleteVenueMessage = VenueMessage.DeleteVenueMessage;
+import CreateVenueMessage = VenueMessage.CreateVenueMessage;
+import UpdateVenueMessage = VenueMessage.UpdateVenueMessage;
 
 export class VenueGatewayInterface implements GatewayAttachmentInterface {
     private readonly VENUE_CREATE_KEY = 'venues.details.create';
@@ -73,12 +77,6 @@ export class VenueGatewayInterface implements GatewayAttachmentInterface {
 
     private handleGetRequest(sendRequest: SendRequestFunction) {
         return (request: Request, response: Response) => {
-            const outgoingMessage: any = {
-                msg_id: MessageUtilities.generateMessageIdentifier(),
-                msg_intention: MessageIntention.READ,
-                status: 0,
-            };
-
             if (!MessageUtilities.has(request.params, 'id')) {
                 response
                     .status(constants.HTTP_STATUS_BAD_REQUEST)
@@ -89,7 +87,12 @@ export class VenueGatewayInterface implements GatewayAttachmentInterface {
                 return;
             }
 
-            outgoingMessage.id = request.params.id;
+            const outgoingMessage: ReadVenueMessage = {
+                msg_id: MessageUtilities.generateMessageIdentifier(),
+                msg_intention: 'READ',
+                status: 0,
+                userID: request.uemsJWT.userID,
+            };
 
             sendRequest(
                 VenueGatewayInterface.VENUE_READ_KEY,
@@ -104,12 +107,6 @@ export class VenueGatewayInterface implements GatewayAttachmentInterface {
 
     private handleDeleteRequest(sendRequest: SendRequestFunction) {
         return (request: Request, response: Response) => {
-            const outgoingMessage: any = {
-                msg_id: MessageUtilities.generateMessageIdentifier(),
-                msg_intention: MessageIntention.DELETE,
-                status: 0,
-            };
-
             if (!MessageUtilities.has(request.params, 'id')) {
                 response
                     .status(constants.HTTP_STATUS_BAD_REQUEST)
@@ -120,7 +117,13 @@ export class VenueGatewayInterface implements GatewayAttachmentInterface {
                 return;
             }
 
-            outgoingMessage.id = request.params.id;
+            const outgoingMessage: DeleteVenueMessage = {
+                msg_id: MessageUtilities.generateMessageIdentifier(),
+                msg_intention: 'DELETE',
+                status: 0,
+                userID: request.uemsJWT.userID,
+                id: request.params.id,
+            };
 
             sendRequest(
                 this.VENUE_DELETE_KEY,
@@ -133,12 +136,6 @@ export class VenueGatewayInterface implements GatewayAttachmentInterface {
 
     private handleCreateRequest(sendRequest: SendRequestFunction) {
         return (request: Request, response: Response) => {
-            const outgoingMessage: any = {
-                msg_id: MessageUtilities.generateMessageIdentifier(),
-                msg_intention: MessageIntention.CREATE,
-                status: 0,
-            };
-
             const validate = MessageUtilities.verifyParameters(
                 request,
                 response,
@@ -154,22 +151,16 @@ export class VenueGatewayInterface implements GatewayAttachmentInterface {
                 return;
             }
 
-            const parameters = request.body;
-            const validProperties = [
-                'name',
-                'capacity',
-                'color',
-            ];
-
-            // Copy any of the search properties into the request if they are present
-            // There's no real point in validating this here because it will be done
-            // at the venue microservice and that should have less load than the gateway
-            // This may need to be reconsidered in the future
-            validProperties.forEach((key) => {
-                if (MessageUtilities.has(parameters, key)) {
-                    outgoingMessage[key] = parameters[key];
-                }
-            });
+            const outgoingMessage: CreateVenueMessage = {
+                msg_id: MessageUtilities.generateMessageIdentifier(),
+                msg_intention: 'CREATE',
+                status: 0,
+                userID: request.uemsJWT.userID,
+                userid: request.uemsJWT.userID,
+                name: request.body.name,
+                capacity: request.body.capacity,
+                color: request.body.color,
+            };
 
             sendRequest(
                 this.VENUE_CREATE_KEY,
@@ -182,12 +173,6 @@ export class VenueGatewayInterface implements GatewayAttachmentInterface {
 
     private handleReadRequest(sendRequest: SendRequestFunction) {
         return (request: Request, response: Response) => {
-            const outgoingMessage: any = {
-                msg_id: MessageUtilities.generateMessageIdentifier(),
-                msg_intention: MessageIntention.READ,
-                status: 0,
-            };
-
             const parameters = request.query;
             const validProperties = [
                 'name',
@@ -198,12 +183,20 @@ export class VenueGatewayInterface implements GatewayAttachmentInterface {
                 'maximum_capacity',
             ];
 
+            const outgoingMessage: ReadVenueMessage = {
+                msg_id: MessageUtilities.generateMessageIdentifier(),
+                msg_intention: 'READ',
+                status: 0,
+                userID: request.uemsJWT.userID,
+            };
+
             // Copy any of the search properties into the request if they are present
             // There's no real point in validating this here because it will be done
             // at the venue microservice and that should have less load than the gateway
             // This may need to be reconsidered in the future
             validProperties.forEach((key) => {
                 if (MessageUtilities.has(parameters, key)) {
+                    // @ts-ignore
                     outgoingMessage[key] = parameters[key];
                 }
             });
@@ -219,12 +212,6 @@ export class VenueGatewayInterface implements GatewayAttachmentInterface {
 
     private handleUpdateRequest(sendRequest: SendRequestFunction) {
         return (request: Request, response: Response) => {
-            const outgoingMessage: any = {
-                msg_id: MessageUtilities.generateMessageIdentifier(),
-                msg_intention: MessageIntention.UPDATE,
-                status: 0,
-            };
-
             if (!MessageUtilities.has(request.params, 'id')) {
                 response
                     .status(constants.HTTP_STATUS_BAD_REQUEST)
@@ -235,7 +222,13 @@ export class VenueGatewayInterface implements GatewayAttachmentInterface {
                 return;
             }
 
-            outgoingMessage.id = request.params.id;
+            const outgoingMessage: UpdateVenueMessage = {
+                msg_id: MessageUtilities.generateMessageIdentifier(),
+                msg_intention: 'UPDATE',
+                status: 0,
+                userID: request.uemsJWT.userID,
+                id: request.params.id,
+            };
 
             const parameters = request.body;
             const validProperties = [
@@ -250,6 +243,7 @@ export class VenueGatewayInterface implements GatewayAttachmentInterface {
             // This may need to be reconsidered in the future
             validProperties.forEach((key) => {
                 if (MessageUtilities.has(parameters, key)) {
+                    // @ts-ignore
                     outgoingMessage[key] = parameters[key];
                 }
             });
