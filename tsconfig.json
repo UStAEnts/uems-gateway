@@ -1,6 +1,7 @@
 {
   "include": [
     "./.eslintrc.js",
+    "types",
     "src/**/*", "../uemsCommLib"
   ],
   "compilerOptions": {
@@ -21,8 +22,8 @@
     "outDir": "./build",                      /* Redirect output structure to the directory. */
     "rootDirs": [                             /* Specify the root directory of input files. Use to control the output directory structure with --outDir. */
       "./src",
-      "../uemsCommLib/" 
-    ],                       
+      "../uemsCommLib/"
+    ],
     // "composite": true,                     /* Enable project compilation */
     // "tsBuildInfoFile": "./",               /* Specify file to store incremental compilation information */
     // "removeComments": true,                /* Do not emit comments to output. */
