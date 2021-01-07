@@ -10,6 +10,8 @@ import ReadEquipmentMessage = EquipmentMessage.ReadEquipmentMessage;
 import CreateEquipmentMessage = EquipmentMessage.CreateEquipmentMessage;
 import DeleteEquipmentMessage = EquipmentMessage.DeleteEquipmentMessage;
 import UpdateEquipmentMessage = EquipmentMessage.UpdateEquipmentMessage;
+import { Resolver } from "../Resolvers";
+import { EntityResolver } from "../../resolver/EntityResolver";
 
 export class EquipmentGatewayInterface implements GatewayAttachmentInterface {
     private readonly EQUIPMENT_CREATE_KEY = 'equipment.details.create';
@@ -20,9 +22,14 @@ export class EquipmentGatewayInterface implements GatewayAttachmentInterface {
 
     public static readonly EQUIPMENT_READ_KEY = 'equipment.details.get';
 
+    private resolver?: EntityResolver;
+
     generateInterfaces(
         send: GatewayMk2.SendRequestFunction,
+        resolver: EntityResolver,
     ): GatewayMk2.GatewayInterfaceActionType[] | Promise<GatewayMk2.GatewayInterfaceActionType[]> {
+        this.resolver = resolver;
+
         const validator = new EquipmentResponseValidator();
 
         return [
@@ -95,7 +102,7 @@ export class EquipmentGatewayInterface implements GatewayAttachmentInterface {
                 EquipmentGatewayInterface.EQUIPMENT_READ_KEY,
                 outgoing,
                 res,
-                GenericHandlerFunctions.handleDefaultResponseFactory(),
+                GenericHandlerFunctions.handleDefaultResponseFactory(Resolver.resolveEquipments(this.resolver)),
             );
         };
     }
@@ -124,7 +131,7 @@ export class EquipmentGatewayInterface implements GatewayAttachmentInterface {
                 EquipmentGatewayInterface.EQUIPMENT_READ_KEY,
                 outgoingMessage,
                 res,
-                GenericHandlerFunctions.handleReadSingleResponseFactory(),
+                GenericHandlerFunctions.handleReadSingleResponseFactory(Resolver.resolveSingleEquipment(this.resolver)),
             );
         };
     }
