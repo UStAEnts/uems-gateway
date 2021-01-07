@@ -108,8 +108,14 @@ export class EntityResolver {
         );
 
         // Then resolve the user
-        const output: InternalEquipment = shallowEquipment;
-        output.manager = await this.resolve<InternalUser>(shallowEquipment.manager, UserGatewayInterface.USER_READ_KEY);
+        const output: InternalEquipment = {
+            ...shallowEquipment,
+            manager: await this.resolve<InternalUser>(shallowEquipment.manager, UserGatewayInterface.USER_READ_KEY),
+            location: await this.resolve<InternalVenue>(
+                shallowEquipment.location,
+                VenueGatewayInterface.VENUE_READ_KEY,
+            ),
+        };
 
         // And return it all
         return output;
