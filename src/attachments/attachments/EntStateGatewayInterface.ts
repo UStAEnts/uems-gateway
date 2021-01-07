@@ -31,37 +31,37 @@ export class EntStateGatewayInterface implements GatewayAttachmentInterface {
             {
                 action: 'get',
                 path: '/ents',
-                handle: this.queryEventsHandler(send),
+                handle: this.queryEntStatesHandler(send),
                 additionalValidator: validator,
             },
             {
                 action: 'post',
                 path: '/ents',
-                handle: this.createEventHandler(send),
+                handle: this.createEntStateHandler(send),
                 additionalValidator: validator,
             },
             {
                 action: 'delete',
                 path: '/ents/:id',
-                handle: this.deleteEventHandler(send),
+                handle: this.deleteEntStateHandler(send),
                 additionalValidator: validator,
             },
             {
                 action: 'get',
                 path: '/ents/:id',
-                handle: this.getEventHandler(send),
+                handle: this.getEntStateHandler(send),
                 additionalValidator: validator,
             },
             {
                 action: 'patch',
                 path: '/ents/:id',
-                handle: this.updateEventHandler(send),
+                handle: this.updateEntStateHandler(send),
                 additionalValidator: validator,
             },
         ];
     }
 
-    private queryEventsHandler(send: SendRequestFunction) {
+    private queryEntStatesHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
             const outgoing: ReadEntStateMessage = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
@@ -94,7 +94,7 @@ export class EntStateGatewayInterface implements GatewayAttachmentInterface {
         };
     }
 
-    private getEventHandler(send: SendRequestFunction) {
+    private getEntStateHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
             const outgoingMessage: ReadEntStateMessage = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
@@ -123,7 +123,7 @@ export class EntStateGatewayInterface implements GatewayAttachmentInterface {
         };
     }
 
-    private createEventHandler(send: SendRequestFunction) {
+    private createEntStateHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
             const validate = MessageUtilities.verifyParameters(
                 req,
@@ -159,7 +159,7 @@ export class EntStateGatewayInterface implements GatewayAttachmentInterface {
         };
     }
 
-    private deleteEventHandler(send: SendRequestFunction) {
+    private deleteEntStateHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
             if (!MessageUtilities.has(req.params, 'id')) {
                 res
@@ -187,7 +187,7 @@ export class EntStateGatewayInterface implements GatewayAttachmentInterface {
         };
     }
 
-    private updateEventHandler(send: SendRequestFunction) {
+    private updateEntStateHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
             if (!MessageUtilities.has(req.params, 'id')) {
                 res
@@ -220,9 +220,6 @@ export class EntStateGatewayInterface implements GatewayAttachmentInterface {
                     outgoing[key] = parameters[key];
                 }
             });
-
-            console.log(parameters);
-            console.log(outgoing);
 
             await send(
                 this.ENT_STATE_UPDATE_KEY,

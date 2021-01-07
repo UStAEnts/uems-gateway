@@ -29,37 +29,37 @@ export class UserGatewayInterface implements GatewayAttachmentInterface {
             {
                 action: 'get',
                 path: '/user',
-                handle: this.queryEventsHandler(send),
+                handle: this.queryUsersHandler(send),
                 additionalValidator: validator,
             },
             {
                 action: 'post',
                 path: '/user',
-                handle: this.createEventHandler(send),
+                handle: this.createUserHandler(send),
                 additionalValidator: validator,
             },
             {
                 action: 'delete',
                 path: '/user/:id',
-                handle: this.deleteEventHandler(send),
+                handle: this.deleteUserHandler(send),
                 additionalValidator: validator,
             },
             {
                 action: 'get',
                 path: '/user/:id',
-                handle: this.getEventHandler(send),
+                handle: this.getUserHandler(send),
                 additionalValidator: validator,
             },
             {
                 action: 'patch',
                 path: '/user/:id',
-                handle: this.updateEventHandler(send),
+                handle: this.updateUserHandler(send),
                 additionalValidator: validator,
             },
         ];
     }
 
-    private queryEventsHandler(send: SendRequestFunction) {
+    private queryUsersHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
             const outgoing: ReadUserMessage = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
@@ -94,7 +94,7 @@ export class UserGatewayInterface implements GatewayAttachmentInterface {
         };
     }
 
-    private getEventHandler(send: SendRequestFunction) {
+    private getUserHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
             if (!MessageUtilities.has(req.params, 'id')) {
                 res
@@ -122,7 +122,7 @@ export class UserGatewayInterface implements GatewayAttachmentInterface {
         };
     }
 
-    private createEventHandler(send: SendRequestFunction) {
+    private createUserHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
 
             const validate = MessageUtilities.verifyParameters(
@@ -164,7 +164,7 @@ export class UserGatewayInterface implements GatewayAttachmentInterface {
         };
     }
 
-    private deleteEventHandler(send: SendRequestFunction) {
+    private deleteUserHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
             if (!MessageUtilities.has(req.params, 'id')) {
                 res
@@ -193,7 +193,7 @@ export class UserGatewayInterface implements GatewayAttachmentInterface {
         };
     }
 
-    private updateEventHandler(send: SendRequestFunction) {
+    private updateUserHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
             if (!MessageUtilities.has(req.params, 'id')) {
                 res

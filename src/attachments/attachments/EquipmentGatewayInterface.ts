@@ -36,37 +36,37 @@ export class EquipmentGatewayInterface implements GatewayAttachmentInterface {
             {
                 action: 'get',
                 path: '/equipment',
-                handle: this.queryEventsHandler(send),
+                handle: this.queryEquipmentsHandler(send),
                 additionalValidator: validator,
             },
             {
                 action: 'post',
                 path: '/equipment',
-                handle: this.createEventHandler(send),
+                handle: this.createEquipmentHandler(send),
                 additionalValidator: validator,
             },
             {
                 action: 'delete',
                 path: '/equipment/:id',
-                handle: this.deleteEventHandler(send),
+                handle: this.deleteEquipmentHandler(send),
                 additionalValidator: validator,
             },
             {
                 action: 'get',
                 path: '/equipment/:id',
-                handle: this.getEventHandler(send),
+                handle: this.getEquipmentHandler(send),
                 additionalValidator: validator,
             },
             {
                 action: 'patch',
                 path: '/equipment/:id',
-                handle: this.updateEventHandler(send),
+                handle: this.updateEquipmentHandler(send),
                 additionalValidator: validator,
             },
         ];
     }
 
-    private queryEventsHandler(send: SendRequestFunction) {
+    private queryEquipmentsHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
             const outgoing: ReadEquipmentMessage = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
@@ -107,7 +107,7 @@ export class EquipmentGatewayInterface implements GatewayAttachmentInterface {
         };
     }
 
-    private getEventHandler(send: SendRequestFunction) {
+    private getEquipmentHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
             const outgoingMessage: ReadEquipmentMessage = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
@@ -136,7 +136,7 @@ export class EquipmentGatewayInterface implements GatewayAttachmentInterface {
         };
     }
 
-    private createEventHandler(send: SendRequestFunction) {
+    private createEquipmentHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
             const validate = MessageUtilities.verifyParameters(
                 req,
@@ -197,7 +197,7 @@ export class EquipmentGatewayInterface implements GatewayAttachmentInterface {
         };
     }
 
-    private deleteEventHandler(send: SendRequestFunction) {
+    private deleteEquipmentHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
 
             if (!MessageUtilities.has(req.params, 'id')) {
@@ -227,7 +227,7 @@ export class EquipmentGatewayInterface implements GatewayAttachmentInterface {
         };
     }
 
-    private updateEventHandler(send: SendRequestFunction) {
+    private updateEquipmentHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
             // ID is carried in the parameter not the body so have to do it this way
             if (!MessageUtilities.has(req.params, 'id')) {

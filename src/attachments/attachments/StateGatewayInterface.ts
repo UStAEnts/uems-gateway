@@ -32,37 +32,37 @@ export class StateGatewayInterface implements GatewayAttachmentInterface {
             {
                 action: 'get',
                 path: '/states',
-                handle: this.queryEventsHandler(send),
+                handle: this.queryStatesHandler(send),
                 additionalValidator: validator,
             },
             {
                 action: 'post',
                 path: '/states',
-                handle: this.createEventHandler(send),
+                handle: this.createStateHandler(send),
                 additionalValidator: validator,
             },
             {
                 action: 'delete',
                 path: '/states/:id',
-                handle: this.deleteEventHandler(send),
+                handle: this.deleteStateHandler(send),
                 additionalValidator: validator,
             },
             {
                 action: 'get',
                 path: '/states/:id',
-                handle: this.getEventHandler(send),
+                handle: this.getStateHandler(send),
                 additionalValidator: validator,
             },
             {
                 action: 'patch',
                 path: '/states/:id',
-                handle: this.updateEventHandler(send),
+                handle: this.updateStateHandler(send),
                 additionalValidator: validator,
             },
         ];
     }
 
-    private queryEventsHandler(send: SendRequestFunction) {
+    private queryStatesHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
             const outgoing: ReadStateMessage = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
@@ -95,7 +95,7 @@ export class StateGatewayInterface implements GatewayAttachmentInterface {
         };
     }
 
-    private getEventHandler(send: SendRequestFunction) {
+    private getStateHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
 
             if (!MessageUtilities.has(req.params, 'id')) {
@@ -124,7 +124,7 @@ export class StateGatewayInterface implements GatewayAttachmentInterface {
         };
     }
 
-    private createEventHandler(send: SendRequestFunction) {
+    private createStateHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
             const validate = MessageUtilities.verifyParameters(
                 req,
@@ -160,7 +160,7 @@ export class StateGatewayInterface implements GatewayAttachmentInterface {
         };
     }
 
-    private deleteEventHandler(send: SendRequestFunction) {
+    private deleteStateHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
             if (!MessageUtilities.has(req.params, 'id')) {
                 res
@@ -189,7 +189,7 @@ export class StateGatewayInterface implements GatewayAttachmentInterface {
         };
     }
 
-    private updateEventHandler(send: SendRequestFunction) {
+    private updateStateHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
             if (!MessageUtilities.has(req.params, 'id')) {
                 res

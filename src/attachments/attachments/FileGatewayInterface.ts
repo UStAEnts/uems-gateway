@@ -42,37 +42,37 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
             {
                 action: 'get',
                 path: '/files',
-                handle: this.queryEventsHandler(send),
+                handle: this.queryFilesHandler(send),
                 additionalValidator: validator,
             },
             {
                 action: 'post',
                 path: '/files',
-                handle: this.createEventHandler(send),
+                handle: this.createFileHandler(send),
                 additionalValidator: validator,
             },
             {
                 action: 'delete',
                 path: '/files/:id',
-                handle: this.deleteEventHandler(send),
+                handle: this.deleteFileHandler(send),
                 additionalValidator: validator,
             },
             {
                 action: 'get',
                 path: '/files/:id',
-                handle: this.getEventHandler(send),
+                handle: this.getFileHandler(send),
                 additionalValidator: validator,
             },
             {
                 action: 'patch',
                 path: '/files/:id',
-                handle: this.updateEventHandler(send),
+                handle: this.updateFileHandler(send),
                 additionalValidator: validator,
             },
         ];
     }
 
-    private queryEventsHandler(send: SendRequestFunction) {
+    private queryFilesHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
             const outgoing: ReadFileMessage = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
@@ -108,7 +108,7 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
         };
     }
 
-    private getEventHandler(send: SendRequestFunction) {
+    private getFileHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
             const outgoingMessage: ReadFileMessage = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
@@ -137,7 +137,7 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
         };
     }
 
-    private createEventHandler(send: SendRequestFunction) {
+    private createFileHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
 
             const validate = MessageUtilities.verifyParameters(
@@ -195,7 +195,7 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
         };
     }
 
-    private deleteEventHandler(send: SendRequestFunction) {
+    private deleteFileHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
             if (!MessageUtilities.has(req.params, 'id')) {
                 res
@@ -223,7 +223,7 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
         };
     }
 
-    private updateEventHandler(send: SendRequestFunction) {
+    private updateFileHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
             if (!MessageUtilities.has(req.params, 'id')) {
                 res

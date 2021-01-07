@@ -35,37 +35,37 @@ export class TopicGatewayInterface implements GatewayAttachmentInterface {
             {
                 action: 'get',
                 path: '/topics',
-                handle: this.queryEventsHandler(send),
+                handle: this.queryTopicsHandler(send),
                 additionalValidator: validator,
             },
             {
                 action: 'post',
                 path: '/topics',
-                handle: this.createEventHandler(send),
+                handle: this.createTopicHandler(send),
                 additionalValidator: validator,
             },
             {
                 action: 'delete',
                 path: '/topics/:id',
-                handle: this.deleteEventHandler(send),
+                handle: this.deleteTopicHandler(send),
                 additionalValidator: validator,
             },
             {
                 action: 'get',
                 path: '/topics/:id',
-                handle: this.getEventHandler(send),
+                handle: this.getTopicHandler(send),
                 additionalValidator: validator,
             },
             {
                 action: 'patch',
                 path: '/topics/:id',
-                handle: this.updateEventHandler(send),
+                handle: this.updateTopicHandler(send),
                 additionalValidator: validator,
             },
         ];
     }
 
-    private queryEventsHandler(send: SendRequestFunction) {
+    private queryTopicsHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
             const outgoing: ReadTopicMessage = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
@@ -99,7 +99,7 @@ export class TopicGatewayInterface implements GatewayAttachmentInterface {
         };
     }
 
-    private getEventHandler(send: SendRequestFunction) {
+    private getTopicHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
             if (!MessageUtilities.has(req.params, 'id')) {
                 res
@@ -127,7 +127,7 @@ export class TopicGatewayInterface implements GatewayAttachmentInterface {
         };
     }
 
-    private createEventHandler(send: SendRequestFunction) {
+    private createTopicHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
             const validate = MessageUtilities.verifyParameters(
                 req,
@@ -165,7 +165,7 @@ export class TopicGatewayInterface implements GatewayAttachmentInterface {
         };
     }
 
-    private deleteEventHandler(send: SendRequestFunction) {
+    private deleteTopicHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
             if (!MessageUtilities.has(req.params, 'id')) {
                 res
@@ -194,7 +194,7 @@ export class TopicGatewayInterface implements GatewayAttachmentInterface {
         };
     }
 
-    private updateEventHandler(send: SendRequestFunction) {
+    private updateTopicHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
             if (!MessageUtilities.has(req.params, 'id')) {
                 res
