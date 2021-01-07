@@ -20,6 +20,12 @@ import Transformer = GenericHandlerFunctions.Transformer;
 import CommentReadResponseMessage = CommentResponse.CommentReadResponseMessage;
 import ReadCommentMessage = CommentMessage.ReadCommentMessage;
 import CreateCommentMessage = CommentMessage.CreateCommentMessage;
+import EventServiceReadResponseMessage = EventResponse.EventServiceReadResponseMessage;
+import SingleTransformer = GenericHandlerFunctions.SingleTransformer;
+import ShallowInternalComment = CommentResponse.ShallowInternalComment;
+import InternalComment = CommentResponse.InternalComment;
+import CommentServiceReadResponseMessage = CommentResponse.CommentServiceReadResponseMessage;
+import { Resolver } from "../Resolvers";
 
 // The topic used for sending get requests to the event details microservice.
 const EVENT_DETAILS_SERVICE_TOPIC_GET: string = 'events.details.get';
@@ -105,61 +111,6 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
             },
         ];
     }
-
-    private readonly RESOLVE_COMMENT: Transformer<CommentReadResponseMessage> = async (data) => {
-        await Promise.all(data.map((async (e) => {
-            e.poster = await this._resolver.resolveUser(e.poster as unknown as string);
-        })));
-
-        // Once these are processed we want to strip out any asset stuff as that's not important
-        const remove = ['assetType', 'assetID'];
-        // @ts-ignore intentionally messing with things, need a better type system
-        data.forEach((e) => remove.forEach((a) => delete e[a]));
-
-        return data;
-    };
-
-    // @ts-ignore - TODO fix the types on this somehow
-    private readonly DEPENDENCY_TRANSFORMER: GenericHandlerFunctions.Transformer<EventReadResponseMessage> = async (data: ShallowInternalEvent[]) => {
-        console.log('transforming', data);
-
-        const entries: Promise<any>[] = [];
-        for (const entry of data) {
-            // RESOLVE VENUES
-            if (entry.venues === undefined) entry.venues = [];
-
-            const resolved: InternalVenue[] = [];
-            console.log('(ENTRY)', entry, entry.venues);
-            const promises = (entry.venues.filter((e) => typeof (e) === 'string') as string[])
-                .map((id) => (async () => {
-                    const venue = await this._resolver.resolveVenue(id);
-                    resolved.push(venue);
-                })());
-
-            entries.push((async () => {
-                await Promise.all(promises);
-                (entry as InternalEvent).venues = resolved;
-            })());
-
-            // THEN RESOLVE ENTS
-            if (entry.ents) {
-                entries.push((async () => {
-                    (entry as InternalEvent).ents = await this._resolver.resolveEntState(entry.ents as string);
-                })());
-            }
-
-            // THEN RESOLVE STATE
-            if (entry.state) {
-                entries.push((async () => {
-                    (entry as InternalEvent).state = await this._resolver.resolveState(entry.state as string);
-                })());
-            }
-        }
-
-        await Promise.all(entries);
-
-        return data;
-    };
 
     private static deleteEventHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
@@ -340,9 +291,7 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
             EVENT_DETAILS_SERVICE_TOPIC_GET,
             msg,
             res,
-            GenericHandlerFunctions.handleDefaultResponseFactory(
-                this.DEPENDENCY_TRANSFORMER,
-            ),
+            GenericHandlerFunctions.handleDefaultResponseFactory(Resolver.resolveEvents(this._resolver)),
         );
     };
 
@@ -373,7 +322,8 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
                 res,
                 GenericHandlerFunctions.handleReadSingleResponseFactory(
                     async (data) => ({
-                        event: (await this.DEPENDENCY_TRANSFORMER([data]))[0],
+                        // @ts-ignore - This is a bit of a mess, will come back to this
+                        event: await Resolver.resolveSingleEvent(this._resolver)(data),
                         changelog: [],
                     }),
                 ),
@@ -465,9 +415,7 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
             EVENT_DETAILS_SERVICE_TOPIC_GET,
             msg,
             res,
-            GenericHandlerFunctions.handleDefaultResponseFactory(
-                this.DEPENDENCY_TRANSFORMER,
-            ),
+            GenericHandlerFunctions.handleDefaultResponseFactory(Resolver.resolveEvents(this._resolver)),
         );
     };
 
@@ -497,9 +445,7 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
             EVENT_DETAILS_SERVICE_TOPIC_GET,
             msg,
             res,
-            GenericHandlerFunctions.handleDefaultResponseFactory(
-                this.DEPENDENCY_TRANSFORMER,
-            ),
+            GenericHandlerFunctions.handleDefaultResponseFactory(Resolver.resolveEvents(this._resolver)),
         );
     };
 
@@ -530,9 +476,7 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
             'events.comment.get',
             msg,
             res,
-            GenericHandlerFunctions.handleDefaultResponseFactory(
-                this.RESOLVE_COMMENT,
-            ),
+            GenericHandlerFunctions.handleDefaultResponseFactory(Resolver.resolveComments(this._resolver)),
         );
     };
 
@@ -583,5 +527,4 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
             );
         };
     }
-
 }

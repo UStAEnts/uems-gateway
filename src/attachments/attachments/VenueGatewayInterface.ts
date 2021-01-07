@@ -2,17 +2,22 @@ import { Request, Response } from 'express';
 import { GatewayMk2 } from '../../Gateway';
 import { MessageUtilities } from '../../utilities/MessageUtilities';
 import { constants } from 'http2';
-import { MessageIntention, VenueMessage, VenueResponse, VenueResponseValidator } from '@uems/uemscommlib';
+import { VenueMessage, VenueResponse, VenueResponseValidator } from '@uems/uemscommlib';
 import { EntityResolver } from '../../resolver/EntityResolver';
 import { GenericHandlerFunctions } from '../GenericHandlerFunctions';
 import SendRequestFunction = GatewayMk2.SendRequestFunction;
 import GatewayAttachmentInterface = GatewayMk2.GatewayAttachmentInterface;
 import GatewayInterfaceActionType = GatewayMk2.GatewayInterfaceActionType;
-import VenueReadResponseMessage = VenueResponse.VenueReadResponseMessage;
 import ReadVenueMessage = VenueMessage.ReadVenueMessage;
 import DeleteVenueMessage = VenueMessage.DeleteVenueMessage;
 import CreateVenueMessage = VenueMessage.CreateVenueMessage;
 import UpdateVenueMessage = VenueMessage.UpdateVenueMessage;
+import SingleTransformer = GenericHandlerFunctions.SingleTransformer;
+import ShallowInternalVenue = VenueResponse.ShallowInternalVenue;
+import InternalVenue = VenueResponse.InternalVenue;
+import Transformer = GenericHandlerFunctions.Transformer;
+import VenueServiceReadResponseMessage = VenueResponse.VenueServiceReadResponseMessage;
+import { Resolver } from "../Resolvers";
 
 export class VenueGatewayInterface implements GatewayAttachmentInterface {
     private readonly VENUE_CREATE_KEY = 'venues.details.create';
@@ -27,7 +32,10 @@ export class VenueGatewayInterface implements GatewayAttachmentInterface {
 
     private resolver!: EntityResolver;
 
-    public generateInterfaces(sendRequest: SendRequestFunction, resolver: EntityResolver): GatewayInterfaceActionType[] {
+    public generateInterfaces(
+        sendRequest: SendRequestFunction,
+        resolver: EntityResolver,
+    ): GatewayInterfaceActionType[] {
         this.resolver = resolver;
 
         return [
@@ -64,17 +72,6 @@ export class VenueGatewayInterface implements GatewayAttachmentInterface {
         ];
     }
 
-    private readonly USER_RESOLVE_TRANSFORMER: GenericHandlerFunctions.Transformer<VenueReadResponseMessage> = async (data) => {
-        if (this.resolver === undefined) return data;
-        await Promise.all(
-            data.map((entry) => (async () => {
-                // Messing with types here
-                entry.user = await this.resolver?.resolveUser(entry.user as unknown as string);
-            })()),
-        );
-        return data;
-    };
-
     private handleGetRequest(sendRequest: SendRequestFunction) {
         return (request: Request, response: Response) => {
             if (!MessageUtilities.has(request.params, 'id')) {
@@ -98,9 +95,7 @@ export class VenueGatewayInterface implements GatewayAttachmentInterface {
                 VenueGatewayInterface.VENUE_READ_KEY,
                 outgoingMessage,
                 response,
-                GenericHandlerFunctions.handleReadSingleResponseFactory(
-                    async (data) => (await this.USER_RESOLVE_TRANSFORMER([data]))[0],
-                ),
+                GenericHandlerFunctions.handleReadSingleResponseFactory(Resolver.resolveSingleVenue(this.resolver)),
             );
         };
     }
@@ -205,7 +200,7 @@ export class VenueGatewayInterface implements GatewayAttachmentInterface {
                 VenueGatewayInterface.VENUE_READ_KEY,
                 outgoingMessage,
                 response,
-                GenericHandlerFunctions.handleDefaultResponseFactory(this.USER_RESOLVE_TRANSFORMER),
+                GenericHandlerFunctions.handleDefaultResponseFactory(Resolver.resolveVenues(this.resolver)),
             );
         };
     }
