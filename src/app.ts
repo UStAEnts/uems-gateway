@@ -144,52 +144,58 @@ function initFinished() {
 function main() {
     console.log('Attempting to connect to rabbit-mq...');
 
-    fs.readFile(RABBIT_MQ_CONFIG).then((data: Buffer) => {
-        const configJson = JSON.parse(data.toString());
+    fs.readFile(RABBIT_MQ_CONFIG)
+        .then((data: Buffer) => {
+            const configJson = JSON.parse(data.toString());
 
-        amqp.connect(`${configJson.uri}?heartbeat=60`).then((conn) => {
-            conn.on('error', (connectionError: Error) => {
-                if (connectionError.message !== 'Connection closing') {
-                    console.error('[AMQP] conn error', connectionError.message);
-                }
-            });
-            conn.on('close', () => {
-                console.error('[AMQP] connection closed');
-            });
-            console.log('[AMQP] connected');
+            amqp.connect(`${configJson.uri}?heartbeat=60`)
+                .then((conn) => {
+                    conn.on('error', (connectionError: Error) => {
+                        if (connectionError.message !== 'Connection closing') {
+                            console.error('[AMQP] conn error', connectionError.message);
+                        }
+                    });
+                    conn.on('close', () => {
+                        console.error('[AMQP] connection closed');
+                    });
+                    console.log('[AMQP] connected');
 
-            GatewayMk2.GatewayMessageHandler.setup(conn, app, [
-                // passport.authenticate('bearer', {
-                //     session: false,
-                // }),
-                // Cors.default(corsOptions),
-            ]).then((handler) => {
-                handler.registerEndpoints(new VenueGatewayInterface());
-                handler.registerEndpoints(new EventGatewayAttachment());
-                handler.registerEndpoints(new SystemGatewayInterface());
-                handler.registerEndpoints(new EntStateGatewayInterface());
-                handler.registerEndpoints(new StateGatewayInterface());
-                handler.registerEndpoints(new UserGatewayInterface());
-                handler.registerEndpoints(new EquipmentGatewayInterface());
-                handler.registerEndpoints(new TopicGatewayInterface());
+                    GatewayMk2.GatewayMessageHandler.setup(conn, app, [
+                        // passport.authenticate('bearer', {
+                        //     session: false,
+                        // }),
+                        // Cors.default(corsOptions),
+                    ])
+                        .then((handler) => {
+                            handler.registerEndpoints(new VenueGatewayInterface());
+                            handler.registerEndpoints(new EventGatewayAttachment());
+                            handler.registerEndpoints(new SystemGatewayInterface());
+                            handler.registerEndpoints(new EntStateGatewayInterface());
+                            handler.registerEndpoints(new StateGatewayInterface());
+                            handler.registerEndpoints(new UserGatewayInterface());
+                            handler.registerEndpoints(new EquipmentGatewayInterface());
+                            handler.registerEndpoints(new TopicGatewayInterface());
                             handler.registerEndpoints(new FileGatewayInterface());
 
-                initFinished();
-            }).catch((err) => {
-                console.error('[app]: failed to launch: setup went wrong', err);
-            });
-        }).catch((error) => {
-            if (error) {
-                // Attempt reconnect if initial messaging connection fails. This is useful if gateway
-                // is started before messaging system.
-                console.error('[AMQP]', error.message);
-                setTimeout(main, 2000);
-            }
+                            initFinished();
+                        })
+                        .catch((err) => {
+                            console.error('[app]: failed to launch: setup went wrong', err);
+                        });
+                })
+                .catch((error) => {
+                    if (error) {
+                        // Attempt reconnect if initial messaging connection fails. This is useful if gateway
+                        // is started before messaging system.
+                        console.error('[AMQP]', error.message);
+                        setTimeout(main, 2000);
+                    }
+                });
+        })
+        .catch((reason: any) => {
+            console.error('Failed to read rabbit-mq config... exiting');
+            console.error(reason);
         });
-    }).catch((reason: any) => {
-        console.error('Failed to read rabbit-mq config... exiting');
-        console.error(reason);
-    });
 }
 
 main();
