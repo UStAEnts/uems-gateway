@@ -6,15 +6,15 @@ import { ErrorCodes } from '../constants/ErrorCodes';
 import { GatewayMk2 } from '../Gateway';
 import MinimalMessageType = GatewayMk2.MinimalMessageType;
 
-function handleDefaultResponse<T extends { result: any[] }>(
+function handleDefaultResponse<SHALLOW, DEEP, RESULT extends { result: SHALLOW[] }>(
     http: Response,
     timestamp: number,
     raw: MinimalMessageType,
     status: number,
-    transformer?: (data: T['result']) => any | Promise<any>,
+    transformer?: (data: SHALLOW[]) => DEEP[] | Promise<DEEP[]>,
 ) {
     MessageUtilities.identifierConsumed(raw.msg_id);
-    const response = raw as T;
+    const response = raw as RESULT;
 
     if (status === MsgStatus.SUCCESS) {
         if (transformer) {
@@ -42,15 +42,15 @@ function handleDefaultResponse<T extends { result: any[] }>(
     }
 }
 
-function handleReadSingleResponse<T extends { result: any[] }>(
+function handleReadSingleResponse<SHALLOW, DEEP, RESULT extends { result: SHALLOW[] }>(
     http: Response,
     time: number,
     raw: MinimalMessageType,
     status: number,
-    transformer?: (data: T['result'][number]) => any | Promise<any>,
+    transformer?: (data: SHALLOW) => DEEP | Promise<DEEP>,
 ) {
     MessageUtilities.identifierConsumed(raw.msg_id);
-    const response = raw as T;
+    const response = raw as RESULT;
 
     if (status === MsgStatus.SUCCESS) {
         if (response.result.length !== 1) {
@@ -90,11 +90,11 @@ function handleReadSingleResponse<T extends { result: any[] }>(
 
 export namespace GenericHandlerFunctions {
 
-    export type Transformer<T extends { result: any[] }> = (data: T['result']) => any | Promise<any>;
-    export type SingleTransformer<T extends { result: any[] }> = (data: T['result'][number]) => any | Promise<any>;
+    export type Transformer<SHALLOW, DEEP, RESULT extends { result: SHALLOW[] }> = (data: SHALLOW[]) => DEEP[] | Promise<DEEP[]>;
+    export type SingleTransformer<SHALLOW, DEEP, RESULT extends { result: SHALLOW[] }> = (data: SHALLOW) => DEEP | Promise<DEEP>;
 
-    export function handleDefaultResponseFactory<T extends { result: any[] }>(
-        transformer?: Transformer<T>,
+    export function handleDefaultResponseFactory<S, D, T extends { result: any[] }>(
+        transformer?: Transformer<S, D, T>,
     ) {
         return (
             http: Response,
@@ -104,8 +104,8 @@ export namespace GenericHandlerFunctions {
         ) => handleDefaultResponse(http, timestamp, raw, status, transformer);
     }
 
-    export function handleReadSingleResponseFactory<T extends { result: any[] }>(
-        transformer?: SingleTransformer<T>,
+    export function handleReadSingleResponseFactory<S, D, T extends { result: any[] }>(
+        transformer?: SingleTransformer<S, D, T>,
     ) {
         return (
             http: Response,
