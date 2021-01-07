@@ -1,4 +1,4 @@
-import { CommentResponse, EquipmentResponse, EventResponse, VenueResponse } from "@uems/uemscommlib";
+import { CommentResponse, EquipmentResponse, EventResponse, FileResponse, VenueResponse } from "@uems/uemscommlib";
 import { GenericHandlerFunctions } from "./GenericHandlerFunctions";
 import { EntityResolver } from "../resolver/EntityResolver";
 import SingleTransformer = GenericHandlerFunctions.SingleTransformer;
@@ -22,6 +22,9 @@ export namespace Resolver {
     import InternalVenue = VenueResponse.InternalVenue;
     import ShallowInternalEquipment = EquipmentResponse.ShallowInternalEquipment;
     import EquipmentServiceReadResponseMessage = EquipmentResponse.EquipmentServiceReadResponseMessage;
+    import ShallowInternalFile = FileResponse.ShallowInternalFile;
+    import InternalFile = FileResponse.InternalFile;
+    import FileServiceReadResponseMessage = FileResponse.FileServiceReadResponseMessage;
 
     type MultiEventTransformer =
         Transformer<ShallowInternalEvent, InternalEvent, EventServiceReadResponseMessage>;
@@ -46,6 +49,12 @@ export namespace Resolver {
 
     type EquipmentTransformer =
         SingleTransformer<ShallowInternalEquipment, InternalEquipment, EquipmentServiceReadResponseMessage>;
+
+    type MultiFileTransformer =
+        Transformer<ShallowInternalFile, InternalFile, FileServiceReadResponseMessage>;
+
+    type FileTransformer =
+        SingleTransformer<ShallowInternalFile, InternalFile, FileServiceReadResponseMessage>;
 
     export function resolveSingleEvent(resolver: EntityResolver | undefined): EventTransformer {
         return async (data) => {
@@ -109,6 +118,21 @@ export namespace Resolver {
 
     export function resolveEquipments(resolver: EntityResolver | undefined): MultiEquipmentTransformer {
         return singleToDouble(resolveSingleEquipment(resolver));
+    }
+
+    export function resolveSingleFile(resolver: EntityResolver | undefined): FileTransformer {
+        return async (data) => {
+            if (resolver === undefined) throw new Error('Resolver not defined');
+
+            return {
+                ...data,
+                owner: await resolver.resolveUser(data.owner),
+            };
+        };
+    }
+
+    export function resolveFiles(resolver: EntityResolver | undefined): MultiFileTransformer {
+        return singleToDouble(resolveSingleFile(resolver));
     }
 
 }
