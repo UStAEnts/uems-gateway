@@ -89,6 +89,7 @@ export class VenueGatewayInterface implements GatewayAttachmentInterface {
                 msg_intention: 'READ',
                 status: 0,
                 userID: request.uemsJWT.userID,
+                id: request.params.id,
             };
 
             sendRequest(
