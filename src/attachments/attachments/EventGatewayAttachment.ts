@@ -28,7 +28,7 @@ import CommentServiceReadResponseMessage = CommentResponse.CommentServiceReadRes
 import { Resolver } from "../Resolvers";
 
 // The topic used for sending get requests to the event details microservice.
-const EVENT_DETAILS_SERVICE_TOPIC_GET: string = 'events.details.get';
+export const EVENT_DETAILS_SERVICE_TOPIC_GET: string = 'events.details.get';
 
 // The topic used for sending requests to add an event.
 const EVENT_DETAILS_SERVICE_TOPIC_CREATE: string = 'events.details.create';
