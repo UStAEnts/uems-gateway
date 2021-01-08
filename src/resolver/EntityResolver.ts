@@ -8,7 +8,7 @@ import { StateGatewayInterface } from '../attachments/attachments/StateGatewayIn
 import MinimalMessageType = GatewayMk2.MinimalMessageType;
 import has = MessageUtilities.has;
 import GatewayMessageHandler = GatewayMk2.GatewayMessageHandler;
-import { EntStateResponse, EquipmentResponse, MsgStatus, StateResponse, UserResponse, VenueResponse } from '@uems/uemscommlib';
+import { EntStateResponse, EquipmentResponse, EventResponse, MsgStatus, StateResponse, UserResponse, VenueResponse } from '@uems/uemscommlib';
 import InternalEntState = EntStateResponse.InternalEntState;
 import InternalEquipment = EquipmentResponse.InternalEquipment;
 import InternalState = StateResponse.InternalState;
@@ -16,6 +16,9 @@ import InternalUser = UserResponse.InternalUser;
 import InternalVenue = VenueResponse.InternalVenue;
 import ShallowInternalEquipment = EquipmentResponse.ShallowInternalEquipment;
 import ShallowInternalVenue = VenueResponse.ShallowInternalVenue;
+import ShallowInternalEvent = EventResponse.ShallowInternalEvent;
+import { EVENT_DETAILS_SERVICE_TOPIC_GET, EventGatewayAttachment } from "../attachments/attachments/EventGatewayAttachment";
+import InternalEvent = EventResponse.InternalEvent;
 
 export class EntityResolver {
     private _pendingMessageIDs: {
@@ -141,6 +144,19 @@ export class EntityResolver {
 
         // And return the resolved entity
         return output;
+    };
+
+    public resolveEvent = async (id: string): Promise<InternalEvent> => {
+        // Load raw event
+        const shallowEvent: ShallowInternalEvent = await this.resolve(id, EVENT_DETAILS_SERVICE_TOPIC_GET);
+
+        // And return the resolved entity
+        return {
+            ...shallowEvent,
+            ents: shallowEvent.ents === undefined ? undefined : await this.resolveEntState(shallowEvent.ents),
+            state: shallowEvent.state === undefined ? undefined : await this.resolveState(shallowEvent.state),
+            venues: await Promise.all(shallowEvent.venues.map((e) => this.resolveVenue(e))),
+        };
     };
 
     private resolveGenericSet = async <X, T extends X[], V extends { id: string }>(
