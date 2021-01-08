@@ -1,8 +1,9 @@
-import { CommentResponse, EquipmentResponse, EventResponse, FileResponse, SignupResponse, VenueResponse } from "@uems/uemscommlib";
+import { CommentResponse, EquipmentResponse, EventResponse, FileBindingResponse, FileResponse, SignupResponse, VenueResponse } from "@uems/uemscommlib";
 import { GenericHandlerFunctions } from "./GenericHandlerFunctions";
 import { EntityResolver } from "../resolver/EntityResolver";
 import SingleTransformer = GenericHandlerFunctions.SingleTransformer;
 import Transformer = GenericHandlerFunctions.Transformer;
+import { FileBindingValidators } from "@uems/uemscommlib/build/filebinding/FileBindingValidators";
 
 function singleToDouble<S, D, R extends { result: S[] }>(x: SingleTransformer<S, D, R>): Transformer<S, D, R> {
     return async (data) => Promise.all(data.map((e) => x(e)));
@@ -28,6 +29,10 @@ export namespace Resolver {
     import InternalSignup = SignupResponse.InternalSignup;
     import SignupServiceReadResponseMessage = SignupResponse.SignupServiceReadResponseMessage;
     import ShallowInternalSignup = SignupResponse.ShallowInternalSignup;
+    import ShallowQueryByFileResponse = FileBindingResponse.ShallowQueryByFileResponse;
+    import FileBindingResponseSchema = FileBindingValidators.FileBindingResponseSchema;
+    import QueryByFileResponse = FileBindingResponse.QueryByFileResponse;
+    import ShallowQueryByEventResponse = FileBindingResponse.ShallowQueryByEventResponse;
 
     type MultiEventTransformer =
         Transformer<ShallowInternalEvent, InternalEvent, EventServiceReadResponseMessage>;
@@ -65,9 +70,17 @@ export namespace Resolver {
     type SignupTransformer =
         SingleTransformer<ShallowInternalSignup, InternalSignup, SignupServiceReadResponseMessage>;
 
-    export function resolveSingleEvent(resolver: EntityResolver | undefined): EventTransformer {
+    type EventsFileBindingTransformer =
+        Transformer<string, InternalEvent, ShallowQueryByFileResponse>;
+
+    type FilesFileBindingTransformer =
+        Transformer<string, InternalFile, ShallowQueryByEventResponse>;
+
+    export function resolveSingleEvent(resolver: EntityResolver | undefined, userID: string): EventTransformer {
         return async (data) => {
             if (resolver === undefined) throw new Error('Resolver is not defined');
+
+            console.log(data);
 
             return {
                 ...data,
@@ -147,20 +160,52 @@ export namespace Resolver {
         return singleToDouble(resolveSingleFile(resolver, userID));
     }
 
-    export function resolveSingleSignup(resolver: EntityResolver | undefined): SignupTransformer {
+    export function resolveSingleSignup(
+        resolver: EntityResolver | undefined,
+        userID: string,
+        includeEvent: boolean,
+    ): SignupTransformer {
         return async (data) => {
             if (resolver === undefined) throw new Error('Resolver not defined');
 
             return {
                 ...data,
-                user: await resolver.resolveUser(data.user),
-                event: await resolver.resolveEvent(data.event),
+                user: await resolver.resolveUser(data.user, userID),
+                event: includeEvent
+                    ? await resolver.resolveEvent(data.event, userID)
+                    : undefined as unknown as InternalEvent,
             };
         };
     }
 
-    export function resolveSignups(resolver: EntityResolver | undefined): MultiSignupTransformer {
-        return singleToDouble(resolveSingleSignup(resolver));
+    export function resolveSignups(
+        resolver: EntityResolver | undefined,
+        userID: string,
+        includeEvent: boolean,
+    ): MultiSignupTransformer {
+        return singleToDouble(resolveSingleSignup(resolver, userID, includeEvent));
+    }
+
+    export function resolveEventsForFileBinding(
+        resolver: EntityResolver | undefined,
+        userID: string,
+    ): EventsFileBindingTransformer {
+        return async (data) => {
+            if (resolver === undefined) throw new Error('Resolver not defined');
+
+            return Promise.all(data.map((e) => resolver.resolveEvent(e, userID)));
+        };
+    }
+
+    export function resolveFilesForFileBinding(
+        resolver: EntityResolver | undefined,
+        userID: string,
+    ): FilesFileBindingTransformer {
+        return async (data) => {
+            if (resolver === undefined) throw new Error('Resolver not defined');
+
+            return Promise.all(data.map((e) => resolver.resolveFile(e, userID)));
+        };
     }
 
 }
