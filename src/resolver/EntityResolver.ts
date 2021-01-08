@@ -8,7 +8,7 @@ import { StateGatewayInterface } from '../attachments/attachments/StateGatewayIn
 import MinimalMessageType = GatewayMk2.MinimalMessageType;
 import has = MessageUtilities.has;
 import GatewayMessageHandler = GatewayMk2.GatewayMessageHandler;
-import { EntStateResponse, EquipmentResponse, EventResponse, MsgStatus, StateResponse, UserResponse, VenueResponse } from '@uems/uemscommlib';
+import { EntStateResponse, EquipmentResponse, EventResponse, FileResponse, MsgStatus, StateResponse, UserResponse, VenueResponse } from '@uems/uemscommlib';
 import InternalEntState = EntStateResponse.InternalEntState;
 import InternalEquipment = EquipmentResponse.InternalEquipment;
 import InternalState = StateResponse.InternalState;
@@ -19,6 +19,9 @@ import ShallowInternalVenue = VenueResponse.ShallowInternalVenue;
 import ShallowInternalEvent = EventResponse.ShallowInternalEvent;
 import { EVENT_DETAILS_SERVICE_TOPIC_GET, EventGatewayAttachment } from "../attachments/attachments/EventGatewayAttachment";
 import InternalEvent = EventResponse.InternalEvent;
+import InternalFile = FileResponse.InternalFile;
+import ShallowInternalFile = FileResponse.ShallowInternalFile;
+import { FileGatewayInterface } from "../attachments/attachments/FileGatewayInterface";
 
 export class EntityResolver {
     private _pendingMessageIDs: {
@@ -165,6 +168,13 @@ export class EntityResolver {
             venues: await Promise.all(shallowEvent.venues.map((e) => this.resolveVenue(e, userID))),
         };
     };
+
+    public resolveFile = async (id: string, userID: string): Promise<InternalFile> => {
+        const shallowFile: ShallowInternalFile = await this.resolve(id, FileGatewayInterface.FILE_READ_KEY, userID);
+
+        return {
+            ...shallowFile,
+            owner: await this.resolveUser(shallowFile.owner, userID),
         };
     };
 
