@@ -1,4 +1,4 @@
-import { CommentResponse, EquipmentResponse, EventResponse, FileResponse, VenueResponse } from "@uems/uemscommlib";
+import { CommentResponse, EquipmentResponse, EventResponse, FileResponse, SignupResponse, VenueResponse } from "@uems/uemscommlib";
 import { GenericHandlerFunctions } from "./GenericHandlerFunctions";
 import { EntityResolver } from "../resolver/EntityResolver";
 import SingleTransformer = GenericHandlerFunctions.SingleTransformer;
@@ -25,6 +25,9 @@ export namespace Resolver {
     import ShallowInternalFile = FileResponse.ShallowInternalFile;
     import InternalFile = FileResponse.InternalFile;
     import FileServiceReadResponseMessage = FileResponse.FileServiceReadResponseMessage;
+    import InternalSignup = SignupResponse.InternalSignup;
+    import SignupServiceReadResponseMessage = SignupResponse.SignupServiceReadResponseMessage;
+    import ShallowInternalSignup = SignupResponse.ShallowInternalSignup;
 
     type MultiEventTransformer =
         Transformer<ShallowInternalEvent, InternalEvent, EventServiceReadResponseMessage>;
@@ -55,6 +58,12 @@ export namespace Resolver {
 
     type FileTransformer =
         SingleTransformer<ShallowInternalFile, InternalFile, FileServiceReadResponseMessage>;
+
+    type MultiSignupTransformer =
+        Transformer<ShallowInternalSignup, InternalSignup, SignupServiceReadResponseMessage>;
+
+    type SignupTransformer =
+        SingleTransformer<ShallowInternalSignup, InternalSignup, SignupServiceReadResponseMessage>;
 
     export function resolveSingleEvent(resolver: EntityResolver | undefined): EventTransformer {
         return async (data) => {
@@ -133,6 +142,22 @@ export namespace Resolver {
 
     export function resolveFiles(resolver: EntityResolver | undefined): MultiFileTransformer {
         return singleToDouble(resolveSingleFile(resolver));
+    }
+
+    export function resolveSingleSignup(resolver: EntityResolver | undefined): SignupTransformer {
+        return async (data) => {
+            if (resolver === undefined) throw new Error('Resolver not defined');
+
+            return {
+                ...data,
+                user: await resolver.resolveUser(data.user),
+                event: await resolver.resolveEvent(data.event),
+            };
+        };
+    }
+
+    export function resolveSignups(resolver: EntityResolver | undefined): MultiSignupTransformer {
+        return singleToDouble(resolveSingleSignup(resolver));
     }
 
 }
