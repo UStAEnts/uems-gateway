@@ -2,7 +2,7 @@ import { GatewayMk2 } from '../../Gateway';
 import { Request, Response } from 'express';
 import { MessageUtilities } from '../../utilities/MessageUtilities';
 import { constants } from 'http2';
-import { FileMessage, FileResponse, FileResponseValidator, MsgStatus } from '@uems/uemscommlib';
+import { FileBindingMessage, FileMessage, FileResponse, FileResponseValidator, MsgStatus } from '@uems/uemscommlib';
 import { GenericHandlerFunctions } from '../GenericHandlerFunctions';
 import { ErrorCodes } from '../../constants/ErrorCodes';
 import { FileValidators } from '@uems/uemscommlib/build/file/FileValidators';
@@ -11,13 +11,15 @@ import GatewayAttachmentInterface = GatewayMk2.GatewayAttachmentInterface;
 import SendRequestFunction = GatewayMk2.SendRequestFunction;
 import FileReadSchema = FileMessage.ReadFileMessage;
 import FileResponseSchema = FileValidators.FileResponseSchema;
-import InternalFile = FileResponse.InternalFile;
-import ShallowInternalFile = FileResponse.ShallowInternalFile;
 import ReadFileMessage = FileMessage.ReadFileMessage;
 import CreateFileMessage = FileMessage.CreateFileMessage;
 import DeleteFileMessage = FileMessage.DeleteFileMessage;
 import UpdateFileMessage = FileMessage.UpdateFileMessage;
 import { Resolver } from "../Resolvers";
+import QueryByEventMessage = FileBindingMessage.QueryByEventMessage;
+import QueryByFileMessage = FileBindingMessage.QueryByFileMessage;
+import BindFilesToEventMessage = FileBindingMessage.BindFilesToEventMessage;
+import UnbindFilesFromEventMessage = FileBindingMessage.UnbindFilesFromEventMessage;
 
 export class FileGatewayInterface implements GatewayAttachmentInterface {
     private readonly FILE_CREATE_KEY = 'file.details.create';
@@ -68,6 +70,28 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
                 path: '/files/:id',
                 handle: this.updateFileHandler(send),
                 additionalValidator: validator,
+            },
+            {
+                action: 'get',
+                path: '/files/:id/events',
+                handle: this.getEventsByFileHandler(send),
+                // TODO: add validator
+            },
+            {
+                action: 'get',
+                path: '/events/:id/files',
+                handle: this.getFilesByEventsHandler(send),
+                // TODO: add validator
+            },
+            {
+                action: 'post',
+                path: '/events/:id/files',
+                handle: this.postFileToEventHandler(send),
+            },
+            {
+                action: 'delete',
+                path: '/events/:eventID/files/:fileID',
+                handle: this.deleteFileFromEventHandler(send),
             },
         ];
     }
@@ -265,6 +289,152 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
             await send(
                 this.FILE_UPDATE_KEY,
                 outgoing,
+                res,
+                GenericHandlerFunctions.handleDefaultResponseFactory(),
+            );
+        };
+    }
+
+    private getEventsByFileHandler(send: SendRequestFunction) {
+        return async (req: Request, res: Response) => {
+            if (!MessageUtilities.has(req.params, 'id')) {
+                res
+                    .status(constants.HTTP_STATUS_BAD_REQUEST)
+                    .json(MessageUtilities.wrapInFailure({
+                        message: 'missing parameter id',
+                        code: 'BAD_REQUEST_MISSING_PARAM',
+                    }));
+                return;
+            }
+
+            const outgoingMessage: QueryByFileMessage = {
+                msg_id: MessageUtilities.generateMessageIdentifier(),
+                msg_intention: 'READ',
+                status: 0,
+                userID: req.uemsJWT.userID,
+                fileID: req.params.id,
+            };
+
+            await send(
+                'file.events.read',
+                outgoingMessage,
+                res,
+                GenericHandlerFunctions.handleDefaultResponseFactory(Resolver.resolveEventsForFileBinding(
+                    this._resolver,
+                    req.uemsJWT.userID,
+                )),
+            );
+        };
+    }
+
+    private getFilesByEventsHandler(send: SendRequestFunction) {
+        return async (req: Request, res: Response) => {
+            if (!MessageUtilities.has(req.params, 'id')) {
+                res
+                    .status(constants.HTTP_STATUS_BAD_REQUEST)
+                    .json(MessageUtilities.wrapInFailure({
+                        message: 'missing parameter id',
+                        code: 'BAD_REQUEST_MISSING_PARAM',
+                    }));
+                return;
+            }
+
+            const outgoingMessage: QueryByEventMessage = {
+                msg_id: MessageUtilities.generateMessageIdentifier(),
+                msg_intention: 'READ',
+                status: 0,
+                userID: req.uemsJWT.userID,
+                eventID: req.params.id,
+            };
+
+            await send(
+                'file.events.read',
+                outgoingMessage,
+                res,
+                GenericHandlerFunctions.handleDefaultResponseFactory(Resolver.resolveFilesForFileBinding(
+                    this._resolver,
+                    req.uemsJWT.userID,
+                )),
+            );
+        };
+    }
+
+    private postFileToEventHandler(send: SendRequestFunction) {
+        return async (req: Request, res: Response) => {
+            if (!MessageUtilities.has(req.params, 'id')) {
+                res
+                    .status(constants.HTTP_STATUS_BAD_REQUEST)
+                    .json(MessageUtilities.wrapInFailure({
+                        message: 'missing parameter id',
+                        code: 'BAD_REQUEST_MISSING_PARAM',
+                    }));
+                return;
+            }
+
+            const validate = MessageUtilities.verifyParameters(
+                req,
+                res,
+                ['fileID'],
+                {
+                    fileID: (x) => typeof (x) === 'string',
+                },
+            );
+
+            if (!validate) {
+                return;
+            }
+
+            const outgoingMessage: BindFilesToEventMessage = {
+                msg_id: MessageUtilities.generateMessageIdentifier(),
+                msg_intention: 'CREATE',
+                status: 0,
+                userID: req.uemsJWT.userID,
+                eventID: req.params.id,
+                fileIDs: [req.body.fileID],
+            };
+
+            await send(
+                'file.events.read',
+                outgoingMessage,
+                res,
+                GenericHandlerFunctions.handleDefaultResponseFactory(),
+            );
+        };
+    }
+
+    private deleteFileFromEventHandler(send: SendRequestFunction) {
+        return async (req: Request, res: Response) => {
+            if (!MessageUtilities.has(req.params, 'eventID')) {
+                res
+                    .status(constants.HTTP_STATUS_BAD_REQUEST)
+                    .json(MessageUtilities.wrapInFailure({
+                        message: 'missing parameter eventID',
+                        code: 'BAD_REQUEST_MISSING_PARAM',
+                    }));
+                return;
+            }
+            if (!MessageUtilities.has(req.params, 'fileID')) {
+                res
+                    .status(constants.HTTP_STATUS_BAD_REQUEST)
+                    .json(MessageUtilities.wrapInFailure({
+                        message: 'missing parameter fileID',
+                        code: 'BAD_REQUEST_MISSING_PARAM',
+                    }));
+                return;
+            }
+
+            const outgoingMessage: UnbindFilesFromEventMessage = {
+                msg_id: MessageUtilities.generateMessageIdentifier(),
+                msg_intention: 'DELETE',
+                status: 0,
+                userID: req.uemsJWT.userID,
+                eventID: req.params.eventID,
+                fileIDs: [req.params.fileID],
+            };
+
+            await send(
+                'file.events.read',
+                outgoingMessage,
                 res,
                 GenericHandlerFunctions.handleDefaultResponseFactory(),
             );
