@@ -19,13 +19,13 @@ import UpdateSignupMessage = SignupMessage.UpdateSignupMessage;
 import SignupUpdateSchema = SignupValidators.SignupUpdateSchema;
 
 export class SignupGatewayInterface implements GatewayAttachmentInterface {
-    private readonly SIGNUP_CREATE_KEY = 'signup.details.create';
+    private readonly SIGNUP_CREATE_KEY = 'events.signups.create';
 
-    private readonly SIGNUP_DELETE_KEY = 'signup.details.delete';
+    private readonly SIGNUP_DELETE_KEY = 'events.signups.delete';
 
-    private readonly SIGNUP_UPDATE_KEY = 'signup.details.update';
+    private readonly SIGNUP_UPDATE_KEY = 'events.signups.update';
 
-    public static readonly SIGNUP_READ_KEY = 'signup.details.get';
+    public static readonly SIGNUP_READ_KEY = 'events.signups.get';
 
     private _resolver!: EntityResolver;
 
