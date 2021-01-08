@@ -20,6 +20,7 @@ import { StateGatewayInterface } from './attachments/attachments/StateGatewayInt
 import { SystemGatewayInterface } from './attachments/system/SystemGatewayInterface';
 import { TopicGatewayInterface } from "./attachments/attachments/TopicGatewayInterface";
 import { FileGatewayInterface } from "./attachments/attachments/FileGatewayInterface";
+import { SignupGatewayInterface } from "./attachments/attachments/SignupGatewayInterface";
 
 const fs = require('fs').promises;
 const passport = require('passport'); // Passport is used for handling external endpoint authentication.
@@ -176,6 +177,7 @@ function main() {
                             handler.registerEndpoints(new EquipmentGatewayInterface());
                             handler.registerEndpoints(new TopicGatewayInterface());
                             handler.registerEndpoints(new FileGatewayInterface());
+                            handler.registerEndpoints(new SignupGatewayInterface());
 
                             initFinished();
                         })
