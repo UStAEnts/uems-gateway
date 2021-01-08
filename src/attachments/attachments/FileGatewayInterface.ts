@@ -103,7 +103,10 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
                 FileGatewayInterface.FILE_READ_KEY,
                 outgoing,
                 res,
-                GenericHandlerFunctions.handleDefaultResponseFactory(Resolver.resolveFiles(this._resolver)),
+                GenericHandlerFunctions.handleDefaultResponseFactory(Resolver.resolveFiles(
+                    this._resolver,
+                    req.uemsJWT.userID,
+                )),
             );
         };
     }
@@ -132,7 +135,10 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
                 FileGatewayInterface.FILE_READ_KEY,
                 outgoingMessage,
                 res,
-                GenericHandlerFunctions.handleReadSingleResponseFactory(Resolver.resolveSingleFile(this._resolver)),
+                GenericHandlerFunctions.handleReadSingleResponseFactory(Resolver.resolveSingleFile(
+                    this._resolver,
+                    req.uemsJWT.userID,
+                )),
             );
         };
     }

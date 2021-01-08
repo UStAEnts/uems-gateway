@@ -102,7 +102,10 @@ export class EquipmentGatewayInterface implements GatewayAttachmentInterface {
                 EquipmentGatewayInterface.EQUIPMENT_READ_KEY,
                 outgoing,
                 res,
-                GenericHandlerFunctions.handleDefaultResponseFactory(Resolver.resolveEquipments(this.resolver)),
+                GenericHandlerFunctions.handleDefaultResponseFactory(Resolver.resolveEquipments(
+                    this.resolver,
+                    req.uemsJWT.userID,
+                )),
             );
         };
     }
@@ -131,7 +134,10 @@ export class EquipmentGatewayInterface implements GatewayAttachmentInterface {
                 EquipmentGatewayInterface.EQUIPMENT_READ_KEY,
                 outgoingMessage,
                 res,
-                GenericHandlerFunctions.handleReadSingleResponseFactory(Resolver.resolveSingleEquipment(this.resolver)),
+                GenericHandlerFunctions.handleReadSingleResponseFactory(Resolver.resolveSingleEquipment(
+                    this.resolver,
+                    req.uemsJWT.userID,
+                )),
             );
         };
     }

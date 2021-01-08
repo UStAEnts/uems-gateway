@@ -95,7 +95,10 @@ export class VenueGatewayInterface implements GatewayAttachmentInterface {
                 VenueGatewayInterface.VENUE_READ_KEY,
                 outgoingMessage,
                 response,
-                GenericHandlerFunctions.handleReadSingleResponseFactory(Resolver.resolveSingleVenue(this.resolver)),
+                GenericHandlerFunctions.handleReadSingleResponseFactory(Resolver.resolveSingleVenue(
+                    this.resolver,
+                    request.uemsJWT.userID,
+                )),
             );
         };
     }
@@ -200,7 +203,10 @@ export class VenueGatewayInterface implements GatewayAttachmentInterface {
                 VenueGatewayInterface.VENUE_READ_KEY,
                 outgoingMessage,
                 response,
-                GenericHandlerFunctions.handleDefaultResponseFactory(Resolver.resolveVenues(this.resolver)),
+                GenericHandlerFunctions.handleDefaultResponseFactory(Resolver.resolveVenues(
+                    this.resolver,
+                    request.uemsJWT.userID,
+                )),
             );
         };
     }

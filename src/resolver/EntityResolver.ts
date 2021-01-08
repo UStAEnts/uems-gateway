@@ -59,13 +59,14 @@ export class EntityResolver {
         entry.callback(message.result);
     }
 
-    private resolve<T>(id: string, key: string, middleware?: (value: any) => T): Promise<T> {
+    private resolve<T>(id: string, key: string, userID: string, middleware?: (value: any) => T): Promise<T> {
         console.log('trying to resolve', id, 'with key', key);
         return new Promise<T>((resolve, reject) => {
             const query = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 msg_intention: 'READ',
                 status: 0,
+                userID,
                 id,
             };
 
@@ -100,23 +101,29 @@ export class EntityResolver {
         });
     }
 
-    public resolveEntState = (id: string): Promise<InternalEntState> => this
-        .resolve(id, EntStateGatewayInterface.ENT_STATE_READ_KEY);
+    public resolveEntState = (id: string, userID: string): Promise<InternalEntState> => this
+        .resolve(id, EntStateGatewayInterface.ENT_STATE_READ_KEY, userID);
 
-    public resolveEquipment = async (id: string): Promise<InternalEquipment> => {
+    public resolveEquipment = async (id: string, userID: string): Promise<InternalEquipment> => {
         // Load the equipment
         const shallowEquipment: ShallowInternalEquipment = await this.resolve(
             id,
             EquipmentGatewayInterface.EQUIPMENT_READ_KEY,
+            userID,
         );
 
         // Then resolve the user
         const output: InternalEquipment = {
             ...shallowEquipment,
-            manager: await this.resolve<InternalUser>(shallowEquipment.manager, UserGatewayInterface.USER_READ_KEY),
+            manager: await this.resolve<InternalUser>(
+                shallowEquipment.manager,
+                UserGatewayInterface.USER_READ_KEY,
+                userID,
+            ),
             location: await this.resolve<InternalVenue>(
                 shallowEquipment.location,
                 VenueGatewayInterface.VENUE_READ_KEY,
+                userID,
             ),
         };
 
@@ -128,34 +135,36 @@ export class EntityResolver {
     // public resolveEvent = (id: string): Promise<InternalEvent> => this
     //     .resolve(id, EventGatewayAttachment);
 
-    public resolveState = (id: string): Promise<InternalState> => this
-        .resolve(id, StateGatewayInterface.STATE_READ_KEY);
+    public resolveState = (id: string, userID: string): Promise<InternalState> => this
+        .resolve(id, StateGatewayInterface.STATE_READ_KEY, userID);
 
-    public resolveUser = (id: string): Promise<InternalUser> => this
-        .resolve(id, UserGatewayInterface.USER_READ_KEY);
+    public resolveUser = (id: string, userID: string): Promise<InternalUser> => this
+        .resolve(id, UserGatewayInterface.USER_READ_KEY, userID);
 
-    public resolveVenue = async (id: string): Promise<InternalVenue> => {
+    public resolveVenue = async (id: string, userID: string): Promise<InternalVenue> => {
         // Load raw venue
-        const shallowVenue: ShallowInternalVenue = await this.resolve(id, VenueGatewayInterface.VENUE_READ_KEY);
+        const shallowVenue: ShallowInternalVenue = await this.resolve(id, VenueGatewayInterface.VENUE_READ_KEY, userID);
 
         // Then create an output and resolve the user
         const output: InternalVenue = shallowVenue as unknown as InternalVenue; // Intentional need to convert the types
-        output.user = await this.resolve<InternalUser>(shallowVenue.user, UserGatewayInterface.USER_READ_KEY);
+        output.user = await this.resolve<InternalUser>(shallowVenue.user, UserGatewayInterface.USER_READ_KEY, userID);
 
         // And return the resolved entity
         return output;
     };
 
-    public resolveEvent = async (id: string): Promise<InternalEvent> => {
+    public resolveEvent = async (id: string, userID: string): Promise<InternalEvent> => {
         // Load raw event
-        const shallowEvent: ShallowInternalEvent = await this.resolve(id, EVENT_DETAILS_SERVICE_TOPIC_GET);
+        const shallowEvent: ShallowInternalEvent = await this.resolve(id, EVENT_DETAILS_SERVICE_TOPIC_GET, userID);
 
         // And return the resolved entity
         return {
             ...shallowEvent,
-            ents: shallowEvent.ents === undefined ? undefined : await this.resolveEntState(shallowEvent.ents),
-            state: shallowEvent.state === undefined ? undefined : await this.resolveState(shallowEvent.state),
-            venues: await Promise.all(shallowEvent.venues.map((e) => this.resolveVenue(e))),
+            ents: shallowEvent.ents === undefined ? undefined : await this.resolveEntState(shallowEvent.ents, userID),
+            state: shallowEvent.state === undefined ? undefined : await this.resolveState(shallowEvent.state, userID),
+            venues: await Promise.all(shallowEvent.venues.map((e) => this.resolveVenue(e, userID))),
+        };
+    };
         };
     };
 

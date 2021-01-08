@@ -112,7 +112,11 @@ export class SignupGatewayInterface implements GatewayAttachmentInterface {
                 SignupGatewayInterface.SIGNUP_READ_KEY,
                 outgoing,
                 res,
-                GenericHandlerFunctions.handleDefaultResponseFactory(Resolver.resolveSignups(this._resolver)),
+                GenericHandlerFunctions.handleDefaultResponseFactory(Resolver.resolveSignups(
+                    this._resolver,
+                    req.uemsJWT.userID,
+                    false,
+                )),
             );
         };
     }
@@ -152,7 +156,11 @@ export class SignupGatewayInterface implements GatewayAttachmentInterface {
                 SignupGatewayInterface.SIGNUP_READ_KEY,
                 outgoingMessage,
                 res,
-                GenericHandlerFunctions.handleReadSingleResponseFactory(Resolver.resolveSingleSignup(this._resolver)),
+                GenericHandlerFunctions.handleReadSingleResponseFactory(Resolver.resolveSingleSignup(
+                    this._resolver,
+                    req.uemsJWT.userID,
+                    true,
+                )),
             );
         };
     }

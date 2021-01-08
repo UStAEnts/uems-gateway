@@ -71,77 +71,80 @@ export namespace Resolver {
 
             return {
                 ...data,
-                state: data.state === undefined ? undefined : await resolver.resolveState(data.state),
-                ents: data.ents === undefined ? undefined : await resolver.resolveEntState(data.ents),
-                venues: await Promise.all(data.venues.map((e) => resolver.resolveVenue(e))),
+                state: data.state === undefined ? undefined : await resolver.resolveState(data.state, userID),
+                ents: data.ents === undefined ? undefined : await resolver.resolveEntState(data.ents, userID),
+                venues: await Promise.all(data.venues.map((e) => resolver.resolveVenue(e, userID))),
             };
         };
     }
 
-    export function resolveEvents(resolver: EntityResolver | undefined): MultiEventTransformer {
-        return singleToDouble(resolveSingleEvent(resolver));
+    export function resolveEvents(resolver: EntityResolver | undefined, userID: string): MultiEventTransformer {
+        return singleToDouble(resolveSingleEvent(resolver, userID));
     }
 
-    export function resolveSingleComment(resolver: EntityResolver | undefined): CommentTransformer {
+    export function resolveSingleComment(resolver: EntityResolver | undefined, userID: string): CommentTransformer {
         return async (data) => {
             if (resolver === undefined) throw new Error('Resolver not defined');
 
             return {
                 ...data,
-                attendedBy: data.attendedBy === undefined ? undefined : await resolver.resolveUser(data.attendedBy),
-                poster: await resolver.resolveUser(data.poster),
+                attendedBy: data.attendedBy === undefined ? undefined : await resolver.resolveUser(
+                    data.attendedBy,
+                    userID,
+                ),
+                poster: await resolver.resolveUser(data.poster, userID),
             };
         };
     }
 
-    export function resolveComments(resolver: EntityResolver | undefined): MultiCommentTransformer {
-        return singleToDouble(resolveSingleComment(resolver));
+    export function resolveComments(resolver: EntityResolver | undefined, userID: string): MultiCommentTransformer {
+        return singleToDouble(resolveSingleComment(resolver, userID));
     }
 
-    export function resolveSingleVenue(resolver: EntityResolver | undefined): VenueTransformer {
+    export function resolveSingleVenue(resolver: EntityResolver | undefined, userID: string): VenueTransformer {
         return async (data) => {
             if (resolver === undefined) throw new Error('Resolver not defined');
 
             return {
                 ...data,
-                user: await resolver.resolveUser(data.user),
+                user: await resolver.resolveUser(data.user, userID),
             };
         };
     }
 
-    export function resolveVenues(resolver: EntityResolver | undefined): MultiVenueTransformer {
-        return singleToDouble(resolveSingleVenue(resolver));
+    export function resolveVenues(resolver: EntityResolver | undefined, userID: string): MultiVenueTransformer {
+        return singleToDouble(resolveSingleVenue(resolver, userID));
     }
 
-    export function resolveSingleEquipment(resolver: EntityResolver | undefined): EquipmentTransformer {
+    export function resolveSingleEquipment(resolver: EntityResolver | undefined, userID: string): EquipmentTransformer {
         return async (data) => {
             if (resolver === undefined) throw new Error('Resolver not defined');
 
             return {
                 ...data,
-                location: await resolver.resolveVenue(data.location),
-                manager: await resolver.resolveUser(data.manager),
+                location: await resolver.resolveVenue(data.location, userID),
+                manager: await resolver.resolveUser(data.manager, userID),
             };
         };
     }
 
-    export function resolveEquipments(resolver: EntityResolver | undefined): MultiEquipmentTransformer {
-        return singleToDouble(resolveSingleEquipment(resolver));
+    export function resolveEquipments(resolver: EntityResolver | undefined, userID: string): MultiEquipmentTransformer {
+        return singleToDouble(resolveSingleEquipment(resolver, userID));
     }
 
-    export function resolveSingleFile(resolver: EntityResolver | undefined): FileTransformer {
+    export function resolveSingleFile(resolver: EntityResolver | undefined, userID: string): FileTransformer {
         return async (data) => {
             if (resolver === undefined) throw new Error('Resolver not defined');
 
             return {
                 ...data,
-                owner: await resolver.resolveUser(data.owner),
+                owner: await resolver.resolveUser(data.owner, userID),
             };
         };
     }
 
-    export function resolveFiles(resolver: EntityResolver | undefined): MultiFileTransformer {
-        return singleToDouble(resolveSingleFile(resolver));
+    export function resolveFiles(resolver: EntityResolver | undefined, userID: string): MultiFileTransformer {
+        return singleToDouble(resolveSingleFile(resolver, userID));
     }
 
     export function resolveSingleSignup(resolver: EntityResolver | undefined): SignupTransformer {

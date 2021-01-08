@@ -291,7 +291,10 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
             EVENT_DETAILS_SERVICE_TOPIC_GET,
             msg,
             res,
-            GenericHandlerFunctions.handleDefaultResponseFactory(Resolver.resolveEvents(this._resolver)),
+            GenericHandlerFunctions.handleDefaultResponseFactory(Resolver.resolveEvents(
+                this._resolver,
+                req.uemsJWT.userID,
+            )),
         );
     };
 
@@ -321,9 +324,8 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
                 outgoingMessage,
                 res,
                 GenericHandlerFunctions.handleReadSingleResponseFactory(
-                    async (data) => ({
-                        // @ts-ignore - This is a bit of a mess, will come back to this
-                        event: await Resolver.resolveSingleEvent(this._resolver)(data),
+                    async (data: ShallowInternalEvent) => ({
+                        event: await Resolver.resolveSingleEvent(this._resolver, req.uemsJWT.userID)(data),
                         changelog: [],
                     }),
                 ),
@@ -415,7 +417,10 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
             EVENT_DETAILS_SERVICE_TOPIC_GET,
             msg,
             res,
-            GenericHandlerFunctions.handleDefaultResponseFactory(Resolver.resolveEvents(this._resolver)),
+            GenericHandlerFunctions.handleDefaultResponseFactory(Resolver.resolveEvents(
+                this._resolver,
+                req.uemsJWT.userID,
+            )),
         );
     };
 
@@ -445,7 +450,10 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
             EVENT_DETAILS_SERVICE_TOPIC_GET,
             msg,
             res,
-            GenericHandlerFunctions.handleDefaultResponseFactory(Resolver.resolveEvents(this._resolver)),
+            GenericHandlerFunctions.handleDefaultResponseFactory(Resolver.resolveEvents(
+                this._resolver,
+                req.uemsJWT.userID,
+            )),
         );
     };
 
@@ -476,7 +484,10 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
             'events.comment.get',
             msg,
             res,
-            GenericHandlerFunctions.handleDefaultResponseFactory(Resolver.resolveComments(this._resolver)),
+            GenericHandlerFunctions.handleDefaultResponseFactory(Resolver.resolveComments(
+                this._resolver,
+                req.uemsJWT.userID,
+            )),
         );
     };
 
