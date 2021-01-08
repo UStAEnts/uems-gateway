@@ -500,7 +500,7 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
                 {
                     // Required
                     category: (x) => typeof (x) === 'string',
-                    requiresAttention: (x) => typeof (x) === 'string',
+                    requiresAttention: (x) => typeof (x) === 'boolean',
                     body: (x) => typeof (x) === 'string',
                 },
             );
