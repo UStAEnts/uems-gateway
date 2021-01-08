@@ -9,6 +9,9 @@ import { ErrorCodes } from './constants/ErrorCodes';
 import { constants } from 'http2';
 import { EntityResolver } from './resolver/EntityResolver';
 import { MessageValidator } from '@uems/uemscommlib/build/messaging/MessageValidator';
+import * as util from "util";
+
+const magenta = (input: string) => `\u001b[35m${input}\u001b[39m`;
 
 // The queue of messages being sent from the microservices back to the gateway.
 const RCV_INBOX_QUEUE_NAME: string = 'inbox';
@@ -282,6 +285,8 @@ export namespace GatewayMk2 {
         };
 
         public publish(key: string, data: any) {
+            console.log(magenta(`transmitting to ${key}: `), util.inspect(data, false, null, true));
+            if (data.userID === undefined) console.trace('undefined userID');
             return this.sendChannel.publish(REQUEST_EXCHANGE, key, Buffer.from(JSON.stringify(data)));
         }
 
