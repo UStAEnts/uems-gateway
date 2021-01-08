@@ -113,7 +113,7 @@ app.use((req, res, next) => {
         if (!Object.prototype.hasOwnProperty.call(object, 'ip')) throw new Error('invalid token: no ip');
         if (typeof (object.userID) !== 'string') throw new Error('invalid token: user id is not a string');
         if (typeof (object.ip) !== 'string') throw new Error('invalid token: ip is not a string');
-        if (req.ip !== object.ip) throw new Error('invalid token: ip does not match');
+        if (process.env.NODE_ENV !== 'dev' && req.ip !== object.ip) throw new Error('invalid token: ip does not match');
 
         req.uemsJWT = {
             ip: object.ip,
