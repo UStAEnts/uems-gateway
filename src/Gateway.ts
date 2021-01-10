@@ -297,33 +297,6 @@ export namespace GatewayMk2 {
 
             return this.publish(key, message);
         };
-
-        public registerEndpoints(attachment: GatewayAttachmentInterface) {
-            console.log(`[register endpoints]: registering endpoints with this ${this}`);
-            const pending = attachment.generateInterfaces(this.sendRequest, this.resolver);
-            Promise.resolve(pending)
-                .then((functions) => {
-                    for (const route of functions) {
-                        const action = this._application[route.action].bind(this._application);
-                        console.log(`[register endpoints]: trying to register ${route.action} with path ${route.path} and ${this.middlewares.length} middlewares`);
-                        const path = [
-                            route.path,
-                            ...this.middlewares,
-                            (req: Request, res: Response) => {
-                                // TODO validator
-                                route.handle(req, res, () => false);
-                            },
-                        ];
-
-                        // @ts-ignore
-                        action.apply(this._application, path);
-                    }
-                });
-        }
-
-        get application(): Application {
-            return this._application;
-        }
     }
 
     export interface GatewayAttachmentInterface {
