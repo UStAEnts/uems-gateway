@@ -74,12 +74,12 @@ export namespace GatewayMk2 {
         /**
          * The channel on which requests should be sent out to the microservices
          */
-        private sendChannel: Channel;
+        private sendChannel?: Channel;
 
         /**
          * The channel on which requests should be received from the microservices
          */
-        private receiveChannel: Channel;
+        private receiveChannel?: Channel;
 
         /**
          * The current cache of outstanding requests which are awaiting being resolved
@@ -112,15 +112,11 @@ export namespace GatewayMk2 {
          * @param basicValidator the basic validator to be run against incoming messages
          * @private
          */
-        private constructor(
+        public constructor(
             connection: Connection_,
-            sendChannel: Channel,
-            receiveChannel: Channel,
             basicValidator: MessageValidator | undefined,
         ) {
             this.connection = connection;
-            this.sendChannel = sendChannel;
-            this.receiveChannel = receiveChannel;
             this.outstandingRequests = new Map<number, PendingRequest>();
             this.basicValidator = basicValidator;
 
@@ -153,10 +149,8 @@ export namespace GatewayMk2 {
         };
 
         public async configure() {
-            let channel;
-
             try {
-                channel = await this.connection.createChannel();
+                this.sendChannel = await this.connection.createChannel();
             } catch (e) {
                 console.error('[gateway setup]: failed to initialise due to failing to create the channel');
                 throw e;
@@ -164,7 +158,7 @@ export namespace GatewayMk2 {
 
             // Now make sure the exchange we're sending requests to exists
             try {
-                await channel.assertExchange(REQUEST_EXCHANGE, 'topic', {
+                await this.sendChannel.assertExchange(REQUEST_EXCHANGE, 'topic', {
                     durable: false,
                 });
             } catch (e) {
@@ -174,9 +168,8 @@ export namespace GatewayMk2 {
             }
 
             // And then try to create another channel for receiving on
-            let receive;
             try {
-                receive = await this.connection.createChannel();
+                this.receiveChannel = await this.connection.createChannel();
             } catch (e) {
                 console.error('[gateway setup]: failed to initialise due to failing to create the receiving channel');
                 throw e;
@@ -184,7 +177,7 @@ export namespace GatewayMk2 {
 
             // Then try to assert the gateway
             try {
-                await receive.assertExchange(GATEWAY_EXCHANGE, 'direct');
+                await this.receiveChannel.assertExchange(GATEWAY_EXCHANGE, 'direct');
             } catch (e) {
                 console.error(`[gateway setup]: failed to initialise due to failing to assert the gateway exchange 
                 (${GATEWAY_EXCHANGE})`);
@@ -192,9 +185,8 @@ export namespace GatewayMk2 {
             }
 
             // And the inbox queue
-            let queue;
             try {
-                queue = await receive.assertQueue(RCV_INBOX_QUEUE_NAME, { exclusive: true });
+                await this.receiveChannel.assertQueue(RCV_INBOX_QUEUE_NAME, { exclusive: true });
             } catch (e) {
                 console.error(`[gateway setup]: failed to initialise due to failing to assert the inbox queue 
                 (${RCV_INBOX_QUEUE_NAME})`);
@@ -203,7 +195,7 @@ export namespace GatewayMk2 {
 
             // Then bind the inbox to the exchange
             try {
-                await receive.bindQueue(RCV_INBOX_QUEUE_NAME, GATEWAY_EXCHANGE, '');
+                await this.receiveChannel.bindQueue(RCV_INBOX_QUEUE_NAME, GATEWAY_EXCHANGE, '');
             } catch (e) {
                 console.error(`[gateway setup]: failed to initialise due to failing to bind the inbox 
                 (${RCV_INBOX_QUEUE_NAME}) to the exchange (${GATEWAY_EXCHANGE})`);
@@ -212,7 +204,7 @@ export namespace GatewayMk2 {
 
             try {
                 // And bind the incoming messages to the handler
-                await receive.consume(queue.queue, this.handleRawIncoming.bind(this), {
+                await this.receiveChannel.consume(RCV_INBOX_QUEUE_NAME, this.handleRawIncoming.bind(this), {
                     noAck: true,
                 });
             } catch (e) {
@@ -278,6 +270,10 @@ export namespace GatewayMk2 {
         };
 
         public publish(key: string, data: any) {
+            if (this.sendChannel === undefined) {
+                throw new Error('Gateway is not configured, make sure you have called configure');
+            }
+
             console.log(magenta(`transmitting to ${key}: `), util.inspect(data, false, null, true));
             if (data.userID === undefined) console.trace('undefined userID');
             return this.sendChannel.publish(REQUEST_EXCHANGE, key, Buffer.from(JSON.stringify(data)));
