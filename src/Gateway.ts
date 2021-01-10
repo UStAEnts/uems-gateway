@@ -3,13 +3,13 @@
 
 import { Channel, Message } from 'amqplib/callback_api';
 import { Connection as Connection_ } from 'amqplib';
-import { Application, Request, RequestHandler, Response } from 'express';
+import { RequestHandler, Response } from 'express';
 import { MessageUtilities } from './utilities/MessageUtilities';
 import { ErrorCodes } from './constants/ErrorCodes';
 import { constants } from 'http2';
 import { EntityResolver } from './resolver/EntityResolver';
 import { MessageValidator } from '@uems/uemscommlib/build/messaging/MessageValidator';
-import * as util from "util";
+import * as util from 'util';
 
 const magenta = (input: string) => `\u001b[35m${input}\u001b[39m`;
 
@@ -30,12 +30,18 @@ type OutStandingReq = {
 };
 
 export namespace GatewayMk2 {
-    export type JSONType = Record<string, any> | any[] | string | number | boolean | null;
     export type MinimalMessageType = {
         msg_id: number,
         status: number,
     } & Record<string, any>;
-    export type RequestCallback = (http: Response, timestamp: number, response: MinimalMessageType, status: number) => void;
+
+    export type RequestCallback = (
+        http: Response,
+        timestamp: number,
+        response: MinimalMessageType,
+        status: number,
+    ) => void;
+
     type PendingRequest = {
         uid: number,
         response: Response,
@@ -43,12 +49,20 @@ export namespace GatewayMk2 {
         timestamp: number,
         additionalValidator?: MessageValidator,
     };
-    export type SendRequestFunction = (key: string, message: { msg_id: number, [key: string]: any }, response: Response, callback: RequestCallback) => Promise<boolean>;
+
+    export type SendRequestFunction = (
+        key: string,
+        message: { msg_id: number, [key: string]: any },
+        response: Response,
+        callback: RequestCallback,
+    ) => Promise<boolean>;
+
     export type GatewayInterfaceActionType = {
         action: 'get' | 'delete' | 'post' | 'patch',
         path: string,
         handle: RequestHandler,
         additionalValidator?: MessageValidator,
+        secure?: boolean,
     };
 
     export class GatewayMessageHandler {
@@ -154,7 +168,8 @@ export namespace GatewayMk2 {
                     durable: false,
                 });
             } catch (e) {
-                console.error(`[gateway setup]: failed to initialise due to failing to assert the exchange (${REQUEST_EXCHANGE})`);
+                console.error(`[gateway setup]: failed to initialise due to failing to 
+                assert the exchange (${REQUEST_EXCHANGE})`);
                 throw e;
             }
 
@@ -171,7 +186,8 @@ export namespace GatewayMk2 {
             try {
                 await receive.assertExchange(GATEWAY_EXCHANGE, 'direct');
             } catch (e) {
-                console.error(`[gateway setup]: failed to initialise due to failing to assert the gateway exchange (${GATEWAY_EXCHANGE})`);
+                console.error(`[gateway setup]: failed to initialise due to failing to assert the gateway exchange 
+                (${GATEWAY_EXCHANGE})`);
                 throw e;
             }
 
@@ -180,7 +196,8 @@ export namespace GatewayMk2 {
             try {
                 queue = await receive.assertQueue(RCV_INBOX_QUEUE_NAME, { exclusive: true });
             } catch (e) {
-                console.error(`[gateway setup]: failed to initialise due to failing to assert the inbox queue (${RCV_INBOX_QUEUE_NAME})`);
+                console.error(`[gateway setup]: failed to initialise due to failing to assert the inbox queue 
+                (${RCV_INBOX_QUEUE_NAME})`);
                 throw e;
             }
 
@@ -188,7 +205,8 @@ export namespace GatewayMk2 {
             try {
                 await receive.bindQueue(RCV_INBOX_QUEUE_NAME, GATEWAY_EXCHANGE, '');
             } catch (e) {
-                console.error(`[gateway setup]: failed to initialise due to failing to bind the inbox (${RCV_INBOX_QUEUE_NAME}) to the exchange (${GATEWAY_EXCHANGE})`);
+                console.error(`[gateway setup]: failed to initialise due to failing to bind the inbox 
+                (${RCV_INBOX_QUEUE_NAME}) to the exchange (${GATEWAY_EXCHANGE})`);
                 throw e;
             }
 
@@ -212,8 +230,6 @@ export namespace GatewayMk2 {
             const stringContent = message.content.toString('utf8');
             const json = JSON.parse(stringContent);
 
-            console.log(json);
-
             if (!MessageUtilities.has(json, 'msg_id') || typeof (json.msg_id) !== 'number') {
                 console.warn('[gateway raw incoming]: message was received without an ID. Ignoring');
                 return;
@@ -233,7 +249,8 @@ export namespace GatewayMk2 {
 
             const request = this.outstandingRequests.get(json.msg_id);
             if (request === undefined) {
-                console.warn('[gateway raw incoming]: message was received that did not match a pending request. has it already timed out?');
+                console.warn('[gateway raw incoming]: message was received that did not match a pending '
+                    + 'request. has it already timed out?');
                 return;
             }
 
@@ -245,11 +262,15 @@ export namespace GatewayMk2 {
                         if (validated) {
                             request.callback(request.response, request.timestamp, json, json.status);
                         } else {
-                            console.warn('[gateway raw incoming]: message was rejected because it didn\'t pass the additional validator');
+                            console.warn('[gateway raw incoming]: message was rejected because it didn\'t '
+                                + 'pass the additional validator');
                         }
                     })
                     .catch((err) => {
-                        console.error('[gateway raw incoming]: message was rejected because the validator errored out', err);
+                        console.error(
+                            '[gateway raw incoming]: message was rejected because the validator errored out',
+                            err,
+                        );
                     });
             } else {
                 request.callback(request.response, request.timestamp, json, json.status);
@@ -285,7 +306,10 @@ export namespace GatewayMk2 {
 
     export interface GatewayAttachmentInterface {
 
-        generateInterfaces(send: SendRequestFunction, resolver: EntityResolver): GatewayInterfaceActionType[] | Promise<GatewayInterfaceActionType[]>;
+        generateInterfaces(
+            send: SendRequestFunction,
+            resolver: EntityResolver,
+        ): GatewayInterfaceActionType[] | Promise<GatewayInterfaceActionType[]>;
 
     }
 }
