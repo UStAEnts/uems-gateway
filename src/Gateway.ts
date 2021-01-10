@@ -78,18 +78,6 @@ export namespace GatewayMk2 {
         private basicValidator: MessageValidator | undefined;
 
         /**
-         * The application through which the gateway is functioning
-         * @private
-         */
-        private _application: Application;
-
-        /**
-         * The middlewares to be applied to any route
-         * @private
-         */
-        private middlewares: RequestHandler[];
-
-        /**
          * The interval bound to the terminator function which closes requests after minimum amounts of time
          * @private
          */
@@ -115,16 +103,12 @@ export namespace GatewayMk2 {
             sendChannel: Channel,
             receiveChannel: Channel,
             basicValidator: MessageValidator | undefined,
-            application: Application,
-            middlewares: RequestHandler[],
         ) {
             this.connection = connection;
             this.sendChannel = sendChannel;
             this.receiveChannel = receiveChannel;
             this.outstandingRequests = new Map<number, PendingRequest>();
             this.basicValidator = basicValidator;
-            this._application = application;
-            this.middlewares = middlewares;
 
             this.terminatorInterval = setInterval(this.terminateTimedOut, 2000);
         }
