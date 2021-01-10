@@ -4,12 +4,14 @@ import { auth, requiresAuth } from 'express-openid-connect';
 import helmet from 'helmet';
 import cors from 'cors';
 import session from 'express-session';
-import { MongoStore, MongoUrlOptions, NativeMongoOptions } from 'connect-mongo';
+import connectMongo from 'connect-mongo';
 import { GatewayMk2 } from '../Gateway';
 import { EntityResolver } from '../resolver/EntityResolver';
 import { join } from 'path';
 import GatewayAttachmentInterface = GatewayMk2.GatewayAttachmentInterface;
 import SendRequestFunction = GatewayMk2.SendRequestFunction;
+
+const MongoStore = connectMongo(session);
 
 export const ExpressConfiguration = z.object({
     port: z.number()
@@ -94,8 +96,8 @@ export class ExpressApplication {
             contentSecurityPolicy: {
                 directives: {
                     ...helmet.contentSecurityPolicy.getDefaultDirectives(),
-                    'manifest-src': configuration.auth.manifestSrc,
-                    'script-src': ["'self'", ...configuration.uems.hashes],
+                    'manifest-src': ["'self'", ...configuration.auth.manifestSrc],
+                    'script-src': ["'self'", ...configuration.uems.hashes.map((e) => `'${e}'`)],
                     'connect-src': ["'self'"],
                 },
             },
@@ -123,13 +125,12 @@ export class ExpressApplication {
                 maxAge: 24 * 60 * 60 * 1000,
                 secure: configuration.session.secure,
             },
-            // @ts-ignore - the types seem to be broken?
             store: new MongoStore({
                 url: configuration.session.mongoURL,
                 secret: configuration.session.secrets.mongo,
                 collection: configuration.session.collection,
                 ttl: configuration.session.sessionTimeToLive,
-            } as MongoUrlOptions | NativeMongoOptions),
+            }),
         }));
 
         // Then register the Auth0 Authentication manager using all the config options
@@ -158,10 +159,10 @@ export class ExpressApplication {
     }
 
     async react() {
-        this._app.use(requiresAuth(), express.static(join(__dirname, '..', this._configuration.uems.serve)));
+        this._app.use(requiresAuth(), express.static(join(__dirname, '..', '..', this._configuration.uems.serve)));
         this._app.get('/', requiresAuth(), (req, res) => {
-            res.sendFile(join(__dirname, '..', this._configuration.uems.index));
-            res.json(req.oidc.isAuthenticated() ? 'Logged in' : 'Logged out');
+            res.sendFile(join(__dirname, '..', '..', this._configuration.uems.index));
+            // res.json(req.oidc.isAuthenticated() ? 'Logged in' : 'Logged out');
         });
     }
 
