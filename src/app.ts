@@ -21,6 +21,10 @@ import { SystemGatewayInterface } from './attachments/system/SystemGatewayInterf
 import { TopicGatewayInterface } from "./attachments/attachments/TopicGatewayInterface";
 import { FileGatewayInterface } from "./attachments/attachments/FileGatewayInterface";
 import { SignupGatewayInterface } from "./attachments/attachments/SignupGatewayInterface";
+import GatewayMessageHandler = GatewayMk2.GatewayMessageHandler;
+import { ExpressApplication, ExpressConfiguration, ExpressConfigurationType } from "./express/ExpressApplication";
+import { EntityResolver } from "./resolver/EntityResolver";
+import { ZodError } from "zod";
 
 const fs = require('fs').promises;
 const passport = require('passport'); // Passport is used for handling external endpoint authentication.
@@ -28,6 +32,7 @@ const AuthStrategy = require('passport-http-bearer').Strategy;
 
 const JWT_PUBLIC_KEY = Buffer.from('2d2d2d2d2d424547494e205055424c4943204b45592d2d2d2d2d0a4d4947624d42414742797147534d343941674547425375424241416a413447474141514150686a724a6f354f6d697337574f3671626f6167435878484348436c0a58485436547a71312f3667737075565450573448716f4278624d534f2f52766d4c7568466c664a44323751506847437377766645504246692b77454177364a590a494f2b70314157384d626d706d2f6e676b61756c47484873643538383154566e6b526a467053785067774b61462f704876325248617a62494d53306e6d5853530a554d50703238484b512f4f652b6970513236733d0a2d2d2d2d2d454e44205055424c4943204b45592d2d2d2d2d0a', 'hex');
 const RABBIT_MQ_CONFIG: string = 'rabbit-mq-config.json';
+const EXPRESS_CONFIG: string = 'express-config.json';
 
 // CORS configuration.
 const corsOptions: Cors.CorsOptions = {
@@ -130,74 +135,113 @@ app.use((req, res, next) => {
 
         res.status(401)
             .send('invalid authentication token');
+        console.log(e);
     }
 });
 
 // Event get requests use queries so the query parser must be enabled.
 app.set('query parser', 'extended');
 
-function initFinished() {
-    app.listen(app.get('port'));
 
-    console.log(`Started uems-gateway on ${app.get('port')}`);
-}
-
-function main() {
+async function main() {
     console.log('Attempting to connect to rabbit-mq...');
 
-    fs.readFile(RABBIT_MQ_CONFIG)
-        .then((data: Buffer) => {
-            const configJson = JSON.parse(data.toString());
+    let rabbitMQConfig;
+    try {
+        const rabbitMQConfigRaw = await fs.readFile(RABBIT_MQ_CONFIG, { encoding: 'utf8' });
+        rabbitMQConfig = JSON.parse(rabbitMQConfigRaw);
+    } catch (e) {
+        console.error(`Failed to load ${RABBIT_MQ_CONFIG}`);
+        console.error(e);
+        return;
+    }
 
-            amqp.connect(`${configJson.uri}?heartbeat=60`)
-                .then((conn) => {
-                    conn.on('error', (connectionError: Error) => {
-                        if (connectionError.message !== 'Connection closing') {
-                            console.error('[AMQP] conn error', connectionError.message);
-                        }
-                    });
-                    conn.on('close', () => {
-                        console.error('[AMQP] connection closed');
-                    });
-                    console.log('[AMQP] connected');
+    let expressValidation: { success: false, error: ZodError } | { success: true, data: ExpressConfigurationType };
+    try {
+        const expressConfigRaw = await fs.readFile(EXPRESS_CONFIG, { encoding: 'utf8' });
+        const expressConfig = JSON.parse(expressConfigRaw);
+        expressValidation = ExpressConfiguration.safeParse(expressConfig);
+    } catch (e) {
+        console.error(`Failed to load ${EXPRESS_CONFIG}`);
+        console.error(e);
+        return;
+    }
 
-                    GatewayMk2.GatewayMessageHandler.setup(conn, app, [
-                        // passport.authenticate('bearer', {
-                        //     session: false,
-                        // }),
-                        // Cors.default(corsOptions),
-                    ])
-                        .then((handler) => {
-                            handler.registerEndpoints(new VenueGatewayInterface());
-                            handler.registerEndpoints(new EventGatewayAttachment());
-                            handler.registerEndpoints(new SystemGatewayInterface());
-                            handler.registerEndpoints(new EntStateGatewayInterface());
-                            handler.registerEndpoints(new StateGatewayInterface());
-                            handler.registerEndpoints(new UserGatewayInterface());
-                            handler.registerEndpoints(new EquipmentGatewayInterface());
-                            handler.registerEndpoints(new TopicGatewayInterface());
-                            handler.registerEndpoints(new FileGatewayInterface());
-                            handler.registerEndpoints(new SignupGatewayInterface());
+    if (!expressValidation.success) {
+        console.error(`Failed to load ${EXPRESS_CONFIG}`);
+        console.error(expressValidation.error);
+        return;
+    }
 
-                            initFinished();
-                        })
-                        .catch((err) => {
-                            console.error('[app]: failed to launch: setup went wrong', err);
-                        });
-                })
-                .catch((error) => {
-                    if (error) {
-                        // Attempt reconnect if initial messaging connection fails. This is useful if gateway
-                        // is started before messaging system.
-                        console.error('[AMQP]', error.message);
-                        setTimeout(main, 2000);
-                    }
-                });
-        })
-        .catch((reason: any) => {
-            console.error('Failed to read rabbit-mq config... exiting');
-            console.error(reason);
-        });
+    let connection;
+    try {
+        connection = await amqp.connect(`${rabbitMQConfig.uri}?heartbeat=60`);
+    } catch (e) {
+        console.error('Failed to connect to the amqplib server');
+        console.error(e);
+        return;
+    }
+
+    // Print out errors in the event of a connection error that is not the connection closing
+    connection.on('error', (connectionError: Error) => {
+        if (connectionError.message !== 'Connection closing') {
+            console.error('[AMQP] conn error', connectionError.message);
+        }
+    });
+
+    // Print out a warning on the connection being closed
+    connection.on('close', () => {
+        console.error('[AMQP] connection closed');
+    });
+
+    console.log('[AMQP] connected');
+
+    const handler = new GatewayMessageHandler(connection, undefined);
+    try {
+        await handler.configure();
+    } catch (e) {
+        console.error('Failed to configure the gateway handler');
+        console.error(e);
+
+        // Try and clean up but don't worry too much about errors for the time being
+        await connection.close();
+
+        return;
+    }
+
+    const resolver = new EntityResolver(handler);
+
+    let expressApp;
+    try {
+        expressApp = new ExpressApplication(expressValidation.data);
+        await expressApp.attach(
+            [
+                new VenueGatewayInterface(),
+                new EventGatewayAttachment(),
+                new SystemGatewayInterface(),
+                new EntStateGatewayInterface(),
+                new StateGatewayInterface(),
+                new UserGatewayInterface(),
+                new EquipmentGatewayInterface(),
+                new TopicGatewayInterface(),
+                new FileGatewayInterface(),
+                new SignupGatewayInterface(),
+            ],
+            handler.sendRequest.bind(handler),
+            resolver,
+        );
+    } catch (e) {
+        console.error('Failed to setup the express server and initialise the attachments');
+        console.error(e);
+
+        // Try and clean up but don't worry too much about errors for the time being
+        await connection.close();
+
+        return;
+    }
+
+    expressApp.listen();
+    console.log(`Server launched on ${expressValidation.data.port ?? 15450}`);
 }
 
 main();
