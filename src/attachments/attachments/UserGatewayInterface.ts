@@ -124,7 +124,6 @@ export class UserGatewayInterface implements GatewayAttachmentInterface {
 
     private createUserHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
-
             const validate = MessageUtilities.verifyParameters(
                 req,
                 res,
@@ -145,6 +144,7 @@ export class UserGatewayInterface implements GatewayAttachmentInterface {
             const outgoingMessage: CreateUserMessage = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 msg_intention: 'CREATE',
+                id: req.body.username,
                 status: 0,
                 userID: req.uemsJWT.userID,
                 name: req.body.name,
