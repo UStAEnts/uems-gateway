@@ -278,8 +278,15 @@ export namespace GatewayMk2 {
             return this.sendChannel.publish(REQUEST_EXCHANGE, key, Buffer.from(JSON.stringify(data)));
         }
 
-        private readonly sendRequest = async (key: string, message: { msg_id: number, [key: string]: any }, response: Response, callback: RequestCallback, validator?: MessageValidator) => {
+        public readonly sendRequest = async (
+            key: string,
+            message: { msg_id: number, [key: string]: any },
+            response: Response,
+            callback: RequestCallback,
+            validator?: MessageValidator,
+        ) => {
             console.log('outgoing message', key, message);
+
             this.outstandingRequests.set(message.msg_id, {
                 response,
                 callback,
