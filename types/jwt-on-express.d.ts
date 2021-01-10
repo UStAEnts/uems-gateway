@@ -3,6 +3,10 @@ declare namespace Express {
         uemsJWT: {
             ip: string,
             userID: string,
+        },
+        oidc: {
+            isAuthenticated: () => boolean,
+            user: any,
         }
     }
 }
