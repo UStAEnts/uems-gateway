@@ -109,6 +109,7 @@ async function main() {
             handler.sendRequest.bind(handler),
             resolver,
         );
+        await expressApp.react();
     } catch (e) {
         console.error('Failed to setup the express server and initialise the attachments');
         console.error(e);
