@@ -9,6 +9,7 @@ export class SystemGatewayInterface implements GatewayAttachmentInterface {
                 action: 'get',
                 path: '/status',
                 handle: (req, res) => res.sendStatus(200),
+                secure: false,
             },
         ];
     }
