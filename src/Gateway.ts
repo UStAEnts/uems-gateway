@@ -154,11 +154,11 @@ export namespace GatewayMk2 {
             }
         };
 
-        public static async setup(connection: Connection_, application: Application, middlewares: RequestHandler[]) {
+        public async configure() {
             let channel;
 
             try {
-                channel = await connection.createChannel();
+                channel = await this.connection.createChannel();
             } catch (e) {
                 console.error('[gateway setup]: failed to initialise due to failing to create the channel');
                 throw e;
@@ -177,7 +177,7 @@ export namespace GatewayMk2 {
             // And then try to create another channel for receiving on
             let receive;
             try {
-                receive = await connection.createChannel();
+                receive = await this.connection.createChannel();
             } catch (e) {
                 console.error('[gateway setup]: failed to initialise due to failing to create the receiving channel');
                 throw e;
@@ -208,27 +208,15 @@ export namespace GatewayMk2 {
                 throw e;
             }
 
-            // And finally start setting up things
-            const handler = new GatewayMk2.GatewayMessageHandler(
-                connection,
-                channel,
-                receive,
-                undefined,
-                application,
-                middlewares,
-            );
-
             try {
                 // And bind the incoming messages to the handler
-                await receive.consume(queue.queue, handler.handleRawIncoming, {
+                await receive.consume(queue.queue, this.handleRawIncoming.bind(this), {
                     noAck: true,
                 });
             } catch (e) {
                 console.error('[gateway setup]: failed to initialise due to failing to begin consuming');
                 throw e;
             }
-
-            return handler;
         }
 
         private readonly handleRawIncoming = (message: Message | null) => {
