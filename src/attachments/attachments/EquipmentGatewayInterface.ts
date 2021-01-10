@@ -72,7 +72,7 @@ export class EquipmentGatewayInterface implements GatewayAttachmentInterface {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 msg_intention: 'READ',
                 status: 0,
-                userID: req.uemsJWT.userID,
+                userID: req.oidc.user.sub,
             };
 
             const parameters = req.query;
@@ -104,7 +104,7 @@ export class EquipmentGatewayInterface implements GatewayAttachmentInterface {
                 res,
                 GenericHandlerFunctions.handleDefaultResponseFactory(Resolver.resolveEquipments(
                     this.resolver,
-                    req.uemsJWT.userID,
+                    req.oidc.user.sub,
                 )),
             );
         };
@@ -116,7 +116,7 @@ export class EquipmentGatewayInterface implements GatewayAttachmentInterface {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 msg_intention: 'READ',
                 status: 0,
-                userID: req.uemsJWT.userID,
+                userID: req.oidc.user.sub,
             };
 
             if (!MessageUtilities.has(req.params, 'id')) {
@@ -136,7 +136,7 @@ export class EquipmentGatewayInterface implements GatewayAttachmentInterface {
                 res,
                 GenericHandlerFunctions.handleReadSingleResponseFactory(Resolver.resolveSingleEquipment(
                     this.resolver,
-                    req.uemsJWT.userID,
+                    req.oidc.user.sub,
                 )),
             );
         };
@@ -178,7 +178,7 @@ export class EquipmentGatewayInterface implements GatewayAttachmentInterface {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 msg_intention: 'CREATE',
                 status: 0,
-                userID: req.uemsJWT.userID,
+                userID: req.oidc.user.sub,
                 name: req.body.name,
                 manufacturer: req.body.manufacturer,
                 model: req.body.model,
@@ -220,7 +220,7 @@ export class EquipmentGatewayInterface implements GatewayAttachmentInterface {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 msg_intention: 'DELETE',
                 status: 0,
-                userID: req.uemsJWT.userID,
+                userID: req.oidc.user.sub,
                 id: req.params.id,
             };
 
@@ -250,7 +250,7 @@ export class EquipmentGatewayInterface implements GatewayAttachmentInterface {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 msg_intention: 'UPDATE',
                 status: 0,
-                userID: req.uemsJWT.userID,
+                userID: req.oidc.user.sub,
                 id: req.params.id,
             };
 

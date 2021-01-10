@@ -87,7 +87,7 @@ export class SignupGatewayInterface implements GatewayAttachmentInterface {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 msg_intention: 'READ',
                 status: 0,
-                userID: req.uemsJWT.userID,
+                userID: req.oidc.user.sub,
                 eventID: req.params.eventID,
             };
 
@@ -114,7 +114,7 @@ export class SignupGatewayInterface implements GatewayAttachmentInterface {
                 res,
                 GenericHandlerFunctions.handleDefaultResponseFactory(Resolver.resolveSignups(
                     this._resolver,
-                    req.uemsJWT.userID,
+                    req.oidc.user.sub,
                     false,
                 )),
             );
@@ -147,7 +147,7 @@ export class SignupGatewayInterface implements GatewayAttachmentInterface {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 msg_intention: 'READ',
                 status: 0,
-                userID: req.uemsJWT.userID,
+                userID: req.oidc.user.sub,
                 eventID: req.params.eventID,
                 id: req.params.id,
             };
@@ -158,7 +158,7 @@ export class SignupGatewayInterface implements GatewayAttachmentInterface {
                 res,
                 GenericHandlerFunctions.handleReadSingleResponseFactory(Resolver.resolveSingleSignup(
                     this._resolver,
-                    req.uemsJWT.userID,
+                    req.oidc.user.sub,
                     true,
                 )),
             );
@@ -194,9 +194,9 @@ export class SignupGatewayInterface implements GatewayAttachmentInterface {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 msg_intention: 'CREATE',
                 status: 0,
-                userID: req.uemsJWT.userID,
+                userID: req.oidc.user.sub,
                 eventID: req.params.eventID,
-                userid: req.uemsJWT.userID,
+                userid: req.oidc.user.sub,
                 role: req.body.role,
             };
 
@@ -234,7 +234,7 @@ export class SignupGatewayInterface implements GatewayAttachmentInterface {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 msg_intention: 'DELETE',
                 status: 0,
-                userID: req.uemsJWT.userID,
+                userID: req.oidc.user.sub,
                 id: req.params.id,
             };
 
@@ -273,7 +273,7 @@ export class SignupGatewayInterface implements GatewayAttachmentInterface {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 msg_intention: 'UPDATE',
                 status: 0,
-                userID: req.uemsJWT.userID,
+                userID: req.oidc.user.sub,
                 id: req.params.id,
             };
 

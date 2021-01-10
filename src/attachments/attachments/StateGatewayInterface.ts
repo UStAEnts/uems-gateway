@@ -68,7 +68,7 @@ export class StateGatewayInterface implements GatewayAttachmentInterface {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 msg_intention: 'READ',
                 status: 0,
-                userID: req.uemsJWT.userID,
+                userID: req.oidc.user.sub,
             };
 
             const parameters = req.query;
@@ -111,7 +111,7 @@ export class StateGatewayInterface implements GatewayAttachmentInterface {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 msg_intention: 'READ',
                 status: 0,
-                userID: req.uemsJWT.userID,
+                userID: req.oidc.user.sub,
                 id: req.params.id,
             };
 
@@ -145,7 +145,7 @@ export class StateGatewayInterface implements GatewayAttachmentInterface {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 msg_intention: 'CREATE',
                 status: 0,
-                userID: req.uemsJWT.userID,
+                userID: req.oidc.user.sub,
                 color: req.body.color,
                 icon: req.body.icon,
                 name: req.body.name,
@@ -176,7 +176,7 @@ export class StateGatewayInterface implements GatewayAttachmentInterface {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 msg_intention: 'DELETE',
                 status: 0,
-                userID: req.uemsJWT.userID,
+                userID: req.oidc.user.sub,
                 id: req.params.id,
             };
 
@@ -205,7 +205,7 @@ export class StateGatewayInterface implements GatewayAttachmentInterface {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 msg_intention: 'UPDATE',
                 status: 0,
-                userID: req.uemsJWT.userID,
+                userID: req.oidc.user.sub,
                 id: req.params.id,
             };
 

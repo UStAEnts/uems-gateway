@@ -71,7 +71,7 @@ export class TopicGatewayInterface implements GatewayAttachmentInterface {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 msg_intention: 'READ',
                 status: 0,
-                userID: req.uemsJWT.userID,
+                userID: req.oidc.user.sub,
             };
 
             const parameters = req.query;
@@ -115,7 +115,7 @@ export class TopicGatewayInterface implements GatewayAttachmentInterface {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 msg_intention: 'READ',
                 status: 0,
-                userID: req.uemsJWT.userID,
+                userID: req.oidc.user.sub,
             };
 
             await send(
@@ -149,7 +149,7 @@ export class TopicGatewayInterface implements GatewayAttachmentInterface {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 msg_intention: 'CREATE',
                 status: 0,
-                userID: req.uemsJWT.userID,
+                userID: req.oidc.user.sub,
                 name: req.body.name,
                 color: req.body.color,
                 icon: req.body.icon,
@@ -181,7 +181,7 @@ export class TopicGatewayInterface implements GatewayAttachmentInterface {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 msg_intention: 'DELETE',
                 status: 0,
-                userID: req.uemsJWT.userID,
+                userID: req.oidc.user.sub,
                 id: req.params.id,
             };
 
@@ -210,7 +210,7 @@ export class TopicGatewayInterface implements GatewayAttachmentInterface {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 msg_intention: 'UPDATE',
                 status: 0,
-                userID: req.uemsJWT.userID,
+                userID: req.oidc.user.sub,
                 id: req.params.id,
             };
 

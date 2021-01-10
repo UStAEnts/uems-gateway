@@ -121,7 +121,7 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
                 status: 0,
                 msg_intention: 'DELETE',
                 id: eventId,
-                userID: req.uemsJWT.userID,
+                userID: req.oidc.user.sub,
             };
 
             await send(
@@ -142,7 +142,7 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
                 status: 0,
                 msg_intention: 'UPDATE',
                 id: eventId,
-                userID: req.uemsJWT.userID,
+                userID: req.oidc.user.sub,
             };
 
             const validate = MessageUtilities.verifyParameters(
@@ -224,7 +224,7 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
             msg_id: MessageUtilities.generateMessageIdentifier(),
             status: 0,
             msg_intention: 'READ',
-            userID: req.uemsJWT.userID,
+            userID: req.oidc.user.sub,
         };
 
         if (req.query.name !== undefined) {
@@ -293,7 +293,7 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
             res,
             GenericHandlerFunctions.handleDefaultResponseFactory(Resolver.resolveEvents(
                 this._resolver,
-                req.uemsJWT.userID,
+                req.oidc.user.sub,
             )),
         );
     };
@@ -304,7 +304,7 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 msg_intention: 'READ',
                 status: 0,
-                userID: req.uemsJWT.userID,
+                userID: req.oidc.user.sub,
             };
 
             if (!MessageUtilities.has(req.params, 'id')) {
@@ -325,7 +325,7 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
                 res,
                 GenericHandlerFunctions.handleReadSingleResponseFactory(
                     async (data: ShallowInternalEvent) => ({
-                        event: await Resolver.resolveSingleEvent(this._resolver, req.uemsJWT.userID)(data),
+                        event: await Resolver.resolveSingleEvent(this._resolver, req.oidc.user.sub)(data),
                         changelog: [],
                     }),
                 ),
@@ -371,7 +371,7 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 status: 0, // 0 Code used when the status is still to be decided.
                 msg_intention: 'CREATE',
-                userID: request.uemsJWT.userID,
+                userID: request.oidc.user.sub,
 
                 name,
                 start,
@@ -398,7 +398,7 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
             msg_id: MessageUtilities.generateMessageIdentifier(),
             status: 0,
             msg_intention: 'READ',
-            userID: req.uemsJWT.userID,
+            userID: req.oidc.user.sub,
         };
 
         if (!MessageUtilities.has(req.params, 'id')) {
@@ -419,7 +419,7 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
             res,
             GenericHandlerFunctions.handleDefaultResponseFactory(Resolver.resolveEvents(
                 this._resolver,
-                req.uemsJWT.userID,
+                req.oidc.user.sub,
             )),
         );
     };
@@ -431,7 +431,7 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
             msg_id: MessageUtilities.generateMessageIdentifier(),
             status: 0,
             msg_intention: 'READ',
-            userID: req.uemsJWT.userID,
+            userID: req.oidc.user.sub,
         };
 
         if (!MessageUtilities.has(req.params, 'id')) {
@@ -452,7 +452,7 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
             res,
             GenericHandlerFunctions.handleDefaultResponseFactory(Resolver.resolveEvents(
                 this._resolver,
-                req.uemsJWT.userID,
+                req.oidc.user.sub,
             )),
         );
     };
@@ -464,7 +464,7 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
             msg_id: MessageUtilities.generateMessageIdentifier(),
             status: 0,
             msg_intention: 'READ',
-            userID: req.uemsJWT.userID,
+            userID: req.oidc.user.sub,
         };
 
         if (!MessageUtilities.has(req.params, 'id')) {
@@ -486,7 +486,7 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
             res,
             GenericHandlerFunctions.handleDefaultResponseFactory(Resolver.resolveComments(
                 this._resolver,
-                req.uemsJWT.userID,
+                req.oidc.user.sub,
             )),
         );
     };
@@ -519,7 +519,7 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 status: 0, // 0 Code used when the status is still to be decided.
                 msg_intention: 'CREATE',
-                userID: request.uemsJWT.userID,
+                userID: request.oidc.user.sub,
 
                 category,
                 requiresAttention,

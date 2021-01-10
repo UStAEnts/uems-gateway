@@ -65,7 +65,7 @@ export class UserGatewayInterface implements GatewayAttachmentInterface {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 msg_intention: 'READ',
                 status: 0,
-                userID: req.uemsJWT.userID,
+                userID: req.oidc.user.sub,
             };
 
             const parameters = req.query;
@@ -110,7 +110,7 @@ export class UserGatewayInterface implements GatewayAttachmentInterface {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 msg_intention: 'READ',
                 status: 0,
-                userID: req.uemsJWT.userID,
+                userID: req.oidc.user.sub,
             };
 
             await send(
@@ -146,7 +146,7 @@ export class UserGatewayInterface implements GatewayAttachmentInterface {
                 msg_intention: 'CREATE',
                 id: req.body.username,
                 status: 0,
-                userID: req.uemsJWT.userID,
+                userID: req.oidc.user.sub,
                 name: req.body.name,
                 username: req.body.username,
                 email: req.body.email,
@@ -180,7 +180,7 @@ export class UserGatewayInterface implements GatewayAttachmentInterface {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 msg_intention: 'DELETE',
                 status: 0,
-                userID: req.uemsJWT.userID,
+                userID: req.oidc.user.sub,
                 id: req.params.id,
             };
 
@@ -209,7 +209,7 @@ export class UserGatewayInterface implements GatewayAttachmentInterface {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 msg_intention: 'UPDATE',
                 status: 0,
-                userID: req.uemsJWT.userID,
+                userID: req.oidc.user.sub,
                 id: req.params.id,
             };
 

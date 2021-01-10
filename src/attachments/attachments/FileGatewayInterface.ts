@@ -102,7 +102,7 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 msg_intention: 'READ',
                 status: 0,
-                userID: req.uemsJWT.userID,
+                userID: req.oidc.user.sub,
             };
 
             const parameters = req.query;
@@ -129,7 +129,7 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
                 res,
                 GenericHandlerFunctions.handleDefaultResponseFactory(Resolver.resolveFiles(
                     this._resolver,
-                    req.uemsJWT.userID,
+                    req.oidc.user.sub,
                 )),
             );
         };
@@ -141,7 +141,7 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 msg_intention: 'READ',
                 status: 0,
-                userID: req.uemsJWT.userID,
+                userID: req.oidc.user.sub,
             };
 
             if (!MessageUtilities.has(req.params, 'id')) {
@@ -161,7 +161,7 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
                 res,
                 GenericHandlerFunctions.handleReadSingleResponseFactory(Resolver.resolveSingleFile(
                     this._resolver,
-                    req.uemsJWT.userID,
+                    req.oidc.user.sub,
                 )),
             );
         };
@@ -191,7 +191,7 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 msg_intention: 'CREATE',
                 status: 0,
-                userID: req.uemsJWT.userID,
+                userID: req.oidc.user.sub,
                 userid: req.body.userid,
                 name: req.body.name,
                 filename: req.body.filename,
@@ -240,7 +240,7 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 msg_intention: 'DELETE',
                 status: 0,
-                userID: req.uemsJWT.userID,
+                userID: req.oidc.user.sub,
                 id: req.params.id,
             };
 
@@ -269,7 +269,7 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 msg_intention: 'UPDATE',
                 status: 0,
-                userID: req.uemsJWT.userID,
+                userID: req.oidc.user.sub,
                 id: req.params.id,
             };
 
@@ -311,7 +311,7 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 msg_intention: 'READ',
                 status: 0,
-                userID: req.uemsJWT.userID,
+                userID: req.oidc.user.sub,
                 fileID: req.params.id,
             };
 
@@ -321,7 +321,7 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
                 res,
                 GenericHandlerFunctions.handleDefaultResponseFactory(Resolver.resolveEventsForFileBinding(
                     this._resolver,
-                    req.uemsJWT.userID,
+                    req.oidc.user.sub,
                 )),
             );
         };
@@ -343,7 +343,7 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 msg_intention: 'READ',
                 status: 0,
-                userID: req.uemsJWT.userID,
+                userID: req.oidc.user.sub,
                 eventID: req.params.id,
             };
 
@@ -353,7 +353,7 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
                 res,
                 GenericHandlerFunctions.handleDefaultResponseFactory(Resolver.resolveFilesForFileBinding(
                     this._resolver,
-                    req.uemsJWT.userID,
+                    req.oidc.user.sub,
                 )),
             );
         };
@@ -388,7 +388,7 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 msg_intention: 'CREATE',
                 status: 0,
-                userID: req.uemsJWT.userID,
+                userID: req.oidc.user.sub,
                 eventID: req.params.id,
                 fileIDs: [req.body.fileID],
             };
@@ -427,7 +427,7 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 msg_intention: 'DELETE',
                 status: 0,
-                userID: req.uemsJWT.userID,
+                userID: req.oidc.user.sub,
                 eventID: req.params.eventID,
                 fileIDs: [req.params.fileID],
             };
