@@ -164,4 +164,8 @@ export class ExpressApplication {
             res.json(req.oidc.isAuthenticated() ? 'Logged in' : 'Logged out');
         });
     }
+
+    listen() {
+        this._app.listen(this._configuration.port ?? 15450);
+    }
 }
