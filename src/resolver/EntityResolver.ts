@@ -40,19 +40,32 @@ export class EntityResolver {
 
     constructor(handler: GatewayMk2.GatewayMessageHandler) {
         this._handler = handler;
+        setInterval(this.terminate, 10000);
     }
 
+    private terminate = () => {
+        const now = Date.now();
+        for (const entry of Object.keys(this._pendingMessageIDs) as unknown as number[]) {
+            if (now - this._pendingMessageIDs[entry].submitted > 10000) {
+                _l.warn(`failed to resolve ${this._pendingMessageIDs[entry].name} after 10 seconds, rejecting`);
+                this._pendingMessageIDs[entry].reject(new Error('timed out'));
+                delete this._pendingMessageIDs[entry];
+            }
+        }
+    };
+
     public intercept(id: number): boolean {
-        // console.log('do we need to intercept ', id, has(this._pendingMessageIDs, id));
         return has(this._pendingMessageIDs, id);
     }
 
     public consume(message: MinimalMessageType) {
         const entry = this._pendingMessageIDs[message.msg_id];
-        // console.log('trying to consume', message, 'with entry', entry);
         if (!entry) return;
 
-        if (message.status === MsgStatus.FAIL) {
+        delete this._pendingMessageIDs[message.msg_id];
+
+        if (message.status !== MsgStatus.SUCCESS) {
+            _l.warn(`failed to resolve ${entry.name} because message status ${message.status}`);
             entry.reject(message);
             return;
         }
