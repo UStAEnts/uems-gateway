@@ -101,14 +101,12 @@ export namespace GatewayMk2 {
          * The entity resolver instance which will be used to intercept results for resolved entities
          * @private
          */
-        private resolver: EntityResolver = new EntityResolver(this);
+        private _resolver?: EntityResolver;
 
         /**
          * Creates a gateway, no side effects. Marked private as the async setup function should be used instead for
          * better handling.
          * @param connection the connection to the amqplib server
-         * @param sendChannel the channel on which requests should be sent
-         * @param receiveChannel the channel on which responses should be received
          * @param basicValidator the basic validator to be run against incoming messages
          * @private
          */
@@ -148,7 +146,12 @@ export namespace GatewayMk2 {
             }
         };
 
-        public async configure() {
+        set resolver(value: EntityResolver) {
+            this._resolver = value;
+        }
+
+        public async configure(resolver: EntityResolver) {
+            this._resolver = resolver;
             try {
                 this.sendChannel = await this.connection.createChannel();
             } catch (e) {
@@ -214,6 +217,8 @@ export namespace GatewayMk2 {
         }
 
         private readonly handleRawIncoming = (message: Message | null) => {
+            if (this._resolver === undefined) throw new Error('Gateway not configured properly, no resolver');
+
             if (message === null) {
                 console.warn('[gateway raw incoming]: null message received, ignoring it');
                 return;

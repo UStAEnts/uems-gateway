@@ -76,8 +76,9 @@ async function main() {
     console.log('[AMQP] connected');
 
     const handler = new GatewayMessageHandler(connection, undefined);
+    const resolver = new EntityResolver(handler);
     try {
-        await handler.configure();
+        await handler.configure(resolver);
     } catch (e) {
         console.error('Failed to configure the gateway handler');
         console.error(e);
@@ -88,7 +89,6 @@ async function main() {
         return;
     }
 
-    const resolver = new EntityResolver(handler);
 
     let expressApp;
     try {
