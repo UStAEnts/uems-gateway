@@ -22,6 +22,9 @@ import InternalEvent = EventResponse.InternalEvent;
 import InternalFile = FileResponse.InternalFile;
 import ShallowInternalFile = FileResponse.ShallowInternalFile;
 import { FileGatewayInterface } from "../attachments/attachments/FileGatewayInterface";
+import { _byFile } from "../log/Log";
+
+const _l = _byFile(__filename);
 
 export class EntityResolver {
     private _pendingMessageIDs: {
@@ -29,6 +32,7 @@ export class EntityResolver {
             callback: (entity: any | null) => void,
             reject: (entity: any | null) => void,
             submitted: number,
+            name: string,
         }
     } = {};
 
@@ -54,16 +58,15 @@ export class EntityResolver {
         }
 
         if (!has(message, 'result')) {
+            _l.warn(`failed to resolve ${entry.name} because there was no result`, { message });
             entry.reject(message);
             return;
         }
 
-        // console.log('performing callback');
         entry.callback(message.result);
     }
 
     private resolve<T>(id: string, key: string, userID: string, middleware?: (value: any) => T): Promise<T> {
-        console.log('trying to resolve', id, 'with key', key);
         return new Promise<T>((resolve, reject) => {
             const query = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
@@ -73,16 +76,22 @@ export class EntityResolver {
                 id,
             };
 
+            const name = `${query.msg_id} of READ for ${key}`;
+
             const callback = (result: any): any => {
                 if (!Array.isArray(result)) {
+                    _l.warn(`got result for ${name} which was not an array so rejecting the resolution`, { result });
                     reject(new Error('Result was not an array'));
                     return;
                 }
 
                 if (result.length !== 1) {
+                    _l.warn(`got result for ${name} which had too many elements, got ${result.length}`);
                     reject(new Error(`Result had too many or too few elements, expected 1 got ${result.length}`));
                     return;
                 }
+
+                _l.debug(`request for ${name} resolved successfully`);
 
                 if (middleware) {
                     resolve(middleware(result[0]));
@@ -95,12 +104,12 @@ export class EntityResolver {
                 reject,
                 callback,
                 submitted: Date.now(),
+                name,
             };
 
-            // console.log('added to pending');
+            _l.debug(`publishing request for :: ${query.msg_id} of READ for ${key}`);
 
             this._handler.publish(key, query);
-            // console.log('published');
         });
     }
 

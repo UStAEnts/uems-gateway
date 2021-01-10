@@ -10,6 +10,7 @@ import { EntityResolver } from '../resolver/EntityResolver';
 import { join } from 'path';
 import GatewayAttachmentInterface = GatewayMk2.GatewayAttachmentInterface;
 import SendRequestFunction = GatewayMk2.SendRequestFunction;
+import { __ } from "../log/Log";
 
 const MongoStore = connectMongo(session);
 
@@ -153,7 +154,9 @@ export class ExpressApplication {
                     this._app[value.action].bind(this._app)(value.path, handle);
                 }
 
-                console.log(`[register endpoints]: trying to register ${value.action} with path ${value.path}`);
+                __.info(`[register endpoints]: trying to register ${value.action} with path ${value.path}`, {
+                    secure,
+                });
             });
         }
     }

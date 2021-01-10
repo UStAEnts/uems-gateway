@@ -10,6 +10,10 @@ import { constants } from 'http2';
 import { EntityResolver } from './resolver/EntityResolver';
 import { MessageValidator } from '@uems/uemscommlib/build/messaging/MessageValidator';
 import * as util from 'util';
+import { _byFile, _byFileWithTag, _ml } from "./log/Log";
+
+const _l = _byFile(__filename);
+const _t = _byFileWithTag(__filename, 'terminator');
 
 const magenta = (input: string) => `\u001b[35m${input}\u001b[39m`;
 
@@ -119,6 +123,8 @@ export namespace GatewayMk2 {
             this.basicValidator = basicValidator;
 
             this.terminatorInterval = setInterval(this.terminateTimedOut, 2000);
+
+            _l.info('created Gateway and scheduled terminator');
         }
 
         /**
@@ -131,7 +137,7 @@ export namespace GatewayMk2 {
             for (const key of this.outstandingRequests.keys()) {
                 const entry = this.outstandingRequests.get(key);
                 if (entry !== undefined && now - entry.timestamp > 15000) {
-                    console.log(`[terminator]: request being terminated: ${entry.uid}@${entry.timestamp}`);
+                    _t.debug(`terminating request ${entry.uid}@${entry.timestamp}`);
 
                     // The request has been waiting more than 15 seconds so we tell them that it has timed out
                     entry.response.status(constants.HTTP_STATUS_GATEWAY_TIMEOUT)
@@ -155,9 +161,10 @@ export namespace GatewayMk2 {
             try {
                 this.sendChannel = await this.connection.createChannel();
             } catch (e) {
-                console.error('[gateway setup]: failed to initialise due to failing to create the channel');
+                _l.error('[gateway setup]: failed to initialise due to failing to create the channel');
                 throw e;
             }
+            _l.debug('send channel has been created');
 
             // Now make sure the exchange we're sending requests to exists
             try {
@@ -165,53 +172,59 @@ export namespace GatewayMk2 {
                     durable: false,
                 });
             } catch (e) {
-                console.error(`[gateway setup]: failed to initialise due to failing to 
+                _l.error(`[gateway setup]: failed to initialise due to failing to 
                 assert the exchange (${REQUEST_EXCHANGE})`);
                 throw e;
             }
+            _l.debug(`asserted the exchange ${REQUEST_EXCHANGE}`);
 
             // And then try to create another channel for receiving on
             try {
                 this.receiveChannel = await this.connection.createChannel();
             } catch (e) {
-                console.error('[gateway setup]: failed to initialise due to failing to create the receiving channel');
+                _l.error('[gateway setup]: failed to initialise due to failing to create the receiving channel');
                 throw e;
             }
+            _l.debug('created receive channel');
 
             // Then try to assert the gateway
             try {
                 await this.receiveChannel.assertExchange(GATEWAY_EXCHANGE, 'direct');
             } catch (e) {
-                console.error(`[gateway setup]: failed to initialise due to failing to assert the gateway exchange 
+                _l.error(`[gateway setup]: failed to initialise due to failing to assert the gateway exchange 
                 (${GATEWAY_EXCHANGE})`);
                 throw e;
             }
+            _l.debug(`asserted gateway exchange ${GATEWAY_EXCHANGE}`);
 
             // And the inbox queue
             try {
                 await this.receiveChannel.assertQueue(RCV_INBOX_QUEUE_NAME, { exclusive: true });
             } catch (e) {
-                console.error(`[gateway setup]: failed to initialise due to failing to assert the inbox queue 
+                _l.error(`[gateway setup]: failed to initialise due to failing to assert the inbox queue 
                 (${RCV_INBOX_QUEUE_NAME})`);
                 throw e;
             }
+            _l.debug(`asserted inbox of ${RCV_INBOX_QUEUE_NAME}`);
 
             // Then bind the inbox to the exchange
             try {
                 await this.receiveChannel.bindQueue(RCV_INBOX_QUEUE_NAME, GATEWAY_EXCHANGE, '');
             } catch (e) {
-                console.error(`[gateway setup]: failed to initialise due to failing to bind the inbox 
+                _l.error(`[gateway setup]: failed to initialise due to failing to bind the inbox 
                 (${RCV_INBOX_QUEUE_NAME}) to the exchange (${GATEWAY_EXCHANGE})`);
                 throw e;
             }
+            _l.debug(`created binding ${RCV_INBOX_QUEUE_NAME} --> ${GATEWAY_EXCHANGE}`);
 
             try {
                 // And bind the incoming messages to the handler
                 await this.receiveChannel.consume(RCV_INBOX_QUEUE_NAME, this.handleRawIncoming.bind(this), {
                     noAck: true,
                 });
+                _l.info('rabbit mq connection configured, consuming messages');
             } catch (e) {
-                console.error('[gateway setup]: failed to initialise due to failing to begin consuming');
+                _l.error('[gateway setup]: failed to initialise due to failing to begin consuming');
                 throw e;
             }
         }
@@ -220,7 +233,7 @@ export namespace GatewayMk2 {
             if (this._resolver === undefined) throw new Error('Gateway not configured properly, no resolver');
 
             if (message === null) {
-                console.warn('[gateway raw incoming]: null message received, ignoring it');
+                _l.warn('[gateway raw incoming]: null message received, ignoring it');
                 return;
             }
 
@@ -228,26 +241,28 @@ export namespace GatewayMk2 {
             const json = JSON.parse(stringContent);
 
             if (!MessageUtilities.has(json, 'msg_id') || typeof (json.msg_id) !== 'number') {
-                console.warn('[gateway raw incoming]: message was received without an ID. Ignoring');
+                _l.warn('[gateway raw incoming]: message was received without an ID. Ignoring');
                 return;
             }
             if (!MessageUtilities.has(json, 'status') || typeof (json.status) !== 'number') {
-                console.warn('[gateway raw incoming]: message was received without a status. Ignoring');
+                _l.warn('[gateway raw incoming]: message was received without a status. Ignoring');
                 return;
             }
 
+            _l.debug(`incoming message @ ${json.msg_id} (${json.status})`);
+
             // If this message ID has been sent by the resolver, it will mark it as requiring an intercept
             // in that case we want to send it to it to be consumed
-            if (this.resolver.intercept(json.msg_id)) {
+            if (this._resolver.intercept(json.msg_id)) {
                 MessageUtilities.identifierConsumed(json.msg_id);
-                this.resolver.consume(json);
+                this._resolver.consume(json);
                 return;
             }
 
             const request = this.outstandingRequests.get(json.msg_id);
             if (request === undefined) {
-                console.warn('[gateway raw incoming]: message was received that did not match a pending '
-                    + 'request. has it already timed out?');
+                _l.warn('[gateway raw incoming]: message was received that did not match a pending '
+                    + 'request. has it already timed out?', json.msg_id);
                 return;
             }
 
@@ -259,12 +274,12 @@ export namespace GatewayMk2 {
                         if (validated) {
                             request.callback(request.response, request.timestamp, json, json.status);
                         } else {
-                            console.warn('[gateway raw incoming]: message was rejected because it didn\'t '
+                            _l.warn('[gateway raw incoming]: message was rejected because it didn\'t '
                                 + 'pass the additional validator');
                         }
                     })
                     .catch((err) => {
-                        console.error(
+                        _l.error(
                             '[gateway raw incoming]: message was rejected because the validator errored out',
                             err,
                         );
@@ -281,6 +296,7 @@ export namespace GatewayMk2 {
 
             console.log(magenta(`transmitting to ${key}: `), util.inspect(data, false, null, true));
             if (data.userID === undefined) console.trace('undefined userID');
+
             return this.sendChannel.publish(REQUEST_EXCHANGE, key, Buffer.from(JSON.stringify(data)));
         }
 
@@ -291,8 +307,6 @@ export namespace GatewayMk2 {
             callback: RequestCallback,
             validator?: MessageValidator,
         ) => {
-            console.log('outgoing message', key, message);
-
             this.outstandingRequests.set(message.msg_id, {
                 response,
                 callback,
