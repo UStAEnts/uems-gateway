@@ -1,5 +1,5 @@
 import * as z from 'zod';
-import express, { Application, Request, Response } from 'express';
+import express, { Application, IRoute, IRouter, Request, Response, Router } from 'express';
 import { auth, requiresAuth } from 'express-openid-connect';
 import helmet from 'helmet';
 import cors from 'cors';
@@ -85,6 +85,8 @@ export class ExpressApplication {
 
     private _configuration: ExpressConfigurationType;
 
+    private _apiRouter: Router;
+
     constructor(configuration: ExpressConfigurationType) {
         this._configuration = configuration;
         this._app = express();
@@ -136,6 +138,10 @@ export class ExpressApplication {
 
         // Then register the Auth0 Authentication manager using all the config options
         this._app.use(auth(configuration.auth0));
+
+        this._apiRouter = express.Router();
+        this._app.use('/api', this._apiRouter);
+        __.info('created a new API router');
     }
 
     async attach(attachments: GatewayAttachmentInterface[], send: SendRequestFunction, resolver: EntityResolver) {
@@ -149,9 +155,9 @@ export class ExpressApplication {
                 const handle = (req: Request, res: Response) => value.handle(req, res, () => false);
 
                 if (secure) {
-                    this._app[value.action].bind(this._app)(value.path, requiresAuth(), handle);
+                    this._apiRouter[value.action].bind(this._apiRouter)(value.path, requiresAuth(), handle);
                 } else {
-                    this._app[value.action].bind(this._app)(value.path, handle);
+                    this._apiRouter[value.action].bind(this._apiRouter)(value.path, handle);
                 }
 
                 __.info(`[register endpoints]: trying to register ${value.action} with path ${value.path}`, {
@@ -163,7 +169,7 @@ export class ExpressApplication {
 
     async react() {
         this._app.use(requiresAuth(), express.static(join(__dirname, '..', '..', this._configuration.uems.serve)));
-        this._app.get('/', requiresAuth(), (req, res) => {
+        this._app.use(requiresAuth(), (req, res) => {
             res.sendFile(join(__dirname, '..', '..', this._configuration.uems.index));
             // res.json(req.oidc.isAuthenticated() ? 'Logged in' : 'Logged out');
         });
