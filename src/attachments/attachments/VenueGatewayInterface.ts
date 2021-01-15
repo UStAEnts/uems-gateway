@@ -88,7 +88,7 @@ export class VenueGatewayInterface implements GatewayAttachmentInterface {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 msg_intention: 'READ',
                 status: 0,
-                userID: request.oidc.user.sub,
+                userID: request.uemsUser.userID,
                 id: request.params.id,
             };
 
@@ -98,7 +98,7 @@ export class VenueGatewayInterface implements GatewayAttachmentInterface {
                 response,
                 GenericHandlerFunctions.handleReadSingleResponseFactory(Resolver.resolveSingleVenue(
                     this.resolver,
-                    request.oidc.user.sub,
+                    request.uemsUser.userID,
                 )),
             );
         };
@@ -120,7 +120,7 @@ export class VenueGatewayInterface implements GatewayAttachmentInterface {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 msg_intention: 'DELETE',
                 status: 0,
-                userID: request.oidc.user.sub,
+                userID: request.uemsUser.userID,
                 id: request.params.id,
             };
 
@@ -150,12 +150,12 @@ export class VenueGatewayInterface implements GatewayAttachmentInterface {
                 return;
             }
 
+            // @ts-ignore
             const outgoingMessage: CreateVenueMessage = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 msg_intention: 'CREATE',
                 status: 0,
-                userID: request.oidc.user.sub,
-                userid: request.oidc.user.sub,
+                userID: request.uemsUser.userID,
                 name: request.body.name,
                 capacity: request.body.capacity,
                 color: request.body.color,
@@ -186,7 +186,7 @@ export class VenueGatewayInterface implements GatewayAttachmentInterface {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 msg_intention: 'READ',
                 status: 0,
-                userID: request.oidc.user.sub,
+                userID: request.uemsUser.userID,
             };
 
             // Copy any of the search properties into the request if they are present
@@ -206,7 +206,7 @@ export class VenueGatewayInterface implements GatewayAttachmentInterface {
                 response,
                 GenericHandlerFunctions.handleDefaultResponseFactory(Resolver.resolveVenues(
                     this.resolver,
-                    request.oidc.user.sub,
+                    request.uemsUser.userID,
                 )),
             );
         };
@@ -228,7 +228,7 @@ export class VenueGatewayInterface implements GatewayAttachmentInterface {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 msg_intention: 'UPDATE',
                 status: 0,
-                userID: request.oidc.user.sub,
+                userID: request.uemsUser.userID,
                 id: request.params.id,
             };
 
