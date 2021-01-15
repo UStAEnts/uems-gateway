@@ -225,9 +225,26 @@ export class ExpressApplication {
         }
     }
 
-    async react() {
-        this._app.use(requiresAuth(), express.static(join(__dirname, '..', '..', this._configuration.uems.serve)));
-        this._app.use(requiresAuth(), (req, res) => {
+    async react(assert: (assert: AssertUserMessage) => void) {
+        this._app.use(this._keycloak.protect(), express.static(join(__dirname, '..', '..', this._configuration.uems.serve)));
+        this._app.use(this._keycloak.protect(), (req, res) => {
+            console.log(req);
+            // TODO: find a better way to do this. The page should be the first thing they access once they authenticate
+            // because it is the callback URL. Therefore we can use this to assert the user account because we know
+            // that the user account is defined here (requiresAuth())
+            assert({
+                msg_intention: 'ASSERT',
+                msg_id: MessageUtilities.generateMessageIdentifier(),
+                status: 0,
+                userID: 'anonymous',
+                email: req.uemsUser.email,
+                hash: '',
+                id: req.uemsUser.userID,
+                name: req.uemsUser.fullName,
+                profile: req.uemsUser.profile,
+                username: req.uemsUser.username,
+            });
+
             res.sendFile(join(__dirname, '..', '..', this._configuration.uems.index));
             // res.json(req.oidc.isAuthenticated() ? 'Logged in' : 'Logged out');
         });
