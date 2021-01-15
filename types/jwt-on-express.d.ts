@@ -1,16 +1,21 @@
 declare namespace Express {
+    import type Grant from 'keycloak-connect';
+
     interface Request {
-        oidc: {
-            isAuthenticated: () => boolean,
-            user: {
-                /**
-                 * The users ID as delivered by the Auth0 query: REQUIRED. Subject Identifier. A locally unique and
-                 * never reassigned identifier within the Issuer for the End-User, which is intended to be consumed
-                 * by the Client
-                 */
-                sub: string,
-                [key: string]: any,
-            },
+        /**
+         * This is a custom defined user instance that will be copied into depending on the authentication driver in
+         * use. This is designed to provide a consistent place to access that can be swapped out easily.
+         */
+        uemsUser: {
+            userID: string,
+            username: string,
+            email: string,
+            fullName: string,
+            profile: string,
+        }
+
+        kauth?: {
+            grant: Grant,
         }
     }
 }
