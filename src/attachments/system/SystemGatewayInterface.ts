@@ -1,5 +1,6 @@
 import { GatewayMk2 } from '../../Gateway';
 import GatewayAttachmentInterface = GatewayMk2.GatewayAttachmentInterface;
+import { RequestHandler } from "express";
 
 export class SystemGatewayInterface implements GatewayAttachmentInterface {
 
@@ -13,7 +14,23 @@ export class SystemGatewayInterface implements GatewayAttachmentInterface {
                     .send(`OK ${response}`),
                 secure: false,
             },
+            {
+                action: 'get',
+                path: '/whoami',
+                handle: SystemGatewayInterface.me(),
+                secure: true,
+            },
         ];
     }
 
+    private static me(): RequestHandler {
+        return (req, res) => {
+            console.log(req.uemsUser);
+            res.json({
+                username: req.uemsUser.username,
+                profile: req.uemsUser.profile,
+                name: req.uemsUser.fullName,
+            });
+        };
+    }
 }
