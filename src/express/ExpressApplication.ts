@@ -202,7 +202,18 @@ export class ExpressApplication {
                 const handle = (req: Request, res: Response) => value.handle(req, res, () => false);
 
                 if (secure) {
-                    this._apiRouter[value.action].bind(this._apiRouter)(value.path, requiresAuth(), handle);
+                    this._apiRouter[value.action].bind(this._apiRouter)(
+                        value.path,
+                        this._keycloak.protect(),
+                        (req, res) => {
+                            if (req.uemsUser === undefined) {
+                                res.sendStatus(constants.HTTP_STATUS_UNAUTHORIZED);
+                                return;
+                            }
+
+                            handle(req, res);
+                        },
+                    );
                 } else {
                     this._apiRouter[value.action].bind(this._apiRouter)(value.path, handle);
                 }
