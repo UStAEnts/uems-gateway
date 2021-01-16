@@ -33,6 +33,7 @@ export class EntityResolver {
             reject: (entity: any | null) => void,
             submitted: number,
             name: string,
+            stack: Error,
         }
     } = {};
 
@@ -89,6 +90,7 @@ export class EntityResolver {
                 id,
             };
 
+            const stack = new Error();
             const name = `${query.msg_id} of READ for ${key}`;
 
             const callback = (result: any): any => {
@@ -100,6 +102,7 @@ export class EntityResolver {
 
                 if (result.length !== 1) {
                     _l.warn(`got result for ${name} which had too many elements, got ${result.length}`);
+                    _l.warn('Stack trace', {stack});
                     reject(new Error(`Result had too many or too few elements, expected 1 got ${result.length}`));
                     return;
                 }
@@ -118,6 +121,7 @@ export class EntityResolver {
                 callback,
                 submitted: Date.now(),
                 name,
+                stack,
             };
 
             _l.debug(`publishing request for :: ${query.msg_id} of READ for ${key}`);
