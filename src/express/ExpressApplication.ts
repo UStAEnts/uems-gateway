@@ -1,5 +1,5 @@
 import * as z from 'zod';
-import express, { Application, IRoute, IRouter, Request, Response, Router } from 'express';
+import express, { Application, IRoute, IRouter, Request, RequestHandler, Response, Router } from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import session from 'express-session';
@@ -103,6 +103,8 @@ export const ExpressConfiguration = z.object({
 export type ExpressConfigurationType = z.infer<typeof ExpressConfiguration>;
 
 export class ExpressApplication {
+    private static readonly DISABLE_PROTECTIONS = true;
+
     private _app: Application;
 
     private _configuration: ExpressConfigurationType;
@@ -110,6 +112,8 @@ export class ExpressApplication {
     private _apiRouter: Router;
 
     private _keycloak: Keycloak;
+
+    private _protector: () => RequestHandler;
 
     constructor(configuration: ExpressConfigurationType) {
         this._configuration = configuration;
@@ -152,6 +156,10 @@ export class ExpressApplication {
             store,
         }, configuration.keycloak);
 
+        this._protector = ExpressApplication.DISABLE_PROTECTIONS
+            ? () => ((req, res, next) => next())
+            : this._keycloak.protect;
+
         // Configure sessions for users that need to be backed by the database using connect-mongo.
         this._app.use(session({
             saveUninitialized: true,
@@ -174,7 +182,19 @@ export class ExpressApplication {
         // }));
 
         this._apiRouter = express.Router();
-        this._app.use(this._keycloak.protect(), (req, res, next) => {
+        if(ExpressApplication.DISABLE_PROTECTIONS) {
+            this._app.use((req, res, next) => {
+                req.uemsUser = {
+                    userID: '3800de91-5c28-46e9-b501-27703ea32aed',
+                    username: 'debug',
+                    email: 'debug@debuggy.com',
+                    fullName: 'Debug Davids',
+                    profile: 'https://placehold.it/200x200',
+                };
+                next();
+            });
+        }
+        this._app.use(this._protector(), (req, res, next) => {
             if (req.kauth && req.kauth.grant && req.kauth.grant.id_token && req.kauth.grant.id_token.content) {
                 req.uemsUser = {
                     userID: req.kauth.grant.id_token.content.sub,
@@ -204,7 +224,7 @@ export class ExpressApplication {
                 if (secure) {
                     this._apiRouter[value.action].bind(this._apiRouter)(
                         value.path,
-                        this._keycloak.protect(),
+                        this._protector(),
                         (req, res) => {
                             if (req.uemsUser === undefined) {
                                 res.sendStatus(constants.HTTP_STATUS_UNAUTHORIZED);
@@ -226,9 +246,8 @@ export class ExpressApplication {
     }
 
     async react(assert: (assert: AssertUserMessage) => void) {
-        this._app.use(this._keycloak.protect(), express.static(join(__dirname, '..', '..', this._configuration.uems.serve)));
-        this._app.use(this._keycloak.protect(), (req, res) => {
-            console.log(req);
+        this._app.use(this._protector(), express.static(join(__dirname, '..', '..', this._configuration.uems.serve)));
+        this._app.use(this._protector(), (req, res) => {
             // TODO: find a better way to do this. The page should be the first thing they access once they authenticate
             // because it is the callback URL. Therefore we can use this to assert the user account because we know
             // that the user account is defined here (requiresAuth())
