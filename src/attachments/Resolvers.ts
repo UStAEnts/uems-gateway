@@ -4,9 +4,26 @@ import { EntityResolver } from "../resolver/EntityResolver";
 import SingleTransformer = GenericHandlerFunctions.SingleTransformer;
 import Transformer = GenericHandlerFunctions.Transformer;
 import { FileBindingValidators } from "@uems/uemscommlib/build/filebinding/FileBindingValidators";
+import { ifError } from "assert";
+import { __ } from "../log/Log";
 
 function singleToDouble<S, D, R extends { result: S[] }>(x: SingleTransformer<S, D, R>): Transformer<S, D, R> {
-    return async (data) => Promise.all(data.map((e) => x(e)));
+    // TODO: log errors and maybe provide some indication of partial responses. Do this in a later feature phase
+
+    return (async (data) => {
+        const promises = data.map((e) => x(e));
+        const resolution = await Promise.allSettled(promises);
+        const fulfilled = resolution.filter((e) => e.status === 'fulfilled') as { value: D }[];
+        if (fulfilled.length !== resolution.length) {
+            __.warn('Some resolutions failed when settling');
+            resolution.forEach((e) => {
+                if (e.status === 'rejected') console.warn(e.reason);
+            });
+        }
+
+        const results = fulfilled.map((e) => e.value);
+        return results;
+    });
 }
 
 export namespace Resolver {
