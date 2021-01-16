@@ -173,13 +173,12 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
             const validate = MessageUtilities.verifyParameters(
                 req,
                 res,
-                ['name', 'filename', 'size', 'type', 'userid'],
+                ['name', 'filename', 'size', 'type'],
                 {
                     name: (x) => typeof (x) === 'string',
                     filename: (x) => typeof (x) === 'string',
                     size: (x) => typeof (x) === 'number',
                     type: (x) => typeof (x) === 'string',
-                    userid: (x) => typeof (x) === 'string',
                 },
             );
 
@@ -192,7 +191,7 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
                 msg_intention: 'CREATE',
                 status: 0,
                 userID: req.uemsUser.userID,
-                userid: req.body.userid,
+                userid: req.uemsUser.userID,
                 name: req.body.name,
                 filename: req.body.filename,
                 size: req.body.size,
