@@ -91,6 +91,24 @@ export class SignupGatewayInterface implements GatewayAttachmentInterface {
                 eventID: req.params.eventID,
             };
 
+            const validate = MessageUtilities.coerceAndVerifyQuery(
+                req,
+                res,
+                [],
+                {
+                    id: { primitive: 'string' },
+                    date: { primitive: 'number' },
+                    userid: { primitive: 'string' },
+                    dateRangeBegin: { primitive: 'number' },
+                    dateRangeEnd: { primitive: 'number' },
+                    role: { primitive: 'string' },
+                },
+            );
+
+            if (!validate) {
+                return;
+            }
+
             const parameters = req.query;
             const validProperties: (keyof SignupReadSchema)[] = [
                 'id',
