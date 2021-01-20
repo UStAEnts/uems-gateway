@@ -68,6 +68,24 @@ export class UserGatewayInterface implements GatewayAttachmentInterface {
                 userID: req.uemsUser.userID,
             };
 
+            const validate = MessageUtilities.verifyQuery(
+                req,
+                res,
+                [],
+                {
+                    id: (x) => typeof (x) === 'string',
+                    name: (x) => typeof (x) === 'string',
+                    username: (x) => typeof (x) === 'string',
+                    email: (x) => typeof (x) === 'string',
+                    includeHash: (x) => typeof (x) === 'boolean',
+                    includeEmail: (x) => typeof (x) === 'boolean',
+                },
+            );
+
+            if (!validate) {
+                return;
+            }
+
             const parameters = req.query;
             const validProperties: string[] = [
                 'id',
@@ -202,6 +220,23 @@ export class UserGatewayInterface implements GatewayAttachmentInterface {
                         message: 'missing parameter id',
                         code: 'BAD_REQUEST_MISSING_PARAM',
                     }));
+                return;
+            }
+
+            const validate = MessageUtilities.verifyBody(
+                req,
+                res,
+                [],
+                {
+                    name: (x) => typeof (x) === 'string',
+                    username: (x) => typeof (x) === 'string',
+                    email: (x) => typeof (x) === 'string',
+                    profile: (x) => typeof (x) === 'string',
+                    hash: (x) => typeof (x) === 'string',
+                },
+            );
+
+            if (!validate) {
                 return;
             }
 
