@@ -5,6 +5,7 @@ import { constants } from 'http2';
 import { VenueMessage, VenueResponse, VenueResponseValidator } from '@uems/uemscommlib';
 import { EntityResolver } from '../../resolver/EntityResolver';
 import { GenericHandlerFunctions } from '../GenericHandlerFunctions';
+import { Resolver } from "../Resolvers";
 import SendRequestFunction = GatewayMk2.SendRequestFunction;
 import GatewayAttachmentInterface = GatewayMk2.GatewayAttachmentInterface;
 import GatewayInterfaceActionType = GatewayMk2.GatewayInterfaceActionType;
@@ -12,12 +13,6 @@ import ReadVenueMessage = VenueMessage.ReadVenueMessage;
 import DeleteVenueMessage = VenueMessage.DeleteVenueMessage;
 import CreateVenueMessage = VenueMessage.CreateVenueMessage;
 import UpdateVenueMessage = VenueMessage.UpdateVenueMessage;
-import SingleTransformer = GenericHandlerFunctions.SingleTransformer;
-import ShallowInternalVenue = VenueResponse.ShallowInternalVenue;
-import InternalVenue = VenueResponse.InternalVenue;
-import Transformer = GenericHandlerFunctions.Transformer;
-import VenueServiceReadResponseMessage = VenueResponse.VenueServiceReadResponseMessage;
-import { Resolver } from "../Resolvers";
 
 export class VenueGatewayInterface implements GatewayAttachmentInterface {
     private readonly VENUE_CREATE_KEY = 'venues.details.create';
@@ -182,6 +177,24 @@ export class VenueGatewayInterface implements GatewayAttachmentInterface {
                 'maximum_capacity',
             ];
 
+            const validate = MessageUtilities.verifyQuery(
+                request,
+                response,
+                [],
+                {
+                    name: (x) => typeof (x) === 'string',
+                    capacity: (x) => typeof (x) === 'number',
+                    approximate_capacity: (x) => typeof (x) === 'number',
+                    approximate_fuzziness: (x) => typeof (x) === 'number',
+                    minimum_capacity: (x) => typeof (x) === 'number',
+                    maximum_capacity: (x) => typeof (x) === 'number',
+                },
+            );
+
+            if (!validate) {
+                return;
+            }
+
             const outgoingMessage: ReadVenueMessage = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 msg_intention: 'READ',
@@ -221,6 +234,21 @@ export class VenueGatewayInterface implements GatewayAttachmentInterface {
                         message: 'missing parameter id',
                         code: 'BAD_REQUEST_MISSING_PARAM',
                     }));
+                return;
+            }
+
+            const validate = MessageUtilities.verifyBody(
+                request,
+                response,
+                [],
+                {
+                    name: (x) => typeof (x) === 'string',
+                    capacity: (x) => typeof (x) === 'number',
+                    color: (x) => typeof (x) === 'string' && this.COLOR_REGEX.test(x),
+                },
+            );
+
+            if (!validate) {
                 return;
             }
 
