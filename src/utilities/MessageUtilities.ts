@@ -72,15 +72,15 @@ export namespace MessageUtilities {
         };
     }
 
-    export function verifyParameters<P extends string[]>(
-        request: Request,
+    export function verifyData<P extends string[]>(
+        data: Record<string, any>,
         response: Response,
         required: P,
         types?: Record<string, (x: any) => boolean>,
     ) {
         // eslint-disable-next-line no-restricted-syntax
         for (const key of required) {
-            if (!MessageUtilities.has(request.body, key)) {
+            if (!MessageUtilities.has(data, key)) {
                 response
                     .status(constants.HTTP_STATUS_BAD_REQUEST)
                     .json(MessageUtilities.wrapInFailure({
@@ -94,7 +94,7 @@ export namespace MessageUtilities {
         if (types !== undefined) {
             // eslint-disable-next-line no-restricted-syntax
             for (const key of Object.keys(types)) {
-                if (!types[key](request.body[key])) {
+                if (!types[key](data[key])) {
                     response
                         .status(constants.HTTP_STATUS_BAD_REQUEST)
                         .json(MessageUtilities.wrapInFailure({
@@ -107,6 +107,34 @@ export namespace MessageUtilities {
         }
 
         return true;
+    }
+
+    export function verifyBody<P extends string[]>(
+        request: Request,
+        response: Response,
+        required: P,
+        types?: Record<string, (x: any) => boolean>,
+    ) {
+        return verifyData(
+            request.body,
+            response,
+            required,
+            types,
+        );
+    }
+
+    export function verifyQuery<P extends string[]>(
+        request: Request,
+        response: Response,
+        required: P,
+        types?: Record<string, (x: any) => boolean>,
+    ) {
+        return verifyData(
+            request.query,
+            response,
+            required,
+            types,
+        );
     }
 
 }
