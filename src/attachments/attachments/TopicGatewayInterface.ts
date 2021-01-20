@@ -74,6 +74,23 @@ export class TopicGatewayInterface implements GatewayAttachmentInterface {
                 userID: req.uemsUser.userID,
             };
 
+            const validate = MessageUtilities.verifyQuery(
+                req,
+                res,
+                [],
+                {
+                    name: (x) => typeof (x) === 'string',
+                    icon: (x) => typeof (x) === 'string',
+                    color: (x) => typeof (x) === 'string' && this.COLOR_REGEX.test(x),
+                    description: (x) => typeof (x) === 'string',
+                    id: (x) => typeof (x) === 'string',
+                },
+            );
+
+            if (!validate) {
+                return;
+            }
+
             const parameters = req.query;
             const validProperties: (keyof TopicReadSchema)[] = [
                 'name',
@@ -203,6 +220,22 @@ export class TopicGatewayInterface implements GatewayAttachmentInterface {
                         message: 'missing parameter id',
                         code: 'BAD_REQUEST_MISSING_PARAM',
                     }));
+                return;
+            }
+
+            const validate = MessageUtilities.verifyBody(
+                req,
+                res,
+                [],
+                {
+                    name: (x) => typeof (x) === 'string',
+                    icon: (x) => typeof (x) === 'string',
+                    color: (x) => typeof (x) === 'string' && this.COLOR_REGEX.test(x),
+                    description: (x) => typeof (x) === 'string',
+                },
+            );
+
+            if (!validate) {
                 return;
             }
 
