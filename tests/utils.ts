@@ -5,7 +5,7 @@ import express from "express";
 import { GET_VENUES_INVALID, request } from "./test-api-data";
 import { constants } from "http2";
 
-export function testParameterTypes(
+export async function testParameterTypes(
     route: GatewayInterfaceActionType,
     data: any,
     location: 'query' | 'body',
@@ -19,7 +19,7 @@ export function testParameterTypes(
         location === 'body' ? data : undefined,
         params,
     );
-    route.handle(req, fake, () => false);
+    await route.handle(req, fake, () => false);
 
     if (send.mock.calls.length !== 0) {
         console.warn(response);
@@ -33,7 +33,7 @@ export function testParameterTypes(
         .toContain('type');
 }
 
-export function testMissingParameters(
+export async function testMissingParameters(
     route: GatewayInterfaceActionType,
     data: any,
     location: 'query' | 'body',
@@ -47,7 +47,7 @@ export function testMissingParameters(
         location === 'body' ? data : undefined,
         params,
     );
-    route.handle(req, fake, () => false);
+    await route.handle(req, fake, () => false);
 
     if (send.mock.calls.length !== 0) {
         console.warn(response);
@@ -62,7 +62,7 @@ export function testMissingParameters(
         .toContain('missing');
 }
 
-export function testValidRoute(
+export async function testValidRoute(
     route: GatewayInterfaceActionType,
     data: any,
     location: 'query' | 'body',
@@ -76,7 +76,7 @@ export function testValidRoute(
         location === 'body' ? data : undefined,
         params,
     );
-    route.handle(req, fake, () => false);
+    await route.handle(req, fake, () => false);
 
     if (send.mock.calls.length !== 1) {
         console.warn(response);

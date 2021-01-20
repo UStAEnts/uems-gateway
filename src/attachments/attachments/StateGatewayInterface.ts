@@ -71,6 +71,22 @@ export class StateGatewayInterface implements GatewayAttachmentInterface {
                 userID: req.uemsUser.userID,
             };
 
+            const validate = MessageUtilities.coerceAndVerifyQuery(
+                req,
+                res,
+                [],
+                {
+                    name: { primitive: 'string' },
+                    icon: { primitive: 'string' },
+                    color: { primitive: 'string', validator: (x) => this.COLOR_REGEX.test(x) },
+                    id: { primitive: 'string' },
+                },
+            );
+
+            if (!validate) {
+                return;
+            }
+
             const parameters = req.query;
             const validProperties: (keyof ReadEntStateMessage)[] = [
                 'name',
@@ -209,6 +225,21 @@ export class StateGatewayInterface implements GatewayAttachmentInterface {
                 id: req.params.id,
             };
 
+            const validate = MessageUtilities.verifyBody(
+                req,
+                res,
+                [],
+                {
+                    name: (x) => typeof (x) === 'string',
+                    icon: (x) => typeof (x) === 'string',
+                    color: (x) => typeof (x) === 'string' && this.COLOR_REGEX.test(x),
+                },
+            );
+
+            if (!validate) {
+                return;
+            }
+
             const parameters = req.body;
             const validProperties: (keyof ReadEntStateMessage)[] = [
                 'name',
@@ -222,6 +253,8 @@ export class StateGatewayInterface implements GatewayAttachmentInterface {
                     outgoing[key] = parameters[key];
                 }
             });
+
+            console.log('sending?');
 
             await send(
                 this.STATE_UPDATE_KEY,
