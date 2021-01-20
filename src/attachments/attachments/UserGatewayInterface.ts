@@ -68,17 +68,17 @@ export class UserGatewayInterface implements GatewayAttachmentInterface {
                 userID: req.uemsUser.userID,
             };
 
-            const validate = MessageUtilities.verifyQuery(
+            const validate = MessageUtilities.coerceAndVerifyQuery(
                 req,
                 res,
                 [],
                 {
-                    id: (x) => typeof (x) === 'string',
-                    name: (x) => typeof (x) === 'string',
-                    username: (x) => typeof (x) === 'string',
-                    email: (x) => typeof (x) === 'string',
-                    includeHash: (x) => typeof (x) === 'boolean',
-                    includeEmail: (x) => typeof (x) === 'boolean',
+                    id: { primitive: 'string' },
+                    name: { primitive: 'string' },
+                    username: { primitive: 'string' },
+                    email: { primitive: 'string' },
+                    includeHash: { primitive: 'boolean' },
+                    includeEmail: { primitive: 'boolean' },
                 },
             );
 

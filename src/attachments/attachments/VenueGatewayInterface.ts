@@ -177,17 +177,17 @@ export class VenueGatewayInterface implements GatewayAttachmentInterface {
                 'maximum_capacity',
             ];
 
-            const validate = MessageUtilities.verifyQuery(
+            const validate = MessageUtilities.coerceAndVerifyQuery(
                 request,
                 response,
                 [],
                 {
-                    name: (x) => typeof (x) === 'string',
-                    capacity: (x) => typeof (x) === 'number',
-                    approximate_capacity: (x) => typeof (x) === 'number',
-                    approximate_fuzziness: (x) => typeof (x) === 'number',
-                    minimum_capacity: (x) => typeof (x) === 'number',
-                    maximum_capacity: (x) => typeof (x) === 'number',
+                    name: { primitive: 'string' },
+                    capacity: { primitive: 'number' },
+                    approximate_capacity: { primitive: 'number' },
+                    approximate_fuzziness: { primitive: 'number' },
+                    minimum_capacity: { primitive: 'number' },
+                    maximum_capacity: { primitive: 'number' },
                 },
             );
 
