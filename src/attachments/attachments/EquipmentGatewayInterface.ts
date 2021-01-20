@@ -75,6 +75,30 @@ export class EquipmentGatewayInterface implements GatewayAttachmentInterface {
                 userID: req.uemsUser.userID,
             };
 
+            const validate = MessageUtilities.coerceAndVerifyQuery(
+                req,
+                res,
+                [],
+                {
+                    id: { primitive: 'string' },
+                    assetID: { primitive: 'string' },
+                    name: { primitive: 'string' },
+                    manufacturer: { primitive: 'string' },
+                    model: { primitive: 'string' },
+                    miscIdentifier: { primitive: 'string' },
+                    amount: { primitive: 'number' },
+                    locationID: { primitive: 'string' },
+                    locationSpecifier: { primitive: 'string' },
+                    managerID: { primitive: 'string' },
+                    date: { primitive: 'number' },
+                    category: { primitive: 'string' },
+                },
+            );
+
+            if (!validate) {
+                return;
+            }
+
             const parameters = req.query;
             const validProperties: string[] = [
                 'id',
