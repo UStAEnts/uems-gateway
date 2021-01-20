@@ -1,6 +1,6 @@
 import { UserGatewayInterface } from '../../src/attachments/attachments/UserGatewayInterface';
 import { GatewayMk2 } from '../../src/Gateway';
-import { GET_USER_INVALID, GET_USER_VALID, PATCH_USER_USERID_INVALID, PATCH_USER_USERID_VALID, POST_USER_INVALID, POST_USER_MISSING, POST_USER_VALID } from '../test-api-data';
+import { GET_USER_INVALID, GET_USER_VALID, PATCH_USER_USERID_VALID, POST_USER_MISSING, POST_USER_VALID } from '../test-api-data';
 import { testMissingParameters, testParameterTypes, testValidRoute } from '../utils';
 import GatewayInterfaceActionType = GatewayMk2.GatewayInterfaceActionType;
 
@@ -64,15 +64,6 @@ describe('UserGatewayInterface.ts', () => {
             );
         });
 
-        it('rejects on wrong parameter types', () => {
-            testParameterTypes(
-                routes['post.user'],
-                POST_USER_INVALID,
-                'body',
-                send,
-            );
-        });
-
         it('sends on a valid message', () => {
             testValidRoute(
                 routes['post.user'],
@@ -108,15 +99,6 @@ describe('UserGatewayInterface.ts', () => {
     });
 
     describe('PATCH /user/:id', () => {
-        it('rejects on wrong parameter types', () => {
-            testParameterTypes(
-                routes['patch.user.id'],
-                PATCH_USER_USERID_INVALID,
-                'body',
-                send,
-                { id: 'abc' },
-            );
-        });
 
         it('sends on a valid message', () => {
             testValidRoute(
