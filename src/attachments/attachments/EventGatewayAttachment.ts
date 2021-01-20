@@ -145,7 +145,7 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
                 userID: req.uemsUser.userID,
             };
 
-            const validate = MessageUtilities.verifyParameters(
+            const validate = MessageUtilities.verifyBody(
                 req,
                 res,
                 [],
@@ -335,7 +335,7 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
 
     private static createEventHandler(send: SendRequestFunction) {
         return async (request: Request, res: Response) => {
-            const validate = MessageUtilities.verifyParameters(
+            const validate = MessageUtilities.verifyBody(
                 request,
                 res,
                 ['name', 'attendance', 'start', 'end', 'venue'],
@@ -493,7 +493,7 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
 
     private postCommentsForEvent(send: SendRequestFunction) {
         return async (request: Request, res: Response) => {
-            const validate = MessageUtilities.verifyParameters(
+            const validate = MessageUtilities.verifyBody(
                 request,
                 res,
                 ['body'],

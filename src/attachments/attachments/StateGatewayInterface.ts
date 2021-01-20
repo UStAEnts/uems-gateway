@@ -126,7 +126,7 @@ export class StateGatewayInterface implements GatewayAttachmentInterface {
 
     private createStateHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
-            const validate = MessageUtilities.verifyParameters(
+            const validate = MessageUtilities.verifyBody(
                 req,
                 res,
                 ['name', 'icon', 'color'],

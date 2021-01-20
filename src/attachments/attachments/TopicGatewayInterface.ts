@@ -129,7 +129,7 @@ export class TopicGatewayInterface implements GatewayAttachmentInterface {
 
     private createTopicHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
-            const validate = MessageUtilities.verifyParameters(
+            const validate = MessageUtilities.verifyBody(
                 req,
                 res,
                 ['name', 'icon', 'color', 'description'],

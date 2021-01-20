@@ -177,7 +177,7 @@ export class SignupGatewayInterface implements GatewayAttachmentInterface {
                 return;
             }
 
-            const validate = MessageUtilities.verifyParameters(
+            const validate = MessageUtilities.verifyBody(
                 req,
                 res,
                 ['role'],

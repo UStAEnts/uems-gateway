@@ -135,7 +135,7 @@ export class VenueGatewayInterface implements GatewayAttachmentInterface {
 
     private handleCreateRequest(sendRequest: SendRequestFunction) {
         return (request: Request, response: Response) => {
-            const validate = MessageUtilities.verifyParameters(
+            const validate = MessageUtilities.verifyBody(
                 request,
                 response,
                 ['name', 'capacity', 'color'],

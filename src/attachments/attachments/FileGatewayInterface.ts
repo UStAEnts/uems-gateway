@@ -170,7 +170,7 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
     private createFileHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
 
-            const validate = MessageUtilities.verifyParameters(
+            const validate = MessageUtilities.verifyBody(
                 req,
                 res,
                 ['name', 'filename', 'size', 'type'],
@@ -370,7 +370,7 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
                 return;
             }
 
-            const validate = MessageUtilities.verifyParameters(
+            const validate = MessageUtilities.verifyBody(
                 req,
                 res,
                 ['fileID'],

@@ -144,7 +144,7 @@ export class EquipmentGatewayInterface implements GatewayAttachmentInterface {
 
     private createEquipmentHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
-            const validate = MessageUtilities.verifyParameters(
+            const validate = MessageUtilities.verifyBody(
                 req,
                 res,
                 ['name', 'manufacturer', 'model', 'amount', 'locationID', 'category'],
@@ -255,7 +255,7 @@ export class EquipmentGatewayInterface implements GatewayAttachmentInterface {
             };
 
             // Then validate the body parameters and copy them over
-            const validate = MessageUtilities.verifyParameters(
+            const validate = MessageUtilities.verifyBody(
                 req,
                 res,
                 [],
