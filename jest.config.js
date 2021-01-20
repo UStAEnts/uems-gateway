@@ -1,0 +1,12 @@
+module.exports = {
+  preset: 'ts-jest',
+  testEnvironment: 'node',
+  testPathIgnorePatterns: [
+      '/node_modules/',
+      '/build/'
+  ],
+    coveragePathIgnorePatterns: [
+        '/node_modules/',
+        '/src/logging/Log.ts'
+    ]
+};
