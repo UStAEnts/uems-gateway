@@ -1,4 +1,4 @@
-import { Request } from "express";
+import { Request } from 'express';
 
 export const request = (query?: any, body?: any, params?: any): Request => ({
     query,
@@ -17,511 +17,437 @@ export const MOCK_UEMS_USER = {
 
 // GET /ents get-ents
 export const GET_ENTS_VALID = {
-    name: 'e8u9fDJBU3lR2ofEf+P1/Q==',
-    icon: 'iSk5WvDn6Aogpd44FbzWwg==',
-    color: '#68D195',
-    id: 'OurMP0gYImpGmXklRsXkog=='
-}
-export const GET_ENTS_INVALID = {
-    name: '/D7oatpTB/fIg3HNfCyPzw==',
-    icon: 'b1jRsBPMOCEl6MwHcFfHrA==',
-    color: 'kjkEXqZ+2LScQWKVYRgOTA==',
-    id: 'RtEkE3BEgxmEAxDU2uaSiA=='
-}
+    name: 'sFcjelLVv1q4j3gFLiT43w==',
+    icon: 'Snqt7PzNguO33MQMfbSsjw==',
+    color: '#485BFA',
+    id: 'iWN62gemxERorjO5TSLPKw==',
+};
 
 // POST /ents post-ents
 export const POST_ENTS_VALID = {
-    name: 'rVYZAli4rWj3MYvjqaaA9Q==',
-    icon: 'TBHanDjcvlZ7wUX8h144iw==',
-    color: '#22402F'
-}
-export const POST_ENTS_INVALID = {
-    name: 'l0qZdjwcH2+BRBPP4B0UFg==',
-    icon: 214,
-    color: '#1EF013'
-}
+    name: '6Vh5+ees0DEVrAJlaDVOmw==',
+    icon: 'wXqzYFs4MqJEWLG+nqwjOw==',
+    color: '#5175C1',
+};
 export const POST_ENTS_MISSING = {
-    icon: 'BJUqU012MZz8tR94TL2h8w==',
-    color: '#BAA6B9'
-}
+    icon: 'qam7RbQ3Gmj4p/I/37Wutw==',
+    color: '#7A5CFB',
+};
 
 // GET /ents/{entID} get-ents-entID
-export const GET_ENTS_ENTID_VALID = {}
-export const GET_ENTS_ENTID_INVALID = {}
+export const GET_ENTS_ENTID_VALID = {};
 
 // PATCH /ents/{entID} patch-ents-entID
 export const PATCH_ENTS_ENTID_VALID = {
-    name: 'Tj8aqjYq/tU3QfYIA51k4Q==',
-    icon: 'JudJxb2gEFye2LRYGn+EHw==',
-    color: '#AE6615'
-}
-export const PATCH_ENTS_ENTID_INVALID = {
-    name: 902,
-    icon: 'hBWuqvZAIl9X56Q4f0Us4Q==',
-    color: '#091B1D'
-}
+    name: 'vy8aUymIWPZkEgRFvusTRw==',
+    icon: 'oxoyhRIxcdO8wvW+TJ5WOQ==',
+    color: '#216AA5',
+};
 
 // GET /equipment get-equipment
 export const GET_EQUIPMENT_VALID = {
-    id: 'HyA0t4imeyLh8QqrxAtCWQ==',
-    assetID: 'K8WyMGy6Ml9zgGg42L6YGg==',
-    name: '/G81yVtvsMvCOdr+DwFzjA==',
-    manufacturer: 'BggWllSeffgiRHdhiyq1Ig==',
-    model: 'WuXPKJ8OvJE6HRheZWP7dA==',
-    miscIdentifier: 'AFrqbngkqrT2IRYN7sN44A==',
-    amount: 775,
-    locationID: 'OO0adgD2ngx0tt6MgHyqYQ==',
-    locationSpecifier: '2F/RbkKqnT/OoZtm48raNQ==',
-    managerID: 'Ai4mM+0tMBf/R3KlRPCaXA==',
-    date: 609,
-    category: '/fmiGNV5n8786NsF/jheqA=='
-}
+    id: 'AuPCWnhFmWVHqS0IBmXX/Q==',
+    assetID: 'dz9nL9ThicnismjbeOmQUg==',
+    name: 'z7hW1HVuHEUmKYZOPvR2EA==',
+    manufacturer: '+4ugfvmkP6VT9BpXbyQxhw==',
+    model: 'IDvknhG3AY3t7/fiiZW6Mg==',
+    miscIdentifier: 'BUO9EW3IEG9Ss/JR36xZkA==',
+    amount: '106',
+    locationID: 'yG9NL/Hj05ToK4LeC4cmsQ==',
+    locationSpecifier: 'OMUi77El7N7qucjpMyKc7A==',
+    managerID: 'U6fUPrYB9EkqH0aUt1TZsw==',
+    date: '243',
+    category: 'AcCY8dIltPQFi3u4wz894g==',
+};
 export const GET_EQUIPMENT_INVALID = {
-    id: 'o1xEItoE8NGHBHkwkqLsbA==',
-    assetID: 'j00y6y696KKwFyPDwjISuA==',
-    name: '8CKY3nNOdW1di2VbhMu3Zg==',
-    manufacturer: 'iNpM5oP0e2ejJkXOA256ag==',
-    model: 'Rh5+41YwmsYque88RvP+2Q==',
-    miscIdentifier: 'TBZFDe5KUuVCX3u+Ll+eiw==',
-    amount: 638,
-    locationID: 'YV2iaeXFblE110W4VPprFw==',
-    locationSpecifier: 281,
-    managerID: 'aL93VKtDU8aFSm0qEureIg==',
-    date: 802,
-    category: 'VQz0LZ/28t1ub8PFMGM8dg=='
-}
+    id: 'T03CpUbDqkIya3iQwyDKjg==',
+    assetID: 'qT1ydrZCqhBqeth+Jz1OlA==',
+    name: 'IpyrxOscFApcDkYWOlya0Q==',
+    manufacturer: 'PBHtbUVUdX6eSFUeM6vFNw==',
+    model: 'kc5FKKogSXwLdArc47C8yQ==',
+    miscIdentifier: 'JW1lsMqZGuvyjOg/wwRh5w==',
+    amount: 'tR7sqZGa3EOTdZAGjhCxsQ==',
+    locationID: 'rCDwnWFoM2/8WzU1JKkeig==',
+    locationSpecifier: 'W6gihbyWl5pzGq80uz9Hbg==',
+    managerID: 'hBDSh+e7/Xqq5o1eeJxShA==',
+    date: '932',
+    category: 'OLXy1V6MWQt4dgEYA7GB7g==',
+};
 
 // POST /equipment post-equipment
 export const POST_EQUIPMENT_VALID = {
-    name: 'RjeVhfgeNRR66RYPAnZiIQ==',
-    manufacturer: 'NNpKEEohe77t85r2kRgMoA==',
-    model: 'PQYryYsaGZRx1MrRHxvjVw==',
-    amount: 876,
-    locationID: 'cf01ihPXztFju/fGKZ/pBQ==',
-    category: 'USKoSGbj84EhtT7nl+9JhQ==',
-    assetID: 'pOzUXy2Yd1EX4wSTsTj4dQ==',
-    miscIdentifier: 'C+/DfOf1zsRSNG/GsH8UqA==',
-    locationSpecifier: 'kJgKYchPzdVphMjvv+c8Fw=='
-}
+    name: 'xKo3gLqYhVU8xyxuXgZEug==',
+    manufacturer: '0Sqy0yHv29M0/eLvC/uqXg==',
+    model: 'dtWxvVslH7DZYFzEpr9/1A==',
+    amount: 114,
+    locationID: 'OmLmMOZs651kuIyrspI5fg==',
+    category: 'qzLDhbVEUJXH7hPQYqs4tw==',
+    assetID: 'm8ud+OZtEH2CRh+PmWFZrw==',
+    miscIdentifier: '4omx9Y3m0jIFcoZ2FK0Sig==',
+    locationSpecifier: 'cEOZsSRiG34MVpri8uy75Q==',
+};
 export const POST_EQUIPMENT_INVALID = {
-    name: 'H34Kzb0/19YQl0b4vqqyBg==',
-    manufacturer: 471,
-    model: 'DXTwLcZqt8F5nNdjYLGL3A==',
-    amount: 721,
-    locationID: 'b/mPejA8MPC+dSeXsnTEKA==',
-    category: 'zKQCJJZk6lMuhJ3hI3sw6w==',
-    assetID: 'kK/VFyXupIa2zETyRBdhJw==',
-    miscIdentifier: 'RPDLHK10aRt0xW7EwralFg==',
-    locationSpecifier: 'wxTq0MU1/WIx/TK41dfwOg=='
-}
+    name: 'tu0iVkkca29SsxApIlBmuw==',
+    manufacturer: 'lOKwviJ8tGt+JTDatC1ERw==',
+    model: 'Yd/GcSHtTIVreARJ637YIA==',
+    amount: 'dxAoKx8s+WWumTlO6rnRmQ==',
+    locationID: 't2KQU8oT09G/ylbFOoJl6Q==',
+    category: 'rcYhhTi1fetEzsxZpQaoVw==',
+    assetID: 'lhdrRol0TCtdncs9Dzl9Yg==',
+    miscIdentifier: 'ufMcH6XssJgqIjbr5KHIng==',
+    locationSpecifier: 'kDk7Sr1QnowOy9MyZ0JnzQ==',
+};
 export const POST_EQUIPMENT_MISSING = {
-    manufacturer: 'T2l8oxHX3XtLxzJsujeRQw==',
-    model: 'xao5/kQqIQrdVlqMD6m1iw==',
-    amount: 600,
-    locationID: 'XyQGS8cexD0Ms31IIYzz/g==',
-    category: 'iqLOSeodUx3CJnzgwlBuGw==',
-    assetID: 'pFrKgh7PxWfQv+skY84Jhg==',
-    miscIdentifier: 'ZCE0E1VJK+7tD+yS1mvYdQ==',
-    locationSpecifier: 'SVbrW7JgYvX8N1IrzJjLjg=='
-}
+    manufacturer: '7VTglPs0tj+GITSXn4vQHw==',
+    model: 'itNMhiybCrEfSrni+AWlBQ==',
+    amount: 52,
+    locationID: 'uNv5CxmoumtU8/OO1GsGrQ==',
+    category: 'SS/bn6OROVAuuiP0MuLj5w==',
+    assetID: 'fMtyBCtAMv7L3GKqblpCRw==',
+    miscIdentifier: 'zishM3OJRuZDa/FQ5SRlEQ==',
+    locationSpecifier: 'TmJ4WsaWKHXnFNM13UPhcw==',
+};
 
 // PATCH /equipment/{equipmentID} patch-equipment-equipmentID
 export const PATCH_EQUIPMENT_EQUIPMENTID_VALID = {
-    assetID: '0aLpUO1/44II5yNTKu9pag==',
-    name: 'mTX5mf6uU6ANGkdGOf5GiQ==',
-    manufacturer: 'VCrM7T6FQm3DBlOEC2C9FA==',
-    model: 'vEuzOuvwN14H901kl/gtrA==',
-    miscIdentifier: 'AdS3ksyVpAUxxLNPEK547w==',
-    amount: 777,
-    locationID: 'Jzihv/rM0+mYkUciVpcC+Q==',
-    locationSpecifier: '9xc0oCNYyG1W53Hb9REE8g==',
-    managerID: '+3/mSbmB00d1gilcEzGFxA==',
-    category: 'AsgZeryA4oONdz+6s2WMyA=='
-}
+    assetID: 'Hwq2IJYdCTgx6C1MKHCGEA==',
+    name: 'jcrVrILN57Wo26Xo3Uy5Fg==',
+    manufacturer: 'SDfWb/pCRrfvigeb/JSgtw==',
+    model: 'FkXgD+kV7Ki250r3BqHJAA==',
+    miscIdentifier: 'VeY/xTgt6JVs38wXAFuNcg==',
+    amount: 999,
+    locationID: 'naHUCjNq4nu5g3bk+SpoZw==',
+    locationSpecifier: 'zUFZ6cJIMMcYCWykkx1Znw==',
+    managerID: 'UwUqjjsW5J0BNNLGsL9LJw==',
+    category: 'nZjDvxEJNRRHCib/oCfKHg==',
+};
 export const PATCH_EQUIPMENT_EQUIPMENTID_INVALID = {
-    assetID: 'CdhKk8Kflq1x6u6eJnLJ6Q==',
-    name: 'ncohrqTtQJLTCwJmXbDvYw==',
-    manufacturer: '5QWTLtUc6xJMoQxN/1dcow==',
-    model: 'YU5ezvdZOAmewRMmqPtzGg==',
-    miscIdentifier: '9UHIrJ0847hof8UH9cJn/w==',
-    amount: 589,
-    locationID: '+Ds4mI4k3ioQUhZvko/OIw==',
-    locationSpecifier: 'c6XRyzGHGyCd3PZtHKa9wQ==',
-    managerID: '61a4mrDs6NhVa6owx8+G4A==',
-    category: 655
-}
+    assetID: 'KRTU26UF2RAYa2yfWT0cBg==',
+    name: 'ouQKtRK4gq3UYL8dtMK4TA==',
+    manufacturer: '61v1SEN5uzOXrUcYD7spcA==',
+    model: 'L5dajwjuIi0JSeOkPzs2dg==',
+    miscIdentifier: 'KqzcbZ6y7W4oILHEd6szLg==',
+    amount: 'ZGBTGHKwjHRo8nd31WbooQ==',
+    locationID: '+x+PidllOnMGp9lCSpF27w==',
+    locationSpecifier: 'ycn/BfsCajjo3Rcp8LWr4w==',
+    managerID: '7ahEYRzltA0IKxfRE3bFqg==',
+    category: 'WiCXCUJV6/NuWNWmwJQW5g==',
+};
 
 // GET /events get-events
 export const GET_EVENTS_VALID = {
-    name: 'LHKHyrXxKxh69e/xLHm8eQ==',
-    start: 500,
-    end: 999,
-    attendance: 715,
-    venueIDs: 'GM7ZeKLMm8GtD5GqfirP6w==',
-    venueCriteria: 'WYx2pFaqnJh4bzcy1c7ZUg==',
-    entsID: 'GaiMC14M1LuC8wUHAGOskA==',
-    stateID: 'sllh0OENX5jOWQfMpiUAoQ==',
-    startafter: 43,
-    startbefore: 29,
-    endafter: 862,
-    endbefore: 176,
-    attendanceGreater: 546,
-    attendanceLess: 481
-}
+    name: 'FLljeAKMsHFiRWi8EIKpOw==',
+    start: '762',
+    end: '523',
+    attendance: '297',
+    venueIDs: 'Zsf4V7b5L3Rh2x+d7DGd1A==',
+    venueCriteria: 'bSmstGZdglwkKWWS6KR2bg==',
+    entsID: 'mpNKXDUwrf0E36ZYDH96hw==',
+    stateID: 'glQsIBVnpWER4w0iaV8BCQ==',
+    startafter: '466',
+    startbefore: '89',
+    endafter: '329',
+    endbefore: '183',
+    attendanceGreater: '936',
+    attendanceLess: '111',
+};
 export const GET_EVENTS_INVALID = {
-    name: 'p1PE1/Y7W5gQ0FEJ/6Hbeg==',
-    start: 63,
-    end: 858,
-    attendance: 366,
-    venueIDs: 'XQbhUcawu1Q2ZtBE7pF6/A==',
-    venueCriteria: 'frLkK0ZJ6/Rx+Pr4+LG+6A==',
-    entsID: 'y93ZlQfMNt0t9EAAOIDyKA==',
-    stateID: '+fTyPnB6+Oa/LmKaqOQwnw==',
-    startafter: 277,
-    startbefore: 764,
-    endafter: 'd0xzEoukjOPE73qijuoqLA==',
-    endbefore: 185,
-    attendanceGreater: 288,
-    attendanceLess: 82
-}
+    name: 'OtVCZ+2iHyQLfHS1bD0QTA==',
+    start: 'n69ThadP3KYEziw9PgOuTA==',
+    end: '756',
+    attendance: '782',
+    venueIDs: 'atQM2VxP8PABBXLKIJ55ng==',
+    venueCriteria: '12756FY288XSiK6H2+NkDw==',
+    entsID: 'EGixEw0oaH44Pc3nTVTYXQ==',
+    stateID: 'ZY4uDUt1Kt6Qbtfg5GSZeg==',
+    startafter: '26',
+    startbefore: '18',
+    endafter: '915',
+    endbefore: '604',
+    attendanceGreater: '905',
+    attendanceLess: '481',
+};
 
 // POST /events post-events
 export const POST_EVENTS_VALID = {
-    name: 'Md8/LWd8EoW5AWLWpv9vqg==',
-    venue: '5ptjvuawi5CPFBnpWLQs6g==',
-    start: 670,
-    end: 29,
-    attendance: 380,
-    state: 'tFDtpO7RjcsANfMuvk3VFg==',
-    ents: 'fBa7y8V4XSzLe6Elc08GiA=='
-}
+    name: 'xMguzPq3NspXW5zp5RCrgA==',
+    venue: 'eHFX6faC6Lc3t4+8+JsF5w==',
+    start: 293,
+    end: 734,
+    attendance: 978,
+    state: 'ALp5D21nsAQicFZ8kSY5Ow==',
+    ents: 'BJPP5ltXSVIPbi+HZ1HGcQ==',
+};
 export const POST_EVENTS_INVALID = {
-    name: '50IOnLRGxxB7XprhKj0mhA==',
-    venue: '+O3HFSMfukZKy9k1wohxbA==',
-    start: '4V0MsgHteAzzJC4PaG64dw==',
-    end: 809,
-    attendance: 501,
-    state: 'Ba0OTp/3SzRfLpTdCRPufg==',
-    ents: 'RY9jb3K+Q0ndVOBl96f4ng=='
-}
+    name: 'tWO0OGSFZPwZPEooxJO7GA==',
+    venue: '3b3iZ2I1vGAfrZFGnBT5vg==',
+    start: 'qVyhI1zleIm2nf0cctyhDA==',
+    end: 906,
+    attendance: 776,
+    state: 'cprK2DOCrRZpZB8qeGutJA==',
+    ents: 'DIzW71mFM269TpusQmV5XQ==',
+};
 export const POST_EVENTS_MISSING = {
-    venue: 'DSe8sghByNp4p3/m5pQzVg==',
-    start: 880,
-    end: 90,
-    attendance: 690,
-    state: 'BYG0CYXG1YuEmPPD/aIz8w==',
-    ents: 'snPUC7tAPhMlNTfFdQDJ1g=='
-}
+    venue: 'hry06Qw+cqz0IBbfyMhGsw==',
+    start: 301,
+    end: 317,
+    attendance: 657,
+    state: 'Pws2Doq7XX69BE5uThtUgQ==',
+    ents: 'hriMRyTMeNgBFpC7WGHl8g==',
+};
 
 // PATCH /events/{eventID} patch-events-eventID
 export const PATCH_EVENTS_EVENTID_VALID = {
-    name: 'PH4HOIkLb0qv2W4oNFxo2A==',
-    start: 482,
-    end: 953,
-    attendance: 211,
+    name: 'T21jDFLguFGXDTp6qRonOA==',
+    start: 90,
+    end: 450,
+    attendance: 149,
     addVenues: null,
     removeVenues: null,
-    ents: 'BweS2n7KuljXBsqVnJlwWg==',
-    state: 'LF+eKclezzv5DcwHlEFEQQ=='
-}
+    ents: 'djgu/9UG+XidQ6SsP1KXpg==',
+    state: 'FI7dz5xj/mIp3nfyYaBkwQ==',
+};
 export const PATCH_EVENTS_EVENTID_INVALID = {
-    name: 'm7S539Q155vIUNWfy+A+9g==',
-    start: 125,
-    end: 881,
-    attendance: 427,
+    name: 'Ob8zKJU6uMvy5j/1dQ+bXw==',
+    start: 'T+iWBbw/TcAm+Tw1R+ZKWg==',
+    end: 903,
+    attendance: 779,
     addVenues: null,
     removeVenues: null,
-    ents: 'cDvZ7AP7c/QxatNBSkPPxg==',
-    state: 'J4GuLGCm7d07L5rE1BGwYw=='
-}
+    ents: '1PGtEw+7pagZxQa1BD/LmQ==',
+    state: 'Bn6XaSdZBbRMZKcLgVvNSw==',
+};
 
 // POST /events/{eventID}/comments post-events-eventID-comments
 export const POST_EVENTS_EVENTID_COMMENTS_VALID = {
-    category: 'Z9+0zrsEBfUyloGFMAKzag==',
-    requiresAttention: true,
-    body: 'nXXqerPNDVrcM8V06nzirg=='
-}
+    category: 'C88GhbIgRa6fi1eYY+Hszw==',
+    requiresAttention: false,
+    body: 'I4DeCssnXdXda+YQYEIg7w==',
+};
 export const POST_EVENTS_EVENTID_COMMENTS_INVALID = {
-    category: 'pts7EALQa4SoBZCoXFLVEA==',
-    requiresAttention: true,
-    body: 611
-}
+    category: '2fj+nt+3OL9qK4XK+ne84w==',
+    requiresAttention: 139,
+    body: 'mKeE9t0ULOSQAasjrsoCag==',
+};
 export const POST_EVENTS_EVENTID_COMMENTS_MISSING = {
-    category: 'vFk554YSCmMu6D8cTLfiSw==',
-    requiresAttention: true
-}
+    category: 'fEl5kMrFZ9bww7skkjemYQ==',
+    requiresAttention: true,
+};
 
 // GET /files get-files
 export const GET_FILES_VALID = {
-    id: '1viHKI4jIVrP6KudDogwoQ==',
-    name: 'Z04flw0823O7d5iGyjjC5A==',
-    filename: '4sFbGEBdijM0foazETOfYQ==',
-    size: 990,
-    type: 'ZavBX+G5scNJvgTO+LhV7w==',
-    date: 98,
-    userid: 'lIR03sGGSzRT99ZxtkGj6Q=='
-}
+    id: 'qr8aZ5tIdpw5etcRkHDjyg==',
+    name: 'LTe8x/ODPXvU0zujhc7VyA==',
+    filename: '5YDUaBz0vkBkqSqlxhgTVQ==',
+    size: '206',
+    type: 'QMvbGN8tEpI2icZzWidteQ==',
+    date: '524',
+    userid: 'w8wWfmMUIvS6sg2zmNUZVw==',
+};
 export const GET_FILES_INVALID = {
-    id: '84K8F7D0PZF29qXdnc+aug==',
-    name: 'h7vnbq2n4upQsEUsfVor7w==',
-    filename: 'dOwy1t3CLZksagOG5rYFTA==',
-    size: 886,
-    type: 'rj5aCWjQ2TDZJJC5UoHRfg==',
-    date: 'KVa9ehXptOVmP80hkn4MRw==',
-    userid: 'MY9oWPCoEqdxBbzeJmfopg=='
-}
+    id: 'U2M7gqAtTxHFO1C+jlYn0g==',
+    name: 'g88hiv4OIjw6NJC//CFmLg==',
+    filename: 'DgEl7YSDPAiUrEQ9mdw8Hg==',
+    size: 'K4rguSY40kFlRMI9oORWRw==',
+    type: 'E+T5XUPyA3deJAQ3kp1lGw==',
+    date: '953',
+    userid: '1owzOufg7uo2He4VV5HsHw==',
+};
 
 // POST /files post-files
 export const POST_FILES_VALID = {
-    name: '43+lea0eYh5ZeUKYVNVYRA==',
-    filename: 'JOl/2CyINb3jUbAr69gjmg==',
-    size: 911,
-    type: 'OJ7gS9Lo6520cusj5zBVBA=='
-}
+    name: 'sr2+vYrK0iPdRZJh7f8xvg==',
+    filename: 'vAXHoztJw/5fARXzbP2IbA==',
+    size: 190,
+    type: 'qAjeHzGuDeVFZyC34S7aEg==',
+};
 export const POST_FILES_INVALID = {
-    name: 'ARb4cWYDXM4o5UyON/U2Wg==',
-    filename: 'NpF3GbyGA3yHHUA5EYDklQ==',
-    size: '29DAPV3rGrUv2ItF8LXxyA==',
-    type: 'hikTwzjKD0D1G06ReHfdnQ=='
-}
+    name: 'u7/tT/QZqTtG3e5S9ppcJw==',
+    filename: 'C3wqAHC2PQLxhL0KQMuf7w==',
+    size: 'zHKRvj6u9YiL2nkgZS35ZQ==',
+    type: 'A4as/OUt1zG5rUE812iTqA==',
+};
 export const POST_FILES_MISSING = {
-    filename: 'w3/PUtuU06NGkRASmdb/1g==',
-    size: 564,
-    type: 'AYqDfSv0HcLGRCEe2zFpZw=='
-}
+    filename: 'EByN3jpwj0ifrm25DYjXug==',
+    size: 804,
+    type: 'vIaQCpvkVkPAs14QuBs6cQ==',
+};
 
 // PATCH /files/{fileID} patch-files-fileID
 export const PATCH_FILES_FILEID_VALID = {
-    name: '9tBM5TqAJagZQHi9jEcU1A==',
-    type: 'x2Mql8MoL5wiUc0JZNzA0A=='
-}
-export const PATCH_FILES_FILEID_INVALID = {
-    name: 704,
-    type: 'Dj3qvxYaog2TM9Gpmt43kQ=='
-}
+    name: 'aCDvls5EYnoygWBHwwO4GA==',
+    type: '2zm5v9FtuMFTlmXBLc/Fww==',
+};
 
 // POST /events/{eventID}/files post-events-eventID-files
-export const POST_EVENTS_EVENTID_FILES_VALID = { fileID: 'AZz3fkzWn1q7UWJAjdAI/w==' }
-export const POST_EVENTS_EVENTID_FILES_INVALID = { fileID: 799 }
-export const POST_EVENTS_EVENTID_FILES_MISSING = {}
+export const POST_EVENTS_EVENTID_FILES_VALID = { fileID: 'YGf0HOBsNyK7HL/++SxTIQ==' };
+export const POST_EVENTS_EVENTID_FILES_MISSING = {};
 
 // GET /events/{eventID}/signups get-events-eventID-signups
 export const GET_EVENTS_EVENTID_SIGNUPS_VALID = {
-    id: 'QDGk/E51IzOZHTzGc32mOA==',
-    date: 374,
-    userid: 'wEuaXYFwFa4/1qlM47EWMQ==',
-    dateRangeBegin: 783,
-    dateRangeEnd: 102,
-    role: 'mQRpQ/wwK0aoYENUyqBQxA=='
-}
+    id: 'Al1UJgi6TUnIXLuaxMJ07Q==',
+    date: '427',
+    userid: 'eLcwIcQvcPyCRL4yqVg2XQ==',
+    dateRangeBegin: '678',
+    dateRangeEnd: '486',
+    role: 'Jv2k1p38NFv+dXPMb+kEAg==',
+};
 export const GET_EVENTS_EVENTID_SIGNUPS_INVALID = {
-    id: 'DXnR/wdGnddAqBZYonGyeA==',
-    date: 290,
-    userid: 'qUOL2k46sXFj5gPc8xZgFQ==',
-    dateRangeBegin: 'UtKnv7i/SdGpsvU1Tfdszw==',
-    dateRangeEnd: 177,
-    role: '6rh78cXak7Q9tBCg69axnQ=='
-}
+    id: 'oqLa8o4FGxdoSD3eOJavSw==',
+    date: '4CMSFJX0zyAJ4KzYGyV9lA==',
+    userid: '8DRelD+fmZ7NA+/3z5tO5w==',
+    dateRangeBegin: '239',
+    dateRangeEnd: '120',
+    role: 'Aj7ILDXfEAeP6XoH/O3OlA==',
+};
 
 // POST /events/{eventID}/signups post-events-eventID-signups
-export const POST_EVENTS_EVENTID_SIGNUPS_VALID = { role: 'iudzRDsLTFDpMZ42H1mV4A==' }
-export const POST_EVENTS_EVENTID_SIGNUPS_INVALID = { role: 837 }
-export const POST_EVENTS_EVENTID_SIGNUPS_MISSING = {}
+export const POST_EVENTS_EVENTID_SIGNUPS_VALID = { role: 'nhlJaRScpQjykVCOOexo8w==' };
+export const POST_EVENTS_EVENTID_SIGNUPS_MISSING = {};
 
 // PATCH /events/{eventID}/signups/{signupID} patch-events-eventID-signups-signupID
-export const PATCH_EVENTS_EVENTID_SIGNUPS_SIGNUPID_VALID = { role: '7KdV2XtIkaFVD52luPJQVA==' }
-export const PATCH_EVENTS_EVENTID_SIGNUPS_SIGNUPID_INVALID = { role: 622 }
+export const PATCH_EVENTS_EVENTID_SIGNUPS_SIGNUPID_VALID = { role: 'cGAQgj/LAxDFS4QqRqKaGg==' };
 
 // GET /states get-states
 export const GET_STATES_VALID = {
-    name: 'znJf/AXnCM3K14zloOG7mw==',
-    icon: 'LF13m7ey2CbVo1XI44uBvQ==',
-    color: '#0E1EF2',
-    id: 'df/YxwKlXcTfjzisqLBpCw=='
-}
-export const GET_STATES_INVALID = {
-    name: 'am3KylLZoawJD/PWYnH2gA==',
-    icon: '2cXMB2lx+gIVmtch/7q2Dw==',
-    color: '#81FA01',
-    id: 897
-}
+    name: 'd6y1JPIM3lyJfLZyggHUNQ==',
+    icon: '0Dteyn4cXYS19yAIva6rnw==',
+    color: '#A92723',
+    id: 'bjOGt2geb3aIC8EqufdfOg==',
+};
 
 // POST /states post-states
 export const POST_STATES_VALID = {
-    name: 'wq94rFM1G/ssF0uInAawYg==',
-    icon: 'xE8VcHaR0dqw0cD++DNV/g==',
-    color: '#BE68B3'
-}
-export const POST_STATES_INVALID = {
-    name: 'WHB9dCZSi9rDWRbUIQjdqQ==',
-    icon: 'K9oQXptgW2+7unV9RGNgoQ==',
-    color: 'V3+2rFFT6a8G3NJk0oEkSA=='
-}
+    name: 'kPft3KV3VR9M5d+EjgPPgQ==',
+    icon: '/Ae4s14qctusoHcen69rxw==',
+    color: '#3E4BB1',
+};
 export const POST_STATES_MISSING = {
-    icon: 'o4Fau1F5+QeHl9nQ1QE59A==',
-    color: '#BF78D9'
-}
+    icon: 'q3Xg3WPxtWnDSZjUe8D3QQ==',
+    color: '#CED35A',
+};
 
 // PATCH /states/{stateID} patch-states-stateID
 export const PATCH_STATES_STATEID_VALID = {
-    name: 'IWDb5haYvvtiirrOLoR8Yw==',
-    icon: 'BdBYq7Xv3lqzTKYFdpUKBw==',
-    color: '#09C296'
-}
-export const PATCH_STATES_STATEID_INVALID = {
-    name: 't/tYsYEWo8fKikOhHMmZHg==',
-    icon: 180,
-    color: '#72CC0D'
-}
+    name: '68gmrxyJrhsFT20yFdQErA==',
+    icon: 'BGnBFD6WBoZ42HlQFHWwEw==',
+    color: '#B0BDCA',
+};
 
 // GET /topics get-topics
 export const GET_TOPICS_VALID = {
-    name: 'JpqnBJRkpyhWc2JrEeP8gg==',
-    icon: 'cWPf4WN9+/B87CDgXxaeUQ==',
-    color: '#174A35',
-    id: '9cvhADLpsnweow8tSlZWhg==',
-    description: '0StMfM2/Fd7rDWcXP7yLNw=='
-}
-export const GET_TOPICS_INVALID = {
-    name: '0HlTRKU1VNxTIKLmGSBYzw==',
-    icon: 361,
-    color: '#4CEE37',
-    id: 'QIKfSKPgYEdzfAx7gjtKkg==',
-    description: 'kZBji/KaEZVZuXehUA+vZw=='
-}
+    name: 'mDE7Q2y9XhIGVfJieQbahw==',
+    icon: 'cSu3b7pUeX53gyAzSR6iBw==',
+    color: '#FAAC02',
+    id: 'n+++tfmibpLJ6uG8l3jOBw==',
+    description: 'bKVq6TlruocJduDf6kjZcw==',
+};
 
 // POST /topics post-topics
 export const POST_TOPICS_VALID = {
-    name: '54SftH4AK6xUuSVekjTuCg==',
-    icon: 'AmEeGXa4ugBWVAoMnJMFUw==',
-    color: '#8C0B93',
-    description: '42vBwJZO5GPrLDQiHlBQyQ=='
-}
-export const POST_TOPICS_INVALID = {
-    name: 'w+7ps+UFrcmYU3fKMRl6vg==',
-    icon: 'qGxPHwwNqmUBcGR5fH98Gg==',
-    color: 'je7fEBG/1MHqv++d3ih3PA==',
-    description: '2JXIxPnN5Z/upH8ncxJECg=='
-}
+    name: 'mzUKOFtXy9ME6oHdbOG61A==',
+    icon: 'nw8KzMQ3vp8TQboY6mEnhA==',
+    color: '#864CCB',
+    description: 'XrEY3vZl6r/GZ+hB5gPSDw==',
+};
 export const POST_TOPICS_MISSING = {
-    icon: 'EWIZ4rD5EeWIuk1G7B4cXQ==',
-    color: '#28581E',
-    description: 'Ss2kf3n/9rN+0ejt4q2s6w=='
-}
+    icon: 'SAUou9lexv2oXsJArVSeqQ==',
+    color: '#99FA51',
+    description: 'PpxOD4mjXMFwVsBp6rURsw==',
+};
 
 // PATCH /topics/{topicID} patch-topics-topicID
 export const PATCH_TOPICS_TOPICID_VALID = {
-    name: 'ZQKAx+ls2SIieCszZXFbGQ==',
-    color: '#350840',
-    icon: 'qEcFdL16m3mi/3VeUmiXbw==',
-    description: 'gliP7YyN/J4eTHgw36HdGw=='
-}
-export const PATCH_TOPICS_TOPICID_INVALID = {
-    name: '4v1QK6utzI7hr4h3jDIMDQ==',
-    color: '#68037E',
-    icon: 656,
-    description: '9bp2euoQRTYfvw4OktLmJw=='
-}
+    name: 'y0qouL+jy0+/pQVcLV1hvw==',
+    color: '#E0F42E',
+    icon: 'HJHorAZpCNXGjK57h7ljtg==',
+    description: '2wck2CtiGxNsP6xlpe31RA==',
+};
 
 // GET /user get-user
 export const GET_USER_VALID = {
-    id: 'gDniJ+HoYWCMyFEAI2Disw==',
-    name: 'islFLeQHH8yWuwxZENj0wg==',
-    username: 'L4U0gCwN4K+WHUiTNG9Rvw==',
-    email: 'pF5vyVCBjH5zwYE6aa4zag==',
-    includeEmail: true,
-    includeHash: false
-}
+    id: 'BWgpyU/WCz4oC++46zyQKA==',
+    name: 'FaIUYgwZda7xWa8jKURz9g==',
+    username: 'YzasOwndxSDmRTz+In8usg==',
+    email: 'a+KXpZkV6vivRiRbNsULTQ==',
+    includeEmail: 'false',
+    includeHash: 'true',
+};
 export const GET_USER_INVALID = {
-    id: 399,
-    name: 'cqqOPEWgNs90KO+AnDx+/w==',
-    username: 'dSq2gdP2jHWUfPK9aRA2vg==',
-    email: 'ECqQ9aobbdYnNTy54r8Yxg==',
-    includeEmail: false,
-    includeHash: false
-}
+    id: '6M0yVt/xuuGZ0IfuUr3qwQ==',
+    name: 'DUwiiTHOhA88pzU+TJ2c1w==',
+    username: 'SdVfgCMHjpvpEaA5zAJZrA==',
+    email: '7oeQCZuncfISjj8QxwDMsg==',
+    includeEmail: '850',
+    includeHash: 'true',
+};
 
 // POST /user post-user
 export const POST_USER_VALID = {
-    name: 'fvKZwBJGm3t5fIacetTHCg==',
-    username: 'GQ7CsLFhIqn79cArz3jWBA==',
-    email: 'Ek0O6C3TaszjtM0d+SQmtA==',
-    hash: 'JQaOfxoEiilBL4sPtA8hJw==',
-    profile: 'Y7t9HwagBRQ3hYnNENDp7A=='
-}
-export const POST_USER_INVALID = {
-    name: 'Yly5ferwyfM/cZ4zlCO2Kw==',
-    username: '3KSWrAt3T85b0MtJl84/sw==',
-    email: 235,
-    hash: 'WPT35ty/5asgGDJlwav/PA==',
-    profile: 'hje1o+KkW2GikU29F7/NGg=='
-}
+    name: 'G4oVxZNU4He+PUSHtBOomw==',
+    username: 'OZhqmIKcQMZbUQIq0LS01w==',
+    email: '9Y67qNI09qv2wP905OYeiQ==',
+    hash: 'Z+MevGWuMnzNSOKp43VMyw==',
+    profile: '9iWsxlMJ8D+8lVCIJw8wNw==',
+};
 export const POST_USER_MISSING = {
-    username: 'W1TQZjlq9Xf7Zxn3jek2Iw==',
-    email: 'suSeMIl2hBjTskCt/Q2Gpg==',
-    hash: '5SbJmfxdZmqV6l+rQbZqgw==',
-    profile: '4mnmkDR9ohWLl2Ln5IrqOA=='
-}
+    username: '4gpKO4T/JI2bfjIMfeK85g==',
+    email: 'Wnq7dbvLgw+Zje+X43YuMQ==',
+    hash: 'WHcyC+s1Mp+mBcnCUzrlzg==',
+    profile: 'rLZFNbL15D1LsLZDq2nrjQ==',
+};
 
 // PATCH /user/{userID} patch-user-userID
 export const PATCH_USER_USERID_VALID = {
-    name: 'Qr8fXiJkhFmgmIijP8e6Pw==',
-    username: 'w8uUXhTi8VXoH2v1NrHTvQ==',
-    email: 'ZNYp2EsRPZo6+tPd/Winjw==',
-    hash: 'Ex5bBLgLoXD+Rbx+4w5g9Q==',
-    profile: '9RJP6hMbq8jddsbFfbf60g=='
-}
-export const PATCH_USER_USERID_INVALID = {
-    name: '79HOLj769oKikXFl0yX95A==',
-    username: 'ziUvmwgvwkmUHOsdnArrCw==',
-    email: 'jrRojLwn3vCT01sOKQSClQ==',
-    hash: 604,
-    profile: 'fauIsaRj+wi5LdMp3gwMnA=='
-}
+    name: 'GZ/wNbNrQU++1pQXsdC/gQ==',
+    username: 'RJMECg9pjvx6oNW6HHCmDw==',
+    email: 'wgLA+1Am/2NLkUlYHrcuQQ==',
+    hash: 'QQI1J8+6JqSdnJcWgBVQOg==',
+    profile: 'tfLfhezI9l+CSsh4obhcOA==',
+};
 
 // GET /venues get-venues
 export const GET_VENUES_VALID = {
-    name: 'Z0d0l7Pvg8mujO05RgmsSw==',
-    capacity: 982,
-    approximate_capacity: 385,
-    approximate_fuzziness: 963,
-    minimum_capacity: 953,
-    maximum_capacity: 34
-}
+    name: '8vCaCbHT8qdNtSQ4JYmEdw==',
+    capacity: '146',
+    approximate_capacity: '957',
+    approximate_fuzziness: '842',
+    minimum_capacity: '133',
+    maximum_capacity: '484',
+};
 export const GET_VENUES_INVALID = {
-    name: 923,
-    capacity: 999,
-    approximate_capacity: 213,
-    approximate_fuzziness: 167,
-    minimum_capacity: 224,
-    maximum_capacity: 117
-}
+    name: 'PpmgSNJg7xmPcWLgmtCirg==',
+    capacity: 'M0R34vCrRuioRUxDddW5KQ==',
+    approximate_capacity: '175',
+    approximate_fuzziness: '450',
+    minimum_capacity: '560',
+    maximum_capacity: '320',
+};
 
 // POST /venues post-venues
 export const POST_VENUES_VALID = {
-    name: 'U8yHvLN2Gd/46lGbq5Sz6g==',
-    capacity: 532,
-    color: '#6072DC'
-}
+    name: 'D6LqM7xyfL1Pm/2bVDD56A==',
+    capacity: 708,
+    color: '#F1FE19',
+};
 export const POST_VENUES_INVALID = {
-    name: 'sjkTcwUaVLoRc1Cyf2dNFA==',
-    capacity: 'nfUD+YvtnjbkA/WOCRh+yA==',
-    color: '#79E6C0'
-}
+    name: 'zqlocOAGIM5ilTDPxJHpzQ==',
+    capacity: 'vE0ASTYkQAa1guSJt8voZw==',
+    color: '#84C1C4',
+};
 export const POST_VENUES_MISSING = {
-    capacity: 552,
-    color: '#C1E93E'
-}
+    capacity: 317,
+    color: '#A130A3',
+};
 
 // PATCH /venues/{venueID} patch-venues-venueID
 export const PATCH_VENUES_VENUEID_VALID = {
-    name: 'lYdOz+sdrDa3fjbakWIulQ==',
-    capacity: 307,
-    color: '#6CB3F9'
-}
+    name: 'r95rsiRWeuTdT0Ca1cX5vw==',
+    capacity: 274,
+    color: '#C23E2D',
+};
 export const PATCH_VENUES_VENUEID_INVALID = {
-    name: 'tGd7ENroUqfm3+LrdcKMyA==',
-    capacity: 'F+uULot1DQxYC3aK1CAnGw==',
-    color: '#D40408'
-}
-
+    name: 'eP3i7MXTXn50OnzDE7WjsQ==',
+    capacity: 'VDYUI/8OPsa5mgjIySStxg==',
+    color: '#F0AD89',
+};
