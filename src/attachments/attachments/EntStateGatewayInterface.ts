@@ -70,6 +70,25 @@ export class EntStateGatewayInterface implements GatewayAttachmentInterface {
                 userID: req.uemsUser.userID,
             };
 
+            const validate = MessageUtilities.coerceAndVerifyQuery(
+                req,
+                res,
+                [],
+                {
+                    id: { primitive: 'string' },
+                    name: { primitive: 'string' },
+                    color: {
+                        primitive: 'string',
+                        validator: (x) => this.COLOR_REGEX.test(x)
+                    },
+                    icon: { primitive: 'string' },
+                },
+            );
+
+            if (!validate) {
+                return;
+            }
+
             const parameters = req.query;
             const validProperties: (keyof EntStateReadSchema)[] = [
                 'name',
@@ -196,6 +215,21 @@ export class EntStateGatewayInterface implements GatewayAttachmentInterface {
                         message: 'missing parameter id',
                         code: 'BAD_REQUEST_MISSING_PARAM',
                     }));
+                return;
+            }
+
+            const validate = MessageUtilities.verifyBody(
+                req,
+                res,
+                [],
+                {
+                    name: (x) => typeof (x) === 'string',
+                    icon: (x) => typeof (x) === 'string',
+                    color: (x) => typeof (x) === 'string' && this.COLOR_REGEX.test(x),
+                },
+            );
+
+            if (!validate) {
                 return;
             }
 
