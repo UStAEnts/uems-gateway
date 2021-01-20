@@ -68,6 +68,7 @@ export async function testValidRoute(
     location: 'query' | 'body',
     send: jest.Mock,
     params?: any,
+    skipChild: boolean = false,
 ) {
     const response = new Response();
     const fake = response as unknown as express.Response;
@@ -84,7 +85,7 @@ export async function testValidRoute(
 
     expect(send)
         .toHaveBeenCalledTimes(1);
-    if (data !== undefined) {
+    if (data !== undefined && !skipChild) {
         expect(send.mock.calls[0][1])
             .toEqual(expect.objectContaining(data));
     }
