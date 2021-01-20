@@ -122,7 +122,7 @@ export namespace MessageUtilities {
         if (types !== undefined) {
             // eslint-disable-next-line no-restricted-syntax
             for (const key of Object.keys(types)) {
-                if (!types[key](data[key])) {
+                if (data[key] !== undefined && !types[key](data[key])) {
                     response
                         .status(constants.HTTP_STATUS_BAD_REQUEST)
                         .json(MessageUtilities.wrapInFailure({
