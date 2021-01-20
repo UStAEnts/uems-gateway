@@ -105,6 +105,25 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
                 userID: req.uemsUser.userID,
             };
 
+            const validate = MessageUtilities.coerceAndVerifyQuery(
+                req,
+                res,
+                [],
+                {
+                    id: { primitive: 'string' },
+                    name: { primitive: 'string' },
+                    filename: { primitive: 'string' },
+                    size: { primitive: 'number' },
+                    type: { primitive: 'string' },
+                    date: { primitive: 'number' },
+                    userid: { primitive: 'string' },
+                },
+            );
+
+            if (!validate) {
+                return;
+            }
+
             const parameters = req.query;
             const validProperties: (keyof FileReadSchema)[] = [
                 'id',
