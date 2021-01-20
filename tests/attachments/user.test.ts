@@ -35,8 +35,8 @@ describe('UserGatewayInterface.ts', () => {
         };
     });
     describe('GET /user', () => {
-        it('rejects on wrong parameter types', () => {
-            testParameterTypes(
+        it('rejects on wrong parameter types', async () => {
+            await testParameterTypes(
                 routes['get.user'],
                 GET_USER_INVALID,
                 'query',
@@ -44,8 +44,8 @@ describe('UserGatewayInterface.ts', () => {
             );
         });
 
-        it('sends on a valid message', () => {
-            testValidRoute(
+        it('sends on a valid message', async () => {
+            await testValidRoute(
                 routes['get.user'],
                 GET_USER_VALID,
                 'query',
@@ -55,8 +55,8 @@ describe('UserGatewayInterface.ts', () => {
     });
 
     describe('POST /user', () => {
-        it('rejects on missing parameters', () => {
-            testMissingParameters(
+        it('rejects on missing parameters', async () => {
+            await testMissingParameters(
                 routes['post.user'],
                 POST_USER_MISSING,
                 'body',
@@ -64,8 +64,8 @@ describe('UserGatewayInterface.ts', () => {
             );
         });
 
-        it('sends on a valid message', () => {
-            testValidRoute(
+        it('sends on a valid message', async () => {
+            await testValidRoute(
                 routes['post.user'],
                 POST_USER_VALID,
                 'body',
@@ -75,8 +75,8 @@ describe('UserGatewayInterface.ts', () => {
     });
 
     describe('DELETE /user/:id', () => {
-        it('sends on a valid message', () => {
-            testValidRoute(
+        it('sends on a valid message', async () => {
+            await testValidRoute(
                 routes['delete.user.id'],
                 undefined,
                 'query',
@@ -87,8 +87,8 @@ describe('UserGatewayInterface.ts', () => {
     });
 
     describe('GET /user/:id', () => {
-        it('sends on a valid message', () => {
-            testValidRoute(
+        it('sends on a valid message', async () => {
+            await testValidRoute(
                 routes['get.user.id'],
                 undefined,
                 'query',
@@ -100,8 +100,8 @@ describe('UserGatewayInterface.ts', () => {
 
     describe('PATCH /user/:id', () => {
 
-        it('sends on a valid message', () => {
-            testValidRoute(
+        it('sends on a valid message', async () => {
+            await testValidRoute(
                 routes['patch.user.id'],
                 PATCH_USER_USERID_VALID,
                 'body',

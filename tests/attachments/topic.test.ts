@@ -36,8 +36,8 @@ describe('TopicGatewayInterface.ts', () => {
     });
 
     describe('GET /topics', () => {
-        it('rejects on wrong parameter types', () => {
-            testParameterTypes(
+        it('rejects on wrong parameter types', async () => {
+            await testParameterTypes(
                 routes['get.topics'],
                 GET_TOPICS_INVALID,
                 'query',
@@ -45,8 +45,8 @@ describe('TopicGatewayInterface.ts', () => {
             );
         });
 
-        it('sends on a valid message', () => {
-            testValidRoute(
+        it('sends on a valid message', async () => {
+            await testValidRoute(
                 routes['get.topics'],
                 GET_TOPICS_VALID,
                 'query',
@@ -56,8 +56,8 @@ describe('TopicGatewayInterface.ts', () => {
     });
 
     describe('POST /topics', () => {
-        it('rejects on missing parameters', () => {
-            testMissingParameters(
+        it('rejects on missing parameters', async () => {
+            await testMissingParameters(
                 routes['post.topics'],
                 POST_TOPICS_MISSING,
                 'body',
@@ -65,8 +65,8 @@ describe('TopicGatewayInterface.ts', () => {
             );
         });
 
-        it('rejects on wrong parameter types', () => {
-            testParameterTypes(
+        it('rejects on wrong parameter types', async () => {
+            await testParameterTypes(
                 routes['post.topics'],
                 POST_TOPICS_INVALID,
                 'body',
@@ -74,8 +74,8 @@ describe('TopicGatewayInterface.ts', () => {
             );
         });
 
-        it('sends on a valid message', () => {
-            testValidRoute(
+        it('sends on a valid message', async () => {
+            await testValidRoute(
                 routes['post.topics'],
                 POST_TOPICS_VALID,
                 'body',
@@ -85,8 +85,8 @@ describe('TopicGatewayInterface.ts', () => {
     });
 
     describe('DELETE /topics/:id', () => {
-        it('sends on a valid message', () => {
-            testValidRoute(
+        it('sends on a valid message', async () => {
+            await testValidRoute(
                 routes['delete.topics.id'],
                 undefined,
                 'body',
@@ -97,8 +97,8 @@ describe('TopicGatewayInterface.ts', () => {
     });
 
     describe('GET /topics/:id', () => {
-        it('sends on a valid message', () => {
-            testValidRoute(
+        it('sends on a valid message', async () => {
+            await testValidRoute(
                 routes['get.topics.id'],
                 undefined,
                 'query',
@@ -109,8 +109,8 @@ describe('TopicGatewayInterface.ts', () => {
     });
 
     describe('PATCH /topics/:id', () => {
-        it('rejects on wrong parameter types', () => {
-            testParameterTypes(
+        it('rejects on wrong parameter types', async () => {
+            await testParameterTypes(
                 routes['patch.topics.id'],
                 PATCH_TOPICS_TOPICID_INVALID,
                 'body',
@@ -119,8 +119,8 @@ describe('TopicGatewayInterface.ts', () => {
             );
         });
 
-        it('sends on a valid message', () => {
-            testValidRoute(
+        it('sends on a valid message', async () => {
+            await testValidRoute(
                 routes['patch.topics.id'],
                 PATCH_TOPICS_TOPICID_VALID,
                 'body',

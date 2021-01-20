@@ -39,8 +39,8 @@ describe('VenueGatewayInterface.ts', () => {
     });
 
     describe('GET /venues', () => {
-        it('rejects on wrong parameter types', () => {
-            testParameterTypes(
+        it('rejects on wrong parameter types', async () => {
+            await testParameterTypes(
                 routes['get.venues'],
                 GET_VENUES_INVALID,
                 'query',
@@ -48,8 +48,8 @@ describe('VenueGatewayInterface.ts', () => {
             );
         });
 
-        it('sends on a valid message', () => {
-            testValidRoute(
+        it('sends on a valid message', async () => {
+            await testValidRoute(
                 routes['get.venues'],
                 GET_VENUES_VALID,
                 'query',
@@ -59,8 +59,8 @@ describe('VenueGatewayInterface.ts', () => {
     });
 
     describe('GET /venues/:id', () => {
-        it('sends on a valid message', () => {
-            testValidRoute(
+        it('sends on a valid message', async () => {
+            await testValidRoute(
                 routes['get.venues.id'],
                 undefined,
                 'query',
@@ -71,8 +71,8 @@ describe('VenueGatewayInterface.ts', () => {
     });
 
     describe('POST /venues', () => {
-        it('rejects on missing parameters', () => {
-            testMissingParameters(
+        it('rejects on missing parameters', async () => {
+            await testMissingParameters(
                 routes['post.venues'],
                 POST_VENUES_MISSING,
                 'body',
@@ -80,8 +80,8 @@ describe('VenueGatewayInterface.ts', () => {
             );
         });
 
-        it('rejects on wrong parameter types', () => {
-            testParameterTypes(
+        it('rejects on wrong parameter types', async () => {
+            await testParameterTypes(
                 routes['post.venues'],
                 POST_VENUES_INVALID,
                 'body',
@@ -89,8 +89,8 @@ describe('VenueGatewayInterface.ts', () => {
             );
         });
 
-        it('sends on a valid message', () => {
-            testValidRoute(
+        it('sends on a valid message', async () => {
+            await testValidRoute(
                 routes['post.venues'],
                 POST_VENUES_VALID,
                 'body',
@@ -100,8 +100,8 @@ describe('VenueGatewayInterface.ts', () => {
     });
 
     describe('DELETE /venues/:id', () => {
-        it('sends on a valid message', () => {
-            testValidRoute(
+        it('sends on a valid message', async () => {
+            await testValidRoute(
                 routes['delete.venues.id'],
                 undefined,
                 'query',
@@ -112,8 +112,8 @@ describe('VenueGatewayInterface.ts', () => {
     });
 
     describe('PATCH /venues/:id', () => {
-        it('rejects on wrong parameter types', () => {
-            testParameterTypes(
+        it('rejects on wrong parameter types', async () => {
+            await testParameterTypes(
                 routes['patch.venues.id'],
                 PATCH_VENUES_VENUEID_INVALID,
                 'body',
@@ -122,8 +122,8 @@ describe('VenueGatewayInterface.ts', () => {
             );
         });
 
-        it('sends on a valid message', () => {
-            testValidRoute(
+        it('sends on a valid message', async () => {
+            await testValidRoute(
                 routes['patch.venues.id'],
                 PATCH_VENUES_VENUEID_VALID,
                 'body',
