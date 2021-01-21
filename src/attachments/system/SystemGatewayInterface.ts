@@ -25,7 +25,6 @@ export class SystemGatewayInterface implements GatewayAttachmentInterface {
 
     private static me(): RequestHandler {
         return (req, res) => {
-            console.log(req.uemsUser);
             res.json({
                 username: req.uemsUser.username,
                 profile: req.uemsUser.profile,
