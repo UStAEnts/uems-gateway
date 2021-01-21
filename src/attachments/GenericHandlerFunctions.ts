@@ -68,22 +68,29 @@ function handleReadSingleResponse<SHALLOW, DEEP, RESULT extends { result: SHALLO
             http
                 .status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
                 .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
-            return;
+            return Promise.resolve();
         }
 
         if (transformer) {
-            Promise.resolve(transformer(response.result[0]))
-                .then((data) => {
-                    http
-                        .status(constants.HTTP_STATUS_OK)
-                        .json(MessageUtilities.wrapInSuccess(data));
-                })
-                .catch((err) => {
-                    console.error('Transformer failed when handling default response', err);
-                    http
-                        .status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
-                        .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
-                });
+            try {
+                return Promise.resolve(transformer(response.result[0]))
+                    .then((data) => {
+                        http
+                            .status(constants.HTTP_STATUS_OK)
+                            .json(MessageUtilities.wrapInSuccess(data));
+                    })
+                    .catch((err) => {
+                        console.error('Transformer failed when handling default response', err);
+                        http
+                            .status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
+                            .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
+                    });
+            } catch (e) {
+                console.error('Transformer failed when handling default response', e);
+                http
+                    .status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
+                    .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
+            }
         } else {
             http
                 .status(constants.HTTP_STATUS_OK)
@@ -95,6 +102,8 @@ function handleReadSingleResponse<SHALLOW, DEEP, RESULT extends { result: SHALLO
             .status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
             .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
     }
+
+    return Promise.resolve();
 }
 
 export namespace GenericHandlerFunctions {
