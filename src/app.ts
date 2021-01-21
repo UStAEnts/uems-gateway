@@ -1,152 +1,136 @@
 // External dependencies.
-const express = require('express');
-const logger = require('morgan');
-const passport = require('passport');
-const AuthStrategy = require('passport-http-bearer').Strategy;
-const amqp = require('amqplib/callback_api');
-const fs = require('fs');
-const helmet = require('helmet');
+import fs from 'fs/promises';
+import amqp from 'amqplib';
+import { ZodError } from 'zod';
 
-import * as Cors from 'cors';
-import * as BodyParser from 'body-parser';
-import { Connection } from 'amqplib';
-import { Request, Response } from 'express';
 // Internal dependencies.
-import { GatewayMessageHandler } from './message_handling';
+import { GatewayMk2 } from './Gateway';
+import { VenueGatewayInterface } from './attachments/attachments/VenueGatewayInterface';
+import { EventGatewayAttachment } from './attachments/attachments/EventGatewayAttachment';
+import { EntStateGatewayInterface } from './attachments/attachments/EntStateGatewayInterface';
+import { UserGatewayInterface } from './attachments/attachments/UserGatewayInterface';
+import { EquipmentGatewayInterface } from './attachments/attachments/EquipmentGatewayInterface';
+import { StateGatewayInterface } from './attachments/attachments/StateGatewayInterface';
+import { SystemGatewayInterface } from './attachments/system/SystemGatewayInterface';
+import { TopicGatewayInterface } from './attachments/attachments/TopicGatewayInterface';
+import { FileGatewayInterface } from './attachments/attachments/FileGatewayInterface';
+import { SignupGatewayInterface } from './attachments/attachments/SignupGatewayInterface';
+import { ExpressApplication, ExpressConfiguration, ExpressConfigurationType } from './express/ExpressApplication';
+import { EntityResolver } from './resolver/EntityResolver';
+import GatewayMessageHandler = GatewayMk2.GatewayMessageHandler;
 
-// A path to the .json file which describes valid internal message schema.
-const MESSAGE_SCHEMA_PATH: string = 'schema/event_response_schema.json';
+const RABBIT_MQ_CONFIG: string = 'rabbit-mq-config.json';
+const EXPRESS_CONFIG: string = 'express-config.json';
 
-const corsOptions: Cors.CorsOptions = {
-    origin: 'http://localhost:15300',
-    methods: "GET,OPTIONS,PATCH,POST,DELETE",
-    optionsSuccessStatus: 200
-}
-
-let msgHandler: GatewayMessageHandler | null = null;
-
-const app = express();
-app.use(helmet());
-
-// Enable preflight CORS for all routes.
-app.options('*', Cors.default(corsOptions));
-
-console.log('Starting uems-gateway...');
-
-app.set('port', process.env.PORT || 15450);
-
-app.use(logger('dev'));
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
-app.use(BodyParser.json());
-
-// Event get requests use queries so the query parser must be enabled.
-app.set('query parser', 'extended');
-
-passport.use(new AuthStrategy(
-    // TODO, Authentication.
-    (token: any, done: Function) => done(null, 1),
-));
-
-function initFinished() {
-    app.listen(app.get('port'));
-
-    console.log('Started uems-gateway');
-}
-
-function main() {
+async function main() {
     console.log('Attempting to connect to rabbit-mq...');
-    fs.readFile('rabbit-mq-config.json', 'utf8', (err: Error, data: string) => {
-        if (err) {
-            console.error('Failed to read rabbit-mq config... exiting');
-            return;
+
+    let rabbitMQConfig;
+    try {
+        const rabbitMQConfigRaw = await fs.readFile(RABBIT_MQ_CONFIG, { encoding: 'utf8' });
+        rabbitMQConfig = JSON.parse(rabbitMQConfigRaw);
+    } catch (e) {
+        console.error(`Failed to load ${RABBIT_MQ_CONFIG}`);
+        console.error(e);
+        return;
+    }
+
+    let expressValidation: { success: false, error: ZodError } | { success: true, data: ExpressConfigurationType };
+    try {
+        const expressConfigRaw = await fs.readFile(EXPRESS_CONFIG, { encoding: 'utf8' });
+        const expressConfig = JSON.parse(expressConfigRaw);
+        expressValidation = ExpressConfiguration.safeParse(expressConfig);
+    } catch (e) {
+        console.error(`Failed to load ${EXPRESS_CONFIG}`);
+        console.error(e);
+        return;
+    }
+
+    if (!expressValidation.success) {
+        console.error(`Failed to load ${EXPRESS_CONFIG}`);
+        console.error(expressValidation.error);
+        return;
+    }
+
+    let connection;
+    try {
+        connection = await amqp.connect(`${rabbitMQConfig.uri}?heartbeat=60`);
+    } catch (e) {
+        console.error('Failed to connect to the amqplib server');
+        console.error(e);
+        return;
+    }
+
+    // Print out errors in the event of a connection error that is not the connection closing
+    connection.on('error', (connectionError: Error) => {
+        if (connectionError.message !== 'Connection closing') {
+            console.error('[AMQP] conn error', connectionError.message);
         }
-
-        const configJson = JSON.parse(data);
-
-        amqp.connect(`${configJson.uri}?heartbeat=60`, async (error: Error, conn: Connection) => {
-            if (error) {
-                console.error('[AMQP]', error.message);
-                setTimeout(main, 2000);
-                return;
-            }
-
-            conn.on('error', (connectionError: Error) => {
-                if (connectionError.message !== 'Connection closing') {
-                    console.error('[AMQP] conn error', connectionError.message);
-                }
-            });
-            conn.on('close', () => {
-                console.error('[AMQP] connection closed');
-            });
-            console.log('[AMQP] connected');
-
-            msgHandler = await GatewayMessageHandler.setup(conn, MESSAGE_SCHEMA_PATH);
-
-            // CREATE
-            app.post('/events', passport.authenticate('bearer', { session: false }), msgHandler.create_event_handler);
-
-            // READ
-            // Examplar usage: curl -v http://127.0.0.1:15450/events/?access_token=1
-            //
-            // GET query params:
-            // access_token: The access token used for authentication (currently unused but required).
-            // name: Human readable name, default = all.
-            // start_date_before: The event must have a start date after start_date_after and before start_date_before.
-            // start_date_after:  The default is all events.
-            // end_date_before: The event must have an end date after end_date_after and before end_date_before.
-            // end_date_after:  The default is all events.
-            //
-            app.get(
-                '/events',
-                passport.authenticate('bearer', {
-                    session: false,
-                }),
-                Cors.default(corsOptions),
-                msgHandler.read_event_handler,
-            );
-
-            // UPDATE
-            app.patch(
-                '/events',
-                passport.authenticate('bearer', {
-                    session: false,
-                }),
-                Cors.default(corsOptions)
-                ,
-                msgHandler.update_event_handler,
-            );
-
-            // DELETE
-            app.delete(
-                '/events',
-                passport.authenticate('bearer', {
-                    session: false,
-                }),
-                Cors.default(corsOptions)
-                ,
-                msgHandler.delete_event_handler,
-            );
-
-            app.get(
-                '/',
-                (req: Request, res: Response) => res.send('Test Path, Get Req Received'),
-            );
-
-            app.get(
-                '/status',
-                (req: Request, res: Response) => res.send('Ok'),
-            );
-
-            initFinished();
-        });
     });
+
+    // Print out a warning on the connection being closed
+    connection.on('close', () => {
+        console.error('[AMQP] connection closed');
+    });
+
+    console.log('[AMQP] connected');
+
+    const handler = new GatewayMessageHandler(connection, undefined);
+    const resolver = new EntityResolver(handler);
+    try {
+        await handler.configure(resolver);
+    } catch (e) {
+        console.error('Failed to configure the gateway handler');
+        console.error(e);
+
+        // Try and clean up but don't worry too much about errors for the time being
+        await connection.close();
+
+        return;
+    }
+
+
+    let expressApp;
+    try {
+        expressApp = new ExpressApplication(expressValidation.data);
+        await expressApp.attach(
+            [
+                new VenueGatewayInterface(),
+                new EventGatewayAttachment(),
+                new SystemGatewayInterface(),
+                new EntStateGatewayInterface(),
+                new StateGatewayInterface(),
+                new UserGatewayInterface(),
+                new EquipmentGatewayInterface(),
+                new TopicGatewayInterface(),
+                new FileGatewayInterface(),
+                new SignupGatewayInterface(),
+            ],
+            handler.sendRequest.bind(handler),
+            resolver,
+        );
+        await expressApp.react((message) => {
+            handler.publish('user.details.assert', message);
+        });
+    } catch (e) {
+        console.error('Failed to setup the express server and initialise the attachments');
+        console.error(e);
+
+        // Try and clean up but don't worry too much about errors for the time being
+        await connection.close();
+
+        return;
+    }
+
+    expressApp.listen();
+    console.log(`Server launched on ${expressValidation.data.port ?? 15450}`);
 }
 
-main();
-
-process.on('exit', () => {
-    if (msgHandler !== null) msgHandler.close();
-});
-
-module.exports = app;
+main()
+    .then(() => {
+        console.log('Launch complete');
+    })
+    .catch((e) => {
+        console.error('Launch failed');
+        console.error(e);
+    });
