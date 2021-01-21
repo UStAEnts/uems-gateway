@@ -93,7 +93,7 @@ export namespace MessageUtilities {
                 .status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
                 .json(MessageUtilities.wrapInFailure({
                     message: `could not parse parameter ${name}`,
-                    code: 'BAD_REQUEST_INVALID_PARAM',
+                    code: 'INTERNAL_SERVER_ERROR',
                 }));
             return false;
         }
@@ -122,14 +122,8 @@ export namespace MessageUtilities {
         if (types !== undefined) {
             // eslint-disable-next-line no-restricted-syntax
             for (const key of Object.keys(types)) {
-                if (data[key] !== undefined && !types[key](data[key])) {
-                    response
-                        .status(constants.HTTP_STATUS_BAD_REQUEST)
-                        .json(MessageUtilities.wrapInFailure({
-                            message: `invalid parameter type for ${key}`,
-                            code: 'BAD_REQUEST_INVALID_PARAM',
-                        }));
-                    return false;
+                if (data[key] !== undefined) {
+                    if (!safeRunValidator(types[key], data[key], key, response)) return false;
                 }
             }
         }
@@ -265,9 +259,7 @@ export namespace MessageUtilities {
                         }
                     }
                 }
-
             }
-
         }
 
         return true;
