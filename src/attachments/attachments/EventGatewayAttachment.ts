@@ -220,6 +220,32 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
     private getEventsHandler = (send: SendRequestFunction) => async (req: Request, res: Response) => {
         // TODO add failures
 
+        const validate = MessageUtilities.coerceAndVerifyQuery(
+            req,
+            res,
+            [],
+            {
+                name: { primitive: 'string' },
+                start: { primitive: 'number' },
+                end: { primitive: 'number' },
+                attendance: { primitive: 'number' },
+                venueIDs: { primitive: 'array' },
+                venueCriteria: { primitive: 'string' },
+                entsID: { primitive: 'string' },
+                stateID: { primitive: 'string' },
+                startafter: { primitive: 'number' },
+                startbefore: { primitive: 'number' },
+                endafter: { primitive: 'number' },
+                endbefore: { primitive: 'number' },
+                attendanceGreater: { primitive: 'number' },
+                attendanceLess: { primitive: 'number' },
+            },
+        );
+
+        if (!validate) {
+            return;
+        }
+
         const msg: ReadEventMessage = {
             msg_id: MessageUtilities.generateMessageIdentifier(),
             status: 0,
