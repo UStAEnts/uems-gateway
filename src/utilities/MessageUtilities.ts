@@ -169,7 +169,7 @@ export namespace MessageUtilities {
         request: Request,
         response: Response,
         required: P,
-        types?: Record<string, { primitive: 'string' | 'number' | 'boolean', validator?: (x: any) => boolean }>,
+        types?: Record<string, { primitive: 'string' | 'number' | 'boolean' | 'array', validator?: (x: any) => boolean }>,
     ) {
         // First step, validate missing keys
         if (!verifyData(request.query, response, required)) return false;
@@ -205,6 +205,23 @@ export namespace MessageUtilities {
                     // Once this has been cast we want to update the query with the new parameter
                     // @ts-ignore - while not technically valid, this will work for what we need
                     request.query[name] = cast;
+
+                    // Then we want to run any additional validators on it
+                    if (validator) {
+                        if (!safeRunValidator(validator, request.query[name], name, response)) {
+                            return false;
+                        }
+                    }
+                } else if (primitive === 'array') {
+                    if (!Array.isArray(request.query[name])) {
+                        response
+                            .status(constants.HTTP_STATUS_BAD_REQUEST)
+                            .json(MessageUtilities.wrapInFailure({
+                                message: `invalid parameter type for ${name}, expected array`,
+                                code: 'BAD_REQUEST_INVALID_PARAM',
+                            }));
+                        return false;
+                    }
 
                     // Then we want to run any additional validators on it
                     if (validator) {
