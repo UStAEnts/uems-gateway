@@ -1,9 +1,9 @@
-import { EntityResolver } from '../../src/resolver/EntityResolver';
-import { GatewayMk2 } from '../../src/Gateway';
+import { EntityResolver } from '../../../src/resolver/EntityResolver';
+import { GatewayMk2 } from '../../../src/Gateway';
 import GatewayInterfaceActionType = GatewayMk2.GatewayInterfaceActionType;
-import { EventGatewayAttachment } from '../../src/attachments/attachments/EventGatewayAttachment';
-import { GET_EVENTS_INVALID, GET_EVENTS_VALID, PATCH_EVENTS_EVENTID_INVALID, PATCH_EVENTS_EVENTID_VALID, POST_EVENTS_EVENTID_COMMENTS_INVALID, POST_EVENTS_EVENTID_COMMENTS_MISSING, POST_EVENTS_EVENTID_COMMENTS_VALID, POST_EVENTS_INVALID, POST_EVENTS_MISSING, POST_EVENTS_VALID } from '../test-api-data';
-import { testMissingParameters, testParameterTypes, testValidRoute } from '../utils';
+import { EventGatewayAttachment } from '../../../src/attachments/attachments/EventGatewayAttachment';
+import { GET_EVENTS_INVALID, GET_EVENTS_VALID, PATCH_EVENTS_EVENTID_INVALID, PATCH_EVENTS_EVENTID_VALID, POST_EVENTS_EVENTID_COMMENTS_INVALID, POST_EVENTS_EVENTID_COMMENTS_MISSING, POST_EVENTS_EVENTID_COMMENTS_VALID, POST_EVENTS_INVALID, POST_EVENTS_MISSING, POST_EVENTS_VALID } from '../../test-api-data';
+import { testMissingParameters, testParameterTypes, testValidRoute } from '../../utils';
 
 describe('EventGatewayAttachment.ts', () => {
     const send = jest.fn();

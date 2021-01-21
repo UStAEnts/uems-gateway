@@ -1,9 +1,9 @@
-import { SignupGatewayInterface } from '../../src/attachments/attachments/SignupGatewayInterface';
-import { EntityResolver } from '../../src/resolver/EntityResolver';
-import { GatewayMk2 } from '../../src/Gateway';
+import { SignupGatewayInterface } from '../../../src/attachments/attachments/SignupGatewayInterface';
+import { EntityResolver } from '../../../src/resolver/EntityResolver';
+import { GatewayMk2 } from '../../../src/Gateway';
 import GatewayInterfaceActionType = GatewayMk2.GatewayInterfaceActionType;
-import { GET_EVENTS_EVENTID_SIGNUPS_INVALID, GET_EVENTS_EVENTID_SIGNUPS_VALID, PATCH_EVENTS_EVENTID_SIGNUPS_SIGNUPID_VALID, POST_EVENTS_EVENTID_SIGNUPS_MISSING, POST_EVENTS_EVENTID_SIGNUPS_VALID } from '../test-api-data';
-import { testMissingParameters, testParameterTypes, testValidRoute } from '../utils';
+import { GET_EVENTS_EVENTID_SIGNUPS_INVALID, GET_EVENTS_EVENTID_SIGNUPS_VALID, PATCH_EVENTS_EVENTID_SIGNUPS_SIGNUPID_VALID, POST_EVENTS_EVENTID_SIGNUPS_MISSING, POST_EVENTS_EVENTID_SIGNUPS_VALID } from '../../test-api-data';
+import { testMissingParameters, testParameterTypes, testValidRoute } from '../../utils';
 
 describe('SignupGatewayInterface.ts', () => {
     const send = jest.fn();

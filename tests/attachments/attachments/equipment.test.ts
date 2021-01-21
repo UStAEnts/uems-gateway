@@ -1,8 +1,8 @@
-import { EntityResolver } from '../../src/resolver/EntityResolver';
-import { EquipmentGatewayInterface } from '../../src/attachments/attachments/EquipmentGatewayInterface';
-import { GatewayMk2 } from '../../src/Gateway';
-import { GET_EQUIPMENT_INVALID, GET_EQUIPMENT_VALID, PATCH_EQUIPMENT_EQUIPMENTID_INVALID, PATCH_EQUIPMENT_EQUIPMENTID_VALID, POST_EQUIPMENT_INVALID, POST_EQUIPMENT_MISSING, POST_EQUIPMENT_VALID } from '../test-api-data';
-import { testMissingParameters, testParameterTypes, testValidRoute } from '../utils';
+import { EntityResolver } from '../../../src/resolver/EntityResolver';
+import { EquipmentGatewayInterface } from '../../../src/attachments/attachments/EquipmentGatewayInterface';
+import { GatewayMk2 } from '../../../src/Gateway';
+import { GET_EQUIPMENT_INVALID, GET_EQUIPMENT_VALID, PATCH_EQUIPMENT_EQUIPMENTID_INVALID, PATCH_EQUIPMENT_EQUIPMENTID_VALID, POST_EQUIPMENT_INVALID, POST_EQUIPMENT_MISSING, POST_EQUIPMENT_VALID } from '../../test-api-data';
+import { testMissingParameters, testParameterTypes, testValidRoute } from '../../utils';
 import GatewayInterfaceActionType = GatewayMk2.GatewayInterfaceActionType;
 
 describe('EquipmentGatewayInterface.ts', () => {

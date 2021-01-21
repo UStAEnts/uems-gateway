@@ -1,9 +1,9 @@
-import { EntityResolver } from '../../src/resolver/EntityResolver';
-import { GatewayMk2 } from '../../src/Gateway';
+import { EntityResolver } from '../../../src/resolver/EntityResolver';
+import { GatewayMk2 } from '../../../src/Gateway';
 import GatewayInterfaceActionType = GatewayMk2.GatewayInterfaceActionType;
-import { StateGatewayInterface } from '../../src/attachments/attachments/StateGatewayInterface';
-import { GET_STATES_INVALID, GET_STATES_VALID, PATCH_STATES_STATEID_INVALID, PATCH_STATES_STATEID_VALID, POST_STATES_INVALID, POST_STATES_MISSING, POST_STATES_VALID } from '../test-api-data';
-import { testMissingParameters, testParameterTypes, testValidRoute } from '../utils';
+import { StateGatewayInterface } from '../../../src/attachments/attachments/StateGatewayInterface';
+import { GET_STATES_INVALID, GET_STATES_VALID, PATCH_STATES_STATEID_INVALID, PATCH_STATES_STATEID_VALID, POST_STATES_INVALID, POST_STATES_MISSING, POST_STATES_VALID } from '../../test-api-data';
+import { testMissingParameters, testParameterTypes, testValidRoute } from '../../utils';
 
 describe('StateGatewayInterface.ts', () => {
     const send = jest.fn();

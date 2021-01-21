@@ -1,7 +1,7 @@
-import { UserGatewayInterface } from '../../src/attachments/attachments/UserGatewayInterface';
-import { GatewayMk2 } from '../../src/Gateway';
-import { GET_USER_INVALID, GET_USER_VALID, PATCH_USER_USERID_VALID, POST_USER_MISSING, POST_USER_VALID } from '../test-api-data';
-import { testMissingParameters, testParameterTypes, testValidRoute } from '../utils';
+import { UserGatewayInterface } from '../../../src/attachments/attachments/UserGatewayInterface';
+import { GatewayMk2 } from '../../../src/Gateway';
+import { GET_USER_INVALID, GET_USER_VALID, PATCH_USER_USERID_VALID, POST_USER_MISSING, POST_USER_VALID } from '../../test-api-data';
+import { testMissingParameters, testParameterTypes, testValidRoute } from '../../utils';
 import GatewayInterfaceActionType = GatewayMk2.GatewayInterfaceActionType;
 
 describe('UserGatewayInterface.ts', () => {

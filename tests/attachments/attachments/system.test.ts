@@ -1,8 +1,8 @@
-import { SystemGatewayInterface } from '../../src/attachments/system/SystemGatewayInterface';
-import { GatewayMk2 } from '../../src/Gateway';
+import { SystemGatewayInterface } from '../../../src/attachments/system/SystemGatewayInterface';
+import { GatewayMk2 } from '../../../src/Gateway';
 import { Response } from 'jest-express/lib/response';
 import express from 'express';
-import { MOCK_UEMS_USER, request } from '../test-api-data';
+import { MOCK_UEMS_USER, request } from '../../test-api-data';
 import GatewayInterfaceActionType = GatewayMk2.GatewayInterfaceActionType;
 
 describe('SystemGatewayInterface.ts', () => {

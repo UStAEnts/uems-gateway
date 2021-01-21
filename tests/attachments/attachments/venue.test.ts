@@ -1,8 +1,8 @@
-import { GatewayMk2 } from '../../src/Gateway';
-import { VenueGatewayInterface } from '../../src/attachments/attachments/VenueGatewayInterface';
-import { EntityResolver } from '../../src/resolver/EntityResolver';
-import { GET_VENUES_INVALID, GET_VENUES_VALID, PATCH_VENUES_VENUEID_INVALID, PATCH_VENUES_VENUEID_VALID, POST_VENUES_INVALID, POST_VENUES_MISSING, POST_VENUES_VALID } from '../test-api-data';
-import { testMissingParameters, testParameterTypes, testValidRoute } from '../utils';
+import { GatewayMk2 } from '../../../src/Gateway';
+import { VenueGatewayInterface } from '../../../src/attachments/attachments/VenueGatewayInterface';
+import { EntityResolver } from '../../../src/resolver/EntityResolver';
+import { GET_VENUES_INVALID, GET_VENUES_VALID, PATCH_VENUES_VENUEID_INVALID, PATCH_VENUES_VENUEID_VALID, POST_VENUES_INVALID, POST_VENUES_MISSING, POST_VENUES_VALID } from '../../test-api-data';
+import { testMissingParameters, testParameterTypes, testValidRoute } from '../../utils';
 import GatewayInterfaceActionType = GatewayMk2.GatewayInterfaceActionType;
 
 describe('VenueGatewayInterface.ts', () => {

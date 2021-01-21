@@ -1,9 +1,9 @@
-import { FileGatewayInterface } from '../../src/attachments/attachments/FileGatewayInterface';
-import { EntityResolver } from '../../src/resolver/EntityResolver';
-import { GatewayMk2 } from '../../src/Gateway';
+import { FileGatewayInterface } from '../../../src/attachments/attachments/FileGatewayInterface';
+import { EntityResolver } from '../../../src/resolver/EntityResolver';
+import { GatewayMk2 } from '../../../src/Gateway';
 import GatewayInterfaceActionType = GatewayMk2.GatewayInterfaceActionType;
-import { GET_FILES_INVALID, GET_FILES_VALID, PATCH_FILES_FILEID_VALID, POST_EVENTS_EVENTID_FILES_MISSING, POST_EVENTS_EVENTID_FILES_VALID, POST_FILES_INVALID, POST_FILES_MISSING, POST_FILES_VALID } from '../test-api-data';
-import { testMissingParameters, testParameterTypes, testValidRoute } from '../utils';
+import { GET_FILES_INVALID, GET_FILES_VALID, PATCH_FILES_FILEID_VALID, POST_EVENTS_EVENTID_FILES_MISSING, POST_EVENTS_EVENTID_FILES_VALID, POST_FILES_INVALID, POST_FILES_MISSING, POST_FILES_VALID } from '../../test-api-data';
+import { testMissingParameters, testParameterTypes, testValidRoute } from '../../utils';
 
 describe('FileGatewayInterface.ts', () => {
     const send = jest.fn();

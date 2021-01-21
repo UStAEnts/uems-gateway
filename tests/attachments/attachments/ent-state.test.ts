@@ -1,7 +1,7 @@
-import { EntStateGatewayInterface } from '../../src/attachments/attachments/EntStateGatewayInterface';
-import { GatewayMk2 } from '../../src/Gateway';
-import { GET_ENTS_INVALID, GET_ENTS_VALID, PATCH_ENTS_ENTID_INVALID, PATCH_ENTS_ENTID_VALID, POST_ENTS_INVALID, POST_ENTS_MISSING, POST_ENTS_VALID } from '../test-api-data';
-import { testMissingParameters, testParameterTypes, testValidRoute } from '../utils';
+import { EntStateGatewayInterface } from '../../../src/attachments/attachments/EntStateGatewayInterface';
+import { GatewayMk2 } from '../../../src/Gateway';
+import { GET_ENTS_INVALID, GET_ENTS_VALID, PATCH_ENTS_ENTID_INVALID, PATCH_ENTS_ENTID_VALID, POST_ENTS_INVALID, POST_ENTS_MISSING, POST_ENTS_VALID } from '../../test-api-data';
+import { testMissingParameters, testParameterTypes, testValidRoute } from '../../utils';
 import GatewayInterfaceActionType = GatewayMk2.GatewayInterfaceActionType;
 
 describe('EntStateGatewayInterface.ts', () => {

@@ -1,7 +1,7 @@
-import { TopicGatewayInterface } from '../../src/attachments/attachments/TopicGatewayInterface';
-import { GatewayMk2 } from '../../src/Gateway';
-import { GET_TOPICS_INVALID, GET_TOPICS_VALID, PATCH_TOPICS_TOPICID_INVALID, PATCH_TOPICS_TOPICID_VALID, POST_TOPICS_INVALID, POST_TOPICS_MISSING, POST_TOPICS_VALID } from '../test-api-data';
-import { testMissingParameters, testParameterTypes, testValidRoute } from '../utils';
+import { TopicGatewayInterface } from '../../../src/attachments/attachments/TopicGatewayInterface';
+import { GatewayMk2 } from '../../../src/Gateway';
+import { GET_TOPICS_INVALID, GET_TOPICS_VALID, PATCH_TOPICS_TOPICID_INVALID, PATCH_TOPICS_TOPICID_VALID, POST_TOPICS_INVALID, POST_TOPICS_MISSING, POST_TOPICS_VALID } from '../../test-api-data';
+import { testMissingParameters, testParameterTypes, testValidRoute } from '../../utils';
 import GatewayInterfaceActionType = GatewayMk2.GatewayInterfaceActionType;
 
 describe('TopicGatewayInterface.ts', () => {
