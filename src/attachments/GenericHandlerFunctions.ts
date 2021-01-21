@@ -18,18 +18,25 @@ function handleDefaultResponse<SHALLOW, DEEP, RESULT extends { result: SHALLOW[]
 
     if (status === MsgStatus.SUCCESS) {
         if (transformer) {
-            Promise.resolve(transformer(response.result))
-                .then((data) => {
-                    http
-                        .status(constants.HTTP_STATUS_OK)
-                        .json(MessageUtilities.wrapInSuccess(data));
-                })
-                .catch((err) => {
-                    console.error('Transformer failed when handling default response', err);
-                    http
-                        .status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
-                        .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
-                });
+            try {
+                return Promise.resolve(transformer(response.result))
+                    .then((data) => {
+                        http
+                            .status(constants.HTTP_STATUS_OK)
+                            .json(MessageUtilities.wrapInSuccess(data));
+                    })
+                    .catch((err) => {
+                        console.error('Transformer failed when handling default response', err);
+                        http
+                            .status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
+                            .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
+                    });
+            } catch (e) {
+                console.error('Transformer failed when handling default response', e);
+                http
+                    .status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
+                    .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
+            }
         } else {
             http
                 .status(constants.HTTP_STATUS_OK)
@@ -40,6 +47,8 @@ function handleDefaultResponse<SHALLOW, DEEP, RESULT extends { result: SHALLOW[]
             .status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
             .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
     }
+
+    return Promise.resolve();
 }
 
 function handleReadSingleResponse<SHALLOW, DEEP, RESULT extends { result: SHALLOW[] }>(
