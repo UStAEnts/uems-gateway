@@ -27,6 +27,7 @@ import { _byFile } from "../log/Log";
 const _l = _byFile(__filename);
 
 export class EntityResolver {
+    private _timeout: NodeJS.Timeout;
     private _pendingMessageIDs: {
         [key: number]: {
             callback: (entity: any | null) => void,
@@ -41,7 +42,11 @@ export class EntityResolver {
 
     constructor(handler: GatewayMk2.GatewayMessageHandler) {
         this._handler = handler;
-        setInterval(this.terminate, 10000);
+        this._timeout = setInterval(this.terminate, 10000);
+    }
+
+    public stop(){
+        clearInterval(this._timeout);
     }
 
     private terminate = () => {
@@ -80,7 +85,7 @@ export class EntityResolver {
         entry.callback(message.result);
     }
 
-    private resolve<T>(id: string, key: string, userID: string, middleware?: (value: any) => T): Promise<T> {
+    public resolve<T>(id: string, key: string, userID: string, middleware?: (value: any) => T): Promise<T> {
         return new Promise<T>((resolve, reject) => {
             const query = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
@@ -160,10 +165,6 @@ export class EntityResolver {
         return output;
     };
 
-    // TODO:?
-    // public resolveEvent = (id: string): Promise<InternalEvent> => this
-    //     .resolve(id, EventGatewayAttachment);
-
     public resolveState = (id: string, userID: string): Promise<InternalState> => this
         .resolve(id, StateGatewayInterface.STATE_READ_KEY, userID);
 
@@ -202,31 +203,6 @@ export class EntityResolver {
             ...shallowFile,
             owner: await this.resolveUser(shallowFile.owner, userID),
         };
-    };
-
-    private resolveGenericSet = async <X, T extends X[], V extends { id: string }>(
-        type: T,
-        key: keyof X | string,
-        resolver: (id: string) => V | Promise<V>,
-    ): Promise<void> => {
-        // @ts-ignore - not ideal, to support optional keys, ones that don't show up in keyof X we need to support
-        // string but then generic access doesn't work. We do filter for undefined so it should be fine but we'll see
-        // TODO: is there a better way?
-        const ids = type.map((entry) => entry[key] as unknown as string)
-            .filter((entry) => entry !== null && entry !== undefined) as string[];
-
-        const entities = await Promise.all(ids.map((id) => Promise.resolve(resolver(id))));
-
-        entities.forEach((entry) => {
-            if (entry === undefined) return;
-
-            // @ts-ignore
-            const matched = type.find((element) => element[key] === entry.id);
-            if (matched === undefined) return;
-
-            // @ts-ignore
-            matched[key] = entry;
-        });
     };
 
 }
