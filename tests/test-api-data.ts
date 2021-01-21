@@ -154,7 +154,7 @@ export const GET_EVENTS_VALID = {
     start: '696',
     end: '178',
     attendance: '183',
-    venueIDs: 'SHh2H5fi01Gafodw0CF1Mg==',
+    venueIDs: ['SHh2H5fi01Gafodw0CF1Mg=='],
     venueCriteria: 'TSBBBd34hu0f8DaBEoTJtw==',
     entsID: 'is/YT0P7QV8QFqGntGlbJQ==',
     stateID: '9oFgV87Bggl1plcbmO0t2A==',
@@ -216,8 +216,8 @@ export const PATCH_EVENTS_EVENTID_VALID = {
     start: 185,
     end: 810,
     attendance: 629,
-    addVenues: null,
-    removeVenues: null,
+    addVenues: [],
+    removeVenues: [],
     ents: 'VMudmK8kEkbPsjDrNKs3uw==',
     state: 'a9GZfyK/zEywqEbyBN7YpA=='
 }
