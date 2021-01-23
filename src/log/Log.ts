@@ -1,6 +1,6 @@
 import winston from 'winston';
 import util from 'util';
-import { has } from '@uems/uemscommlib/build/utilities/ObjectUtilities';
+import { has } from '@uems/uemscommlib';
 import { basename } from 'path';
 
 /**

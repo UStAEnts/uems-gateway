@@ -1,0 +1,31 @@
+{
+  "cors": {
+    "origins": "*"
+  },
+  "uems": {
+    "index": "../frontend-themis/build/index.html",
+    "serve": "../frontend-themis/build/",
+    "hashes": ["sha256-KdHLSwgiSDMa9LFV2Dvj04HzoCju3qbIM9E1WOZj0tM="]
+  },
+  "auth": {
+    "manifestSrc": ["uems.local.host"]
+  },
+  "session": {
+    "mongoURL": "mongodb://root:example@mongo:27017/session-store?authMechanism=SCRAM-SHA-1&authSource=admin",
+    "name": "ueid",
+    "secure": false,
+    "domain": "localhost",
+    "secrets": {
+      "mongo": "mongo",
+      "session": "session"
+    }
+  },
+  "keycloak": {
+    "realm": "uems-debug",
+    "auth-server-url": "http://uems.local.host:8080/auth/",
+    "ssl-required": "external",
+    "resource": "uems-debug",
+    "public-client": true,
+    "confidential-port": 0
+  }
+}

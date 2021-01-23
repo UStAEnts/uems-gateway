@@ -8,9 +8,9 @@ import { MessageUtilities } from './utilities/MessageUtilities';
 import { ErrorCodes } from './constants/ErrorCodes';
 import { constants } from 'http2';
 import { EntityResolver } from './resolver/EntityResolver';
-import { MessageValidator } from '@uems/uemscommlib/build/messaging/MessageValidator';
+import { MessageValidator } from '@uems/uemscommlib';
 import * as util from 'util';
-import { _byFile, _byFileWithTag, _ml } from "./log/Log";
+import { _byFile, _byFileWithTag, _ml } from './log/Log';
 
 const _l = _byFile(__filename);
 const _t = _byFileWithTag(__filename, 'terminator');

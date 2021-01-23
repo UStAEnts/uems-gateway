@@ -5,21 +5,20 @@ import { constants } from 'http2';
 import { FileBindingMessage, FileMessage, FileResponse, FileResponseValidator, MsgStatus } from '@uems/uemscommlib';
 import { GenericHandlerFunctions } from '../GenericHandlerFunctions';
 import { ErrorCodes } from '../../constants/ErrorCodes';
-import { FileValidators } from '@uems/uemscommlib/build/file/FileValidators';
 import { EntityResolver } from '../../resolver/EntityResolver';
+import { Resolver } from '../Resolvers';
 import GatewayAttachmentInterface = GatewayMk2.GatewayAttachmentInterface;
 import SendRequestFunction = GatewayMk2.SendRequestFunction;
 import FileReadSchema = FileMessage.ReadFileMessage;
-import FileResponseSchema = FileValidators.FileResponseSchema;
 import ReadFileMessage = FileMessage.ReadFileMessage;
 import CreateFileMessage = FileMessage.CreateFileMessage;
 import DeleteFileMessage = FileMessage.DeleteFileMessage;
 import UpdateFileMessage = FileMessage.UpdateFileMessage;
-import { Resolver } from "../Resolvers";
 import QueryByEventMessage = FileBindingMessage.QueryByEventMessage;
 import QueryByFileMessage = FileBindingMessage.QueryByFileMessage;
 import BindFilesToEventMessage = FileBindingMessage.BindFilesToEventMessage;
 import UnbindFilesFromEventMessage = FileBindingMessage.UnbindFilesFromEventMessage;
+import FileResponseMessage = FileResponse.FileResponseMessage;
 
 export class FileGatewayInterface implements GatewayAttachmentInterface {
     private readonly FILE_CREATE_KEY = 'file.details.create';
@@ -188,7 +187,6 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
 
     private createFileHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
-
             const validate = MessageUtilities.verifyBody(
                 req,
                 res,
@@ -223,7 +221,7 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
                 res,
                 async (http, timestamp, raw, status) => {
                     MessageUtilities.identifierConsumed(raw.msg_id);
-                    const response = raw as FileResponseSchema;
+                    const response = raw as FileResponseMessage;
 
                     if (status === MsgStatus.SUCCESS) {
                         http

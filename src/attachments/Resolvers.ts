@@ -1,11 +1,9 @@
-import { CommentResponse, EquipmentResponse, EventResponse, FileBindingResponse, FileResponse, SignupResponse, VenueResponse } from "@uems/uemscommlib";
-import { GenericHandlerFunctions } from "./GenericHandlerFunctions";
-import { EntityResolver } from "../resolver/EntityResolver";
+import { CommentResponse, EquipmentResponse, EventResponse, FileBindingResponse, FileResponse, SignupResponse, VenueResponse } from '@uems/uemscommlib';
+import { GenericHandlerFunctions } from './GenericHandlerFunctions';
+import { EntityResolver } from '../resolver/EntityResolver';
+import { __ } from '../log/Log';
 import SingleTransformer = GenericHandlerFunctions.SingleTransformer;
 import Transformer = GenericHandlerFunctions.Transformer;
-import { FileBindingValidators } from "@uems/uemscommlib/build/filebinding/FileBindingValidators";
-import { ifError } from "assert";
-import { __ } from "../log/Log";
 
 function singleToDouble<S, D, R extends { result: S[] }>(x: SingleTransformer<S, D, R>): Transformer<S, D, R> {
     // TODO: log errors and maybe provide some indication of partial responses. Do this in a later feature phase
@@ -47,8 +45,6 @@ export namespace Resolver {
     import SignupServiceReadResponseMessage = SignupResponse.SignupServiceReadResponseMessage;
     import ShallowInternalSignup = SignupResponse.ShallowInternalSignup;
     import ShallowQueryByFileResponse = FileBindingResponse.ShallowQueryByFileResponse;
-    import FileBindingResponseSchema = FileBindingValidators.FileBindingResponseSchema;
-    import QueryByFileResponse = FileBindingResponse.QueryByFileResponse;
     import ShallowQueryByEventResponse = FileBindingResponse.ShallowQueryByEventResponse;
 
     type MultiEventTransformer =

@@ -2,21 +2,17 @@ import { GatewayMk2 } from '../../Gateway';
 import { Request, Response } from 'express';
 import { MessageUtilities } from '../../utilities/MessageUtilities';
 import { constants } from 'http2';
-import { MsgStatus, SignupMessage, SignupResponseValidator } from '@uems/uemscommlib';
+import { SignupMessage, SignupResponseValidator } from '@uems/uemscommlib';
 import { GenericHandlerFunctions } from '../GenericHandlerFunctions';
-import { ErrorCodes } from '../../constants/ErrorCodes';
-import { SignupValidators } from '@uems/uemscommlib/build/signup/SignupValidators';
 import { EntityResolver } from '../../resolver/EntityResolver';
-import { Resolver } from "../Resolvers";
+import { Resolver } from '../Resolvers';
 import GatewayAttachmentInterface = GatewayMk2.GatewayAttachmentInterface;
 import SendRequestFunction = GatewayMk2.SendRequestFunction;
 import ReadSignupMessage = SignupMessage.ReadSignupMessage;
-import SignupResponseSchema = SignupValidators.SignupResponseSchema;
 import SignupReadSchema = SignupMessage.ReadSignupMessage;
 import CreateSignupMessage = SignupMessage.CreateSignupMessage;
 import DeleteSignupMessage = SignupMessage.DeleteSignupMessage;
 import UpdateSignupMessage = SignupMessage.UpdateSignupMessage;
-import SignupUpdateSchema = SignupValidators.SignupUpdateSchema;
 
 export class SignupGatewayInterface implements GatewayAttachmentInterface {
     private readonly SIGNUP_CREATE_KEY = 'events.signups.create';
@@ -296,7 +292,7 @@ export class SignupGatewayInterface implements GatewayAttachmentInterface {
             };
 
             const parameters = req.body;
-            const validProperties: (keyof SignupUpdateSchema)[] = [
+            const validProperties: (keyof UpdateSignupMessage)[] = [
                 'role',
             ];
 
