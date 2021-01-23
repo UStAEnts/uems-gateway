@@ -30,5 +30,6 @@ module.exports = {
         'import/prefer-default-export': ['off'],
         'max-len': ['error', 120],
         'object-curly-newline': ['off'],
+        'no-underscore-dangle': ['off']
     },
 };
