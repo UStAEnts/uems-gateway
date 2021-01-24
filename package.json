@@ -4,9 +4,10 @@
   "description": "API gateway for the UEMS system",
   "main": "index.js",
   "scripts": {
+    "clean": "rm -r build/ || true",
     "build": "tsc --listEmittedFiles",
-    "start:old": "node -r source-map-support/register --trace-warnings ./build/app.js",
-    "start": "npm run build && npm run start:old",
+    "start": "node -r source-map-support/register --trace-warnings ./build/src/app.js",
+    "start:dev": "ts-node --files src/app.js",
     "lint": "eslint --ext .ts ./",
     "test": "jest"
   },

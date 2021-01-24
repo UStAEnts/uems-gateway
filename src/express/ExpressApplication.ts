@@ -65,39 +65,6 @@ export const ExpressConfiguration = z.object({
             .optional(),
     })
         .nonstrict(),
-    auth0: z.object({
-        secret: z.string()
-            .or(z.array(z.string()))
-            .optional(),
-        auth0Logout: z.boolean()
-            .optional(),
-        baseURL: z.string()
-            .optional(),
-        clientID: z.string()
-            .optional(),
-        clientSecret: z.string()
-            .optional(),
-        clockTolerance: z.number(),
-        enableTelemetry: z.boolean(),
-        errorOnRequiredAuth: z.boolean(),
-        attemptSilentLogin: z.boolean(),
-        identityClaimFilter: z.array(z.string()),
-        idpLogout: z.boolean(),
-        idTokenSigningAlg: z.string(),
-        issuerBaseURL: z.string(),
-        legacySameSiteCookie: z.boolean(),
-        authRequired: z.boolean(),
-        routes: z.object({
-            login: z.string()
-                .or(z.literal(false)),
-            logout: z.string()
-                .or(z.literal(false)),
-            postLogoutRedirect: z.string(),
-            callback: z.string(),
-        }),
-        clientAuthMethod: z.string(),
-    })
-        .deepPartial(),
 });
 
 export type ExpressConfigurationType = z.infer<typeof ExpressConfiguration>;
