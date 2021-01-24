@@ -4,7 +4,7 @@ FROM node:current-alpine
 WORKDIR /user/app
 
 # Normally we want to run the cached built one
-CMD ["npm", "run", "start:old"]
+CMD ["npm", "run", "start"]
 
 # This app exposes an API on this port
 EXPOSE 15450
