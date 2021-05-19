@@ -1,6 +1,6 @@
 FROM node:current-alpine
 
-HEALTHCHECK CMD node healthcheck.js
+HEALTHCHECK CMD node node_modules/.bin/healthcheck.js
 
 # Setup where to store the app
 WORKDIR /user/app
