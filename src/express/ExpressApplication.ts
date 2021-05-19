@@ -1,5 +1,5 @@
 import * as z from 'zod';
-import express, { Application, IRoute, IRouter, Request, RequestHandler, Response, Router } from 'express';
+import express, { Application, Request, RequestHandler, Response, Router } from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import session from 'express-session';
@@ -7,15 +7,16 @@ import connectMongo from 'connect-mongo';
 import { GatewayMk2 } from '../Gateway';
 import { EntityResolver } from '../resolver/EntityResolver';
 import { join } from 'path';
-import GatewayAttachmentInterface = GatewayMk2.GatewayAttachmentInterface;
-import SendRequestFunction = GatewayMk2.SendRequestFunction;
 import { __ } from "../log/Log";
 import { UserMessage } from "@uems/uemscommlib";
-import AssertUserMessage = UserMessage.AssertUserMessage;
 import { MessageUtilities } from "../utilities/MessageUtilities";
 import KeycloakConnect, { Keycloak } from "keycloak-connect";
-import * as util from "util";
 import { constants } from "http2";
+import { tryApplyTrait } from "@uems/micro-builder/build/src";
+import getHealthcheck from "@uems/micro-builder/build/src/healthcheck/Healthcheck";
+import GatewayAttachmentInterface = GatewayMk2.GatewayAttachmentInterface;
+import SendRequestFunction = GatewayMk2.SendRequestFunction;
+import AssertUserMessage = UserMessage.AssertUserMessage;
 
 const MongoStore = connectMongo(session);
 
@@ -81,6 +82,13 @@ export class ExpressApplication {
     private _keycloak: Keycloak;
 
     private _protector: () => RequestHandler;
+
+    /**
+     * Contains the last set of requests that were successful (anything except internal errors) and failed (internal
+     * errors). This is to be synced with the health-check system
+     * @private
+     */
+    private _requestQueue: ('success' | 'fail')[] = [];
 
     constructor(configuration: ExpressConfigurationType) {
         this._configuration = configuration;
@@ -148,8 +156,26 @@ export class ExpressApplication {
         //     ...configuration.auth0,
         // }));
 
+        this._app.use((req, res, next) => {
+            res.on('finish', () => {
+                // If there are going to be more than 50, remove the oldest so we only consider that 50
+                if (this._requestQueue.length >= 50) this._requestQueue.shift();
+
+                if (res.statusCode >= 500 && res.statusCode < 600) {
+                    this._requestQueue.push('fail');
+                } else {
+                    this._requestQueue.push('success');
+                }
+
+                tryApplyTrait('successful', this._requestQueue.filter((e) => e === 'success').length);
+                tryApplyTrait('errored', this._requestQueue.filter((e) => e === 'fail').length);
+            });
+
+            next();
+        });
+
         this._apiRouter = express.Router();
-        if(ExpressApplication.DISABLE_PROTECTIONS) {
+        if (ExpressApplication.DISABLE_PROTECTIONS) {
             this._app.use((req, res, next) => {
                 req.uemsUser = {
                     userID: '3800de91-5c28-46e9-b501-27703ea32aed',

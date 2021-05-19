@@ -8,7 +8,6 @@ import GatewayInterfaceActionType = GatewayMk2.GatewayInterfaceActionType;
 describe('SystemGatewayInterface.ts', () => {
     let routes: {
         'get.whoami': GatewayInterfaceActionType,
-        'get.status': GatewayInterfaceActionType,
     };
 
     beforeAll(async () => {
@@ -17,22 +16,7 @@ describe('SystemGatewayInterface.ts', () => {
         routes = {
             'get.whoami': entries
                 .find((e) => e.action === 'get' && e.path === '/whoami') as GatewayInterfaceActionType,
-            'get.status': entries
-                .find((e) => e.action === 'get' && e.path === '/status') as GatewayInterfaceActionType,
         };
-    });
-
-    describe('GET /status', () => {
-        it('sends valid response', async () => {
-            const response = new Response();
-            const fake = response as unknown as express.Response;
-            const req = request();
-
-            await routes['get.status'].handle(req, fake, () => undefined);
-
-            expect(response.body)
-                .toMatch(/OK [0-9]+\.[0-9]+\.[0-9]+/);
-        });
     });
 
     describe('GET /whoami', () => {
