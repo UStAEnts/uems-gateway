@@ -13,7 +13,6 @@ import { MessageUtilities } from "../utilities/MessageUtilities";
 import KeycloakConnect, { Keycloak } from "keycloak-connect";
 import { constants } from "http2";
 import { tryApplyTrait } from "@uems/micro-builder/build/src";
-import getHealthcheck from "@uems/micro-builder/build/src/healthcheck/Healthcheck";
 import GatewayAttachmentInterface = GatewayMk2.GatewayAttachmentInterface;
 import SendRequestFunction = GatewayMk2.SendRequestFunction;
 import AssertUserMessage = UserMessage.AssertUserMessage;
@@ -161,7 +160,11 @@ export class ExpressApplication {
                 // If there are going to be more than 50, remove the oldest so we only consider that 50
                 if (this._requestQueue.length >= 50) this._requestQueue.shift();
 
-                if (res.statusCode >= 500 && res.statusCode < 600) {
+                // Don't count gateway timeout as that indicates that a microservice has died and doesn't reflect
+                // on the gateway so should not be counted as a failed response. I should probably count these
+                // differently but for the time being this will work.
+                if (res.statusCode >= 500 && res.statusCode < 600
+                    && res.statusCode !== constants.HTTP_STATUS_GATEWAY_TIMEOUT) {
                     this._requestQueue.push('fail');
                 } else {
                     this._requestQueue.push('success');
