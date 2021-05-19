@@ -163,7 +163,7 @@ export namespace MessageUtilities {
         request: Request,
         response: Response,
         required: P,
-        types?: Record<string, { primitive: 'string' | 'number' | 'boolean' | 'array', validator?: (x: any) => boolean }>,
+        types?: Record<string, { primitive: 'string' | 'number' | 'boolean' | 'array', validator?: (x: any) => boolean, required?: boolean }>,
     ) {
         // First step, validate missing keys
         if (!verifyData(request.query, response, required)) return false;
@@ -174,7 +174,10 @@ export namespace MessageUtilities {
                 const {
                     primitive,
                     validator,
+                    required,
                 } = type;
+
+                if (request.query[name] === undefined && !required) continue;
 
                 // By default everything is a string. So we only care about strings if it has a validator
                 if (primitive === 'string') {
