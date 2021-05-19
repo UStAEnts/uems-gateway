@@ -2,6 +2,7 @@
 import fs from 'fs/promises';
 import amqp from 'amqplib';
 import { ZodError } from 'zod';
+import * as zod from 'zod';
 
 // Internal dependencies.
 import { GatewayMk2 } from './Gateway';
@@ -17,7 +18,21 @@ import { FileGatewayInterface } from './attachments/attachments/FileGatewayInter
 import { SignupGatewayInterface } from './attachments/attachments/SignupGatewayInterface';
 import { ExpressApplication, ExpressConfiguration, ExpressConfigurationType } from './express/ExpressApplication';
 import { EntityResolver } from './resolver/EntityResolver';
+import { launchCheck, tryApplyTrait } from "@uems/micro-builder/build/src";
+import { has } from "@uems/uemscommlib";
 import GatewayMessageHandler = GatewayMk2.GatewayMessageHandler;
+
+launchCheck(['successful', 'errored', 'rabbitmq'], (traits: Record<string, any>) => {
+    if (has(traits, 'rabbitmq') && traits.rabbitmq !== '_undefined' && !traits.rabbitmq) return 'unhealthy';
+
+    // If 75% of results fail then we return false
+    if (has(traits, 'successful') && has(traits, 'errored')) {
+        const errorPercentage = traits.errored / (traits.successful + traits.errored);
+        if (errorPercentage > 0.05) return 'unhealthy-serving';
+    }
+
+    return 'healthy';
+});
 
 const RABBIT_MQ_CONFIG: string = 'rabbit-mq-config.json';
 const EXPRESS_CONFIG: string = 'express-config.json';
@@ -30,6 +45,7 @@ async function main() {
         const rabbitMQConfigRaw = await fs.readFile(RABBIT_MQ_CONFIG, { encoding: 'utf8' });
         rabbitMQConfig = JSON.parse(rabbitMQConfigRaw);
     } catch (e) {
+        tryApplyTrait('rabbitmq', false);
         console.error(`Failed to load ${RABBIT_MQ_CONFIG}`);
         console.error(e);
         return;
@@ -41,12 +57,14 @@ async function main() {
         const expressConfig = JSON.parse(expressConfigRaw);
         expressValidation = ExpressConfiguration.safeParse(expressConfig);
     } catch (e) {
+        tryApplyTrait('rabbitmq', false);
         console.error(`Failed to load ${EXPRESS_CONFIG}`);
         console.error(e);
         return;
     }
 
     if (!expressValidation.success) {
+        tryApplyTrait('rabbitmq', false);
         console.error(`Failed to load ${EXPRESS_CONFIG}`);
         console.error(expressValidation.error);
         return;
@@ -56,6 +74,7 @@ async function main() {
     try {
         connection = await amqp.connect(`${rabbitMQConfig.uri}?heartbeat=60`);
     } catch (e) {
+        tryApplyTrait('rabbitmq', false);
         console.error('Failed to connect to the amqplib server');
         console.error(e);
         return;
@@ -65,17 +84,23 @@ async function main() {
     connection.on('error', (connectionError: Error) => {
         if (connectionError.message !== 'Connection closing') {
             console.error('[AMQP] conn error', connectionError.message);
+            tryApplyTrait('rabbitmq', false);
         }
     });
 
     // Print out a warning on the connection being closed
     connection.on('close', () => {
         console.error('[AMQP] connection closed');
+        tryApplyTrait('rabbitmq', false);
     });
 
     console.log('[AMQP] connected');
+    tryApplyTrait('rabbitmq', true);
 
-    const handler = new GatewayMessageHandler(connection, undefined);
+    const handler = new GatewayMessageHandler(connection, {
+        schemaValidator: () => Promise.resolve(true),
+        validate: () => Promise.resolve(true),
+    });
     const resolver = new EntityResolver(handler);
     try {
         await handler.configure(resolver);
@@ -88,7 +113,6 @@ async function main() {
 
         return;
     }
-
 
     let expressApp;
     try {
