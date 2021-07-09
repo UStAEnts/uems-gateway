@@ -109,7 +109,7 @@ export class SignupGatewayInterface implements GatewayAttachmentInterface {
             const validProperties: (keyof SignupReadSchema)[] = [
                 'id',
                 'date',
-                'userid',
+                'signupUser',
                 'dateRangeBegin',
                 'dateRangeEnd',
                 'role',
@@ -197,6 +197,7 @@ export class SignupGatewayInterface implements GatewayAttachmentInterface {
                 ['role'],
                 {
                     role: (x) => typeof (x) === 'string',
+                    signupUser: (x) => typeof (x) === 'string' || typeof (x) === 'undefined',
                 },
             );
 
@@ -210,7 +211,7 @@ export class SignupGatewayInterface implements GatewayAttachmentInterface {
                 status: 0,
                 userID: req.uemsUser.userID,
                 eventID: req.params.eventID,
-                userid: req.uemsUser.userID,
+                signupUser: req.params.signupUser,
                 role: req.body.role,
             };
 
