@@ -208,7 +208,6 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
                 msg_intention: 'CREATE',
                 status: 0,
                 userID: req.uemsUser.userID,
-                userid: req.uemsUser.userID,
                 name: req.body.name,
                 filename: req.body.filename,
                 size: req.body.size,
