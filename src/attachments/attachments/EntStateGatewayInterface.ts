@@ -10,15 +10,10 @@ import EntStateReadSchema = EntStateMessage.ReadEntStateMessage;
 import ReadEntStateMessage = EntStateMessage.ReadEntStateMessage;
 import CreateEntStateMessage = EntStateMessage.CreateEntStateMessage;
 import UpdateEntStateMessage = EntStateMessage.UpdateEntStateMessage;
+import { Constants } from "../../utilities/Constants";
+import ROUTING_KEY = Constants.ROUTING_KEY;
 
 export class EntStateGatewayInterface implements GatewayAttachmentInterface {
-    private readonly ENT_STATE_CREATE_KEY = 'ents.details.create';
-
-    private readonly ENT_STATE_DELETE_KEY = 'ents.details.delete';
-
-    private readonly ENT_STATE_UPDATE_KEY = 'ents.details.update';
-
-    public static readonly ENT_STATE_READ_KEY = 'ents.details.get';
 
     private readonly COLOR_REGEX = /^#?([0-9A-Fa-f]{3}([0-9A-Fa-f]{3})?)$/;
 
@@ -105,7 +100,7 @@ export class EntStateGatewayInterface implements GatewayAttachmentInterface {
             });
 
             await send(
-                EntStateGatewayInterface.ENT_STATE_READ_KEY,
+                ROUTING_KEY.ent.read,
                 outgoing,
                 res,
                 GenericHandlerFunctions.handleDefaultResponseFactory(),
@@ -134,7 +129,7 @@ export class EntStateGatewayInterface implements GatewayAttachmentInterface {
 
             outgoingMessage.id = req.params.id;
             await send(
-                EntStateGatewayInterface.ENT_STATE_READ_KEY,
+                ROUTING_KEY.ent.read,
                 outgoingMessage,
                 res,
                 GenericHandlerFunctions.handleReadSingleResponseFactory(),
@@ -170,7 +165,7 @@ export class EntStateGatewayInterface implements GatewayAttachmentInterface {
             };
 
             await send(
-                this.ENT_STATE_CREATE_KEY,
+                ROUTING_KEY.ent.create,
                 outgoingMessage,
                 res,
                 GenericHandlerFunctions.handleDefaultResponseFactory(),
@@ -198,7 +193,7 @@ export class EntStateGatewayInterface implements GatewayAttachmentInterface {
             };
 
             await send(
-                this.ENT_STATE_DELETE_KEY,
+                ROUTING_KEY.ent.delete,
                 outgoingMessage,
                 res,
                 GenericHandlerFunctions.handleReadSingleResponseFactory(),
@@ -256,7 +251,7 @@ export class EntStateGatewayInterface implements GatewayAttachmentInterface {
             });
 
             await send(
-                this.ENT_STATE_UPDATE_KEY,
+                ROUTING_KEY.ent.update,
                 outgoing,
                 res,
                 GenericHandlerFunctions.handleDefaultResponseFactory(),
