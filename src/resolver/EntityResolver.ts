@@ -5,10 +5,11 @@ import { UserGatewayInterface } from '../attachments/attachments/UserGatewayInte
 import { EntStateGatewayInterface } from '../attachments/attachments/EntStateGatewayInterface';
 import { EquipmentGatewayInterface } from '../attachments/attachments/EquipmentGatewayInterface';
 import { StateGatewayInterface } from '../attachments/attachments/StateGatewayInterface';
-import MinimalMessageType = GatewayMk2.MinimalMessageType;
-import has = MessageUtilities.has;
+import { EntStateResponse, EquipmentResponse, EventResponse, FileResponse, StateResponse, UserResponse, VenueResponse } from '@uems/uemscommlib';
+import { EVENT_DETAILS_SERVICE_TOPIC_GET } from '../attachments/attachments/EventGatewayAttachment';
+import { FileGatewayInterface } from '../attachments/attachments/FileGatewayInterface';
+import { _byFile } from '../log/Log';
 import GatewayMessageHandler = GatewayMk2.GatewayMessageHandler;
-import { EntStateResponse, EquipmentResponse, EventResponse, FileResponse, MsgStatus, StateResponse, UserResponse, VenueResponse } from '@uems/uemscommlib';
 import InternalEntState = EntStateResponse.InternalEntState;
 import InternalEquipment = EquipmentResponse.InternalEquipment;
 import InternalState = StateResponse.InternalState;
@@ -17,72 +18,17 @@ import InternalVenue = VenueResponse.InternalVenue;
 import ShallowInternalEquipment = EquipmentResponse.ShallowInternalEquipment;
 import ShallowInternalVenue = VenueResponse.ShallowInternalVenue;
 import ShallowInternalEvent = EventResponse.ShallowInternalEvent;
-import { EVENT_DETAILS_SERVICE_TOPIC_GET, EventGatewayAttachment } from "../attachments/attachments/EventGatewayAttachment";
 import InternalEvent = EventResponse.InternalEvent;
 import InternalFile = FileResponse.InternalFile;
 import ShallowInternalFile = FileResponse.ShallowInternalFile;
-import { FileGatewayInterface } from "../attachments/attachments/FileGatewayInterface";
-import { _byFile } from "../log/Log";
 
 const _l = _byFile(__filename);
 
 export class EntityResolver {
-    private _timeout: NodeJS.Timeout;
-    private _pendingMessageIDs: {
-        [key: number]: {
-            callback: (entity: any | null) => void,
-            reject: (entity: any | null) => void,
-            submitted: number,
-            name: string,
-            stack: Error,
-        }
-    } = {};
-
     private _handler: GatewayMessageHandler;
 
     constructor(handler: GatewayMk2.GatewayMessageHandler) {
         this._handler = handler;
-        this._timeout = setInterval(this.terminate, 10000);
-    }
-
-    public stop(){
-        clearInterval(this._timeout);
-    }
-
-    private terminate = () => {
-        const now = Date.now();
-        for (const entry of Object.keys(this._pendingMessageIDs) as unknown as number[]) {
-            if (now - this._pendingMessageIDs[entry].submitted > 10000) {
-                _l.warn(`failed to resolve ${this._pendingMessageIDs[entry].name} after 10 seconds, rejecting`);
-                this._pendingMessageIDs[entry].reject(new Error('timed out'));
-                delete this._pendingMessageIDs[entry];
-            }
-        }
-    };
-
-    public intercept(id: number): boolean {
-        return has(this._pendingMessageIDs, id);
-    }
-
-    public consume(message: MinimalMessageType) {
-        const entry = this._pendingMessageIDs[message.msg_id];
-        if (!entry) return;
-
-        delete this._pendingMessageIDs[message.msg_id];
-
-        if (message.status !== MsgStatus.SUCCESS) {
-            _l.warn(`failed to resolve ${entry.name} because message status ${message.status}`);
-            entry.reject(message);
-            return;
-        }
-
-        if (!has(message, 'result')) {
-            _l.warn(`failed to resolve ${entry.name} because there was no result`, { message });
-            entry.reject(message);
-            return;
-        }
-
-        entry.callback(message.result);
     }
 
     public resolve<T>(id: string, key: string, userID: string, middleware?: (value: any) => T): Promise<T> {
@@ -107,7 +53,7 @@ export class EntityResolver {
 
                 if (result.length !== 1) {
                     _l.warn(`got result for ${name} which had too many elements, got ${result.length}`);
-                    _l.warn('Stack trace', {stack});
+                    _l.warn('Stack trace', { stack });
                     reject(new Error(`Result had too many or too few elements, expected 1 got ${result.length}`));
                     return;
                 }
@@ -121,14 +67,7 @@ export class EntityResolver {
                 }
             };
 
-            this._pendingMessageIDs[query.msg_id] = {
-                reject,
-                callback,
-                submitted: Date.now(),
-                name,
-                stack,
-            };
-
+            this._handler.interceptResponseCallback(query.msg_id, callback, reject);
             _l.debug(`publishing request for :: ${query.msg_id} of READ for ${key}`);
 
             this._handler.publish(key, query);
@@ -204,5 +143,4 @@ export class EntityResolver {
             owner: await this.resolveUser(shallowFile.owner, userID),
         };
     };
-
 }
