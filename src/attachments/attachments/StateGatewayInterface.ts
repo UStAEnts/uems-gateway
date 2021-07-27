@@ -11,15 +11,10 @@ import ReadStateMessage = StateMessage.ReadStateMessage;
 import CreateStateMessage = StateMessage.CreateStateMessage;
 import DeleteStateMessage = StateMessage.DeleteStateMessage;
 import UpdateStateMessage = StateMessage.UpdateStateMessage;
+import { Constants } from "../../utilities/Constants";
+import ROUTING_KEY = Constants.ROUTING_KEY;
 
 export class StateGatewayInterface implements GatewayAttachmentInterface {
-    private readonly STATE_CREATE_KEY = 'states.details.create';
-
-    private readonly STATE_DELETE_KEY = 'states.details.delete';
-
-    private readonly STATE_UPDATE_KEY = 'states.details.update';
-
-    public static readonly STATE_READ_KEY = 'states.details.get';
 
     private readonly COLOR_REGEX = /^#?([0-9A-Fa-f]{3}([0-9A-Fa-f]{3})?)$/;
 
@@ -103,7 +98,7 @@ export class StateGatewayInterface implements GatewayAttachmentInterface {
             });
 
             await send(
-                StateGatewayInterface.STATE_READ_KEY,
+                ROUTING_KEY.states.read,
                 outgoing,
                 res,
                 GenericHandlerFunctions.handleDefaultResponseFactory(),
@@ -132,7 +127,7 @@ export class StateGatewayInterface implements GatewayAttachmentInterface {
             };
 
             await send(
-                StateGatewayInterface.STATE_READ_KEY,
+                ROUTING_KEY.states.read,
                 outgoingMessage,
                 res,
                 GenericHandlerFunctions.handleReadSingleResponseFactory(),
@@ -168,7 +163,7 @@ export class StateGatewayInterface implements GatewayAttachmentInterface {
             };
 
             await send(
-                this.STATE_CREATE_KEY,
+                ROUTING_KEY.states.create,
                 outgoingMessage,
                 res,
                 GenericHandlerFunctions.handleDefaultResponseFactory(),
@@ -197,7 +192,7 @@ export class StateGatewayInterface implements GatewayAttachmentInterface {
             };
 
             await send(
-                this.STATE_DELETE_KEY,
+                ROUTING_KEY.states.delete,
                 outgoingMessage,
                 res,
                 GenericHandlerFunctions.handleReadSingleResponseFactory(),
@@ -257,7 +252,7 @@ export class StateGatewayInterface implements GatewayAttachmentInterface {
             console.log('sending?');
 
             await send(
-                this.STATE_UPDATE_KEY,
+                ROUTING_KEY.states.update,
                 outgoing,
                 res,
                 GenericHandlerFunctions.handleDefaultResponseFactory(),

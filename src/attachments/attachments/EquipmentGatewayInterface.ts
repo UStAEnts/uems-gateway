@@ -2,25 +2,20 @@ import { GatewayMk2 } from '../../Gateway';
 import { Request, Response } from 'express';
 import { MessageUtilities } from '../../utilities/MessageUtilities';
 import { constants } from 'http2';
-import { EquipmentMessage, EquipmentResponseValidator, MessageIntention } from '@uems/uemscommlib';
+import { EquipmentMessage, EquipmentResponseValidator } from '@uems/uemscommlib';
 import { GenericHandlerFunctions } from '../GenericHandlerFunctions';
+import { Resolver } from "../Resolvers";
+import { EntityResolver } from "../../resolver/EntityResolver";
 import GatewayAttachmentInterface = GatewayMk2.GatewayAttachmentInterface;
 import SendRequestFunction = GatewayMk2.SendRequestFunction;
 import ReadEquipmentMessage = EquipmentMessage.ReadEquipmentMessage;
 import CreateEquipmentMessage = EquipmentMessage.CreateEquipmentMessage;
 import DeleteEquipmentMessage = EquipmentMessage.DeleteEquipmentMessage;
 import UpdateEquipmentMessage = EquipmentMessage.UpdateEquipmentMessage;
-import { Resolver } from "../Resolvers";
-import { EntityResolver } from "../../resolver/EntityResolver";
+import { Constants } from "../../utilities/Constants";
+import ROUTING_KEY = Constants.ROUTING_KEY;
 
 export class EquipmentGatewayInterface implements GatewayAttachmentInterface {
-    private readonly EQUIPMENT_CREATE_KEY = 'equipment.details.create';
-
-    private readonly EQUIPMENT_DELETE_KEY = 'equipment.details.delete';
-
-    private readonly EQUIPMENT_UPDATE_KEY = 'equipment.details.update';
-
-    public static readonly EQUIPMENT_READ_KEY = 'equipment.details.get';
 
     private resolver?: EntityResolver;
 
@@ -123,7 +118,7 @@ export class EquipmentGatewayInterface implements GatewayAttachmentInterface {
             });
 
             await send(
-                EquipmentGatewayInterface.EQUIPMENT_READ_KEY,
+                ROUTING_KEY.equipment.read,
                 outgoing,
                 res,
                 GenericHandlerFunctions.handleDefaultResponseFactory(Resolver.resolveEquipments(
@@ -155,7 +150,7 @@ export class EquipmentGatewayInterface implements GatewayAttachmentInterface {
 
             outgoingMessage.id = req.params.id;
             await send(
-                EquipmentGatewayInterface.EQUIPMENT_READ_KEY,
+                ROUTING_KEY.equipment.read,
                 outgoingMessage,
                 res,
                 GenericHandlerFunctions.handleReadSingleResponseFactory(Resolver.resolveSingleEquipment(
@@ -219,7 +214,7 @@ export class EquipmentGatewayInterface implements GatewayAttachmentInterface {
             }
 
             await send(
-                this.EQUIPMENT_CREATE_KEY,
+                ROUTING_KEY.equipment.create,
                 outgoingMessage,
                 res,
                 GenericHandlerFunctions.handleDefaultResponseFactory(),
@@ -249,7 +244,7 @@ export class EquipmentGatewayInterface implements GatewayAttachmentInterface {
             };
 
             await send(
-                this.EQUIPMENT_DELETE_KEY,
+                ROUTING_KEY.equipment.delete,
                 outgoingMessage,
                 res,
                 GenericHandlerFunctions.handleReadSingleResponseFactory(),
@@ -323,7 +318,7 @@ export class EquipmentGatewayInterface implements GatewayAttachmentInterface {
             }
 
             await send(
-                this.EQUIPMENT_UPDATE_KEY,
+                ROUTING_KEY.equipment.update,
                 outgoing,
                 res,
                 GenericHandlerFunctions.handleDefaultResponseFactory(),
