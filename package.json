@@ -9,7 +9,8 @@
     "start": "node -r source-map-support/register --trace-warnings ./build/src/app.js",
     "start:dev": "ts-node --files src/app.ts",
     "lint": "eslint --ext .ts ./",
-    "test": "jest"
+    "test": "jest",
+    "dockerless": "UEMS_HEALTHCHECK=7783 NODE_ENV=dev npm run start:dev"
   },
   "repository": {
     "type": "git",
