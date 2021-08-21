@@ -428,6 +428,11 @@ export namespace GatewayMk2 {
 
             return this.publish(key, message);
         };
+
+        public buildSend(key: string, messge: { msg_id: number, [key: string]: any }) {
+            // Needs to build a message object, return a builder object that allows for more customisation
+
+        }
     }
 
     export interface GatewayAttachmentInterface {
