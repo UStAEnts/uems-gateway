@@ -7,9 +7,10 @@
     "clean": "rm -r build/ || true",
     "build": "tsc --listEmittedFiles",
     "start": "node -r source-map-support/register --trace-warnings ./build/src/app.js",
-    "start:dev": "ts-node --files src/app.js",
+    "start:dev": "ts-node --files src/app.ts",
     "lint": "eslint --ext .ts ./",
-    "test": "jest"
+    "test": "jest",
+    "dockerless": "UEMS_HEALTHCHECK=7783 NODE_ENV=dev npm run start:dev"
   },
   "repository": {
     "type": "git",
@@ -29,8 +30,8 @@
     "@types/morgan": "^1.9.1",
     "@types/node": "^14.0.14",
     "@types/passport": "^1.0.4",
-    "@uems/micro-builder": "^1.0.1",
-    "@uems/uemscommlib": "0.1.0-beta.38",
+    "@uems/micro-builder": "1.0.3",
+    "@uems/uemscommlib": "0.1.0-beta.43",
     "ajv": "^6.12.3",
     "amqplib": "^0.7.1",
     "body-parser": "^1.19.0",

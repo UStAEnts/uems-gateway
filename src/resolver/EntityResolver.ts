@@ -1,14 +1,11 @@
 import { GatewayMk2 } from '../Gateway';
 import { MessageUtilities } from '../utilities/MessageUtilities';
-import { VenueGatewayInterface } from '../attachments/attachments/VenueGatewayInterface';
-import { UserGatewayInterface } from '../attachments/attachments/UserGatewayInterface';
-import { EntStateGatewayInterface } from '../attachments/attachments/EntStateGatewayInterface';
-import { EquipmentGatewayInterface } from '../attachments/attachments/EquipmentGatewayInterface';
-import { StateGatewayInterface } from '../attachments/attachments/StateGatewayInterface';
+import { EntStateResponse, EquipmentResponse, EventResponse, FileResponse, MsgStatus, StateResponse, UserResponse, VenueResponse } from '@uems/uemscommlib';
+import { _byFile } from "../log/Log";
+import { Constants } from "../utilities/Constants";
 import MinimalMessageType = GatewayMk2.MinimalMessageType;
 import has = MessageUtilities.has;
 import GatewayMessageHandler = GatewayMk2.GatewayMessageHandler;
-import { EntStateResponse, EquipmentResponse, EventResponse, FileResponse, MsgStatus, StateResponse, UserResponse, VenueResponse } from '@uems/uemscommlib';
 import InternalEntState = EntStateResponse.InternalEntState;
 import InternalEquipment = EquipmentResponse.InternalEquipment;
 import InternalState = StateResponse.InternalState;
@@ -17,12 +14,10 @@ import InternalVenue = VenueResponse.InternalVenue;
 import ShallowInternalEquipment = EquipmentResponse.ShallowInternalEquipment;
 import ShallowInternalVenue = VenueResponse.ShallowInternalVenue;
 import ShallowInternalEvent = EventResponse.ShallowInternalEvent;
-import { EVENT_DETAILS_SERVICE_TOPIC_GET, EventGatewayAttachment } from "../attachments/attachments/EventGatewayAttachment";
 import InternalEvent = EventResponse.InternalEvent;
 import InternalFile = FileResponse.InternalFile;
 import ShallowInternalFile = FileResponse.ShallowInternalFile;
-import { FileGatewayInterface } from "../attachments/attachments/FileGatewayInterface";
-import { _byFile } from "../log/Log";
+import ROUTING_KEY = Constants.ROUTING_KEY;
 
 const _l = _byFile(__filename);
 
@@ -45,7 +40,7 @@ export class EntityResolver {
         this._timeout = setInterval(this.terminate, 10000);
     }
 
-    public stop(){
+    public stop() {
         clearInterval(this._timeout);
     }
 
@@ -107,7 +102,7 @@ export class EntityResolver {
 
                 if (result.length !== 1) {
                     _l.warn(`got result for ${name} which had too many elements, got ${result.length}`);
-                    _l.warn('Stack trace', {stack});
+                    _l.warn('Stack trace', { stack });
                     reject(new Error(`Result had too many or too few elements, expected 1 got ${result.length}`));
                     return;
                 }
@@ -136,13 +131,13 @@ export class EntityResolver {
     }
 
     public resolveEntState = (id: string, userID: string): Promise<InternalEntState> => this
-        .resolve(id, EntStateGatewayInterface.ENT_STATE_READ_KEY, userID);
+        .resolve(id, ROUTING_KEY.ent.read, userID);
 
     public resolveEquipment = async (id: string, userID: string): Promise<InternalEquipment> => {
         // Load the equipment
         const shallowEquipment: ShallowInternalEquipment = await this.resolve(
             id,
-            EquipmentGatewayInterface.EQUIPMENT_READ_KEY,
+            ROUTING_KEY.equipment.read,
             userID,
         );
 
@@ -151,12 +146,12 @@ export class EntityResolver {
             ...shallowEquipment,
             manager: await this.resolve<InternalUser>(
                 shallowEquipment.manager,
-                UserGatewayInterface.USER_READ_KEY,
+                ROUTING_KEY.user.read,
                 userID,
             ),
             location: await this.resolve<InternalVenue>(
                 shallowEquipment.location,
-                VenueGatewayInterface.VENUE_READ_KEY,
+                ROUTING_KEY.venues.read,
                 userID,
             ),
         };
@@ -166,18 +161,18 @@ export class EntityResolver {
     };
 
     public resolveState = (id: string, userID: string): Promise<InternalState> => this
-        .resolve(id, StateGatewayInterface.STATE_READ_KEY, userID);
+        .resolve(id, ROUTING_KEY.states.read, userID);
 
     public resolveUser = (id: string, userID: string): Promise<InternalUser> => this
-        .resolve(id, UserGatewayInterface.USER_READ_KEY, userID);
+        .resolve(id, ROUTING_KEY.user.read, userID);
 
     public resolveVenue = async (id: string, userID: string): Promise<InternalVenue> => {
         // Load raw venue
-        const shallowVenue: ShallowInternalVenue = await this.resolve(id, VenueGatewayInterface.VENUE_READ_KEY, userID);
+        const shallowVenue: ShallowInternalVenue = await this.resolve(id, ROUTING_KEY.venues.read, userID);
 
         // Then create an output and resolve the user
         const output: InternalVenue = shallowVenue as unknown as InternalVenue; // Intentional need to convert the types
-        output.user = await this.resolve<InternalUser>(shallowVenue.user, UserGatewayInterface.USER_READ_KEY, userID);
+        output.user = await this.resolve<InternalUser>(shallowVenue.user, ROUTING_KEY.user.read, userID);
 
         // And return the resolved entity
         return output;
@@ -185,7 +180,7 @@ export class EntityResolver {
 
     public resolveEvent = async (id: string, userID: string): Promise<InternalEvent> => {
         // Load raw event
-        const shallowEvent: ShallowInternalEvent = await this.resolve(id, EVENT_DETAILS_SERVICE_TOPIC_GET, userID);
+        const shallowEvent: ShallowInternalEvent = await this.resolve(id, ROUTING_KEY.event.read, userID);
 
         // And return the resolved entity
         return {
@@ -197,7 +192,7 @@ export class EntityResolver {
     };
 
     public resolveFile = async (id: string, userID: string): Promise<InternalFile> => {
-        const shallowFile: ShallowInternalFile = await this.resolve(id, FileGatewayInterface.FILE_READ_KEY, userID);
+        const shallowFile: ShallowInternalFile = await this.resolve(id, ROUTING_KEY.file.read, userID);
 
         return {
             ...shallowFile,

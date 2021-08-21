@@ -8,7 +8,7 @@ import { MessageUtilities } from './utilities/MessageUtilities';
 import { ErrorCodes } from './constants/ErrorCodes';
 import { constants } from 'http2';
 import { EntityResolver } from './resolver/EntityResolver';
-import { MessageValidator } from '@uems/uemscommlib';
+import { has, MessageValidator, MsgStatus } from '@uems/uemscommlib';
 import * as util from 'util';
 import { _byFile, _byFileWithTag, _ml } from './log/Log';
 
@@ -108,6 +108,42 @@ export namespace GatewayMk2 {
         private _resolver?: EntityResolver;
 
         /**
+         * Contains the message IDs and callback information for messages which need to be intercepted rather than
+         * handled via the normal paths. These messages tend to be used for things like entity resolving and control
+         * messages
+         * @private
+         */
+        private _pendingInterceptMessageIDs: {
+            [key: number]: {
+                /**
+                 * Callback to execute if this is a successful response. It will respond with the successful result
+                 * from the message
+                 * @param response the successful message
+                 */
+                callback: (response: any | null) => void,
+                /**
+                 * Callback to execute if this is a failed response. It will reject with the failed response in whatever
+                 * form that takes
+                 * @param response the failed response
+                 */
+                reject: (response: any | null) => void,
+                /**
+                 * The time at which this request was submitted
+                 */
+                submitted: number,
+                /**
+                 * The name of this request for logging
+                 */
+                name: string,
+                /**
+                 * An error generated at the original time this intercept was requested. This is designed to ensure
+                 * that logging can provide complete traces and not getting lost
+                 */
+                stack: Error,
+            }
+        } = {};
+
+        /**
          * Creates a gateway, no side effects. Marked private as the async setup function should be used instead for
          * better handling.
          * @param connection the connection to the amqplib server
@@ -128,7 +164,8 @@ export namespace GatewayMk2 {
         }
 
         /**
-         * Terminates requests after 15 seconds of waiting. Will free up in use keys as well
+         * Terminates requests after 15 seconds of waiting. Will free up in use keys as well. This also handles
+         * terminating intercepts which have not been handled within 10 seconds.
          * @private
          */
         private readonly terminateTimedOut = () => {
@@ -150,7 +187,81 @@ export namespace GatewayMk2 {
                     MessageUtilities.identifierConsumed(entry.uid);
                 }
             }
+
+            for (const entry of Object.keys(this._pendingInterceptMessageIDs) as unknown as number[]) {
+                if (now - this._pendingInterceptMessageIDs[entry].submitted > 10000) {
+                    _l.warn(`failed to resolve ${this._pendingInterceptMessageIDs[entry]
+                        .name} after 10 seconds, rejecting`);
+                    this._pendingInterceptMessageIDs[entry].reject(new Error('timed out'));
+                    delete this._pendingInterceptMessageIDs[entry];
+                }
+            }
         };
+
+        /**
+         * Returns whether the message with the given ID should be intercepted and now handled via the normal channels.
+         * If so this should be looked up {@link _pendingInterceptMessageIDs}.
+         * @param id the ID of the message
+         * @protected
+         */
+        protected intercept(id: number): boolean {
+            return has(this._pendingInterceptMessageIDs, id);
+        }
+
+        protected consumeInterceptedMessage(message: MinimalMessageType) {
+            const entry = this._pendingInterceptMessageIDs[message.msg_id];
+            if (!entry) return;
+
+            delete this._pendingInterceptMessageIDs[message.msg_id];
+
+            if (message.status !== MsgStatus.SUCCESS) {
+                _l.warn(`failed to resolve ${entry.name} because message status ${message.status}`);
+                entry.reject(message);
+                return;
+            }
+
+            if (!has(message, 'result')) {
+                _l.warn(`failed to resolve ${entry.name} because there was no result`, { message });
+                entry.reject(message);
+                return;
+            }
+
+            entry.callback(message.result);
+        }
+
+        /**
+         * Intercepts the response to a message with the given ID and returns a promise that resolves when successful
+         * and rejects on an error response
+         * @param messageID the message ID to intercept
+         */
+        public interceptResponse(messageID: number): Promise<any> {
+            return new Promise((res, reject) => {
+                this._pendingInterceptMessageIDs[messageID] = {
+                    reject,
+                    callback: res,
+                    name: `intercept request for ${messageID}`,
+                    stack: new Error(),
+                    submitted: Date.now(),
+                };
+            });
+        }
+
+        /**
+         * Intercepts the response to a message with the given ID and executes one of the provided callbacks on
+         * success or on fail.
+         * @param messageID the message ID to intercept
+         * @param callback the callback to execute when successful
+         * @param reject the callback to execute when failed
+         */
+        public interceptResponseCallback(messageID: number, callback: (res: any) => void, reject: (res: any) => void) {
+            this._pendingInterceptMessageIDs[messageID] = {
+                reject,
+                callback,
+                name: `intercept request for ${messageID}`,
+                stack: new Error(),
+                submitted: Date.now(),
+            };
+        }
 
         set resolver(value: EntityResolver) {
             this._resolver = value;
@@ -253,9 +364,9 @@ export namespace GatewayMk2 {
 
             // If this message ID has been sent by the resolver, it will mark it as requiring an intercept
             // in that case we want to send it to it to be consumed
-            if (this._resolver.intercept(json.msg_id)) {
+            if (this.intercept(json.msg_id)) {
                 MessageUtilities.identifierConsumed(json.msg_id);
-                this._resolver.consume(json);
+                this.consumeInterceptedMessage(json);
                 return;
             }
 

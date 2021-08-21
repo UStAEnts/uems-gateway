@@ -1,10 +1,11 @@
 import { Request, Response } from 'express';
-import { CommentMessage, CommentResponse, EventMessage, EventResponse, EventResponseValidator, MessageIntention, VenueResponse } from '@uems/uemscommlib';
+import { CommentMessage, CommentResponse, EventMessage, EventResponse, EventResponseValidator, VenueResponse } from '@uems/uemscommlib';
 import { MessageUtilities } from '../../utilities/MessageUtilities';
 import { GatewayMk2 } from '../../Gateway';
 import { EntityResolver } from '../../resolver/EntityResolver';
 import { constants } from 'http2';
 import { GenericHandlerFunctions } from '../GenericHandlerFunctions';
+import { Resolver } from "../Resolvers";
 import GatewayAttachmentInterface = GatewayMk2.GatewayAttachmentInterface;
 import SendRequestFunction = GatewayMk2.SendRequestFunction;
 import GatewayInterfaceActionType = GatewayMk2.GatewayInterfaceActionType;
@@ -12,32 +13,11 @@ import DeleteEventMessage = EventMessage.DeleteEventMessage;
 import UpdateEventMessage = EventMessage.UpdateEventMessage;
 import ReadEventMessage = EventMessage.ReadEventMessage;
 import CreateEventMessage = EventMessage.CreateEventMessage;
-import EventReadResponseMessage = EventResponse.EventReadResponseMessage;
-import InternalVenue = VenueResponse.InternalVenue;
-import InternalEvent = EventResponse.InternalEvent;
 import ShallowInternalEvent = EventResponse.ShallowInternalEvent;
-import Transformer = GenericHandlerFunctions.Transformer;
-import CommentReadResponseMessage = CommentResponse.CommentReadResponseMessage;
 import ReadCommentMessage = CommentMessage.ReadCommentMessage;
 import CreateCommentMessage = CommentMessage.CreateCommentMessage;
-import EventServiceReadResponseMessage = EventResponse.EventServiceReadResponseMessage;
-import SingleTransformer = GenericHandlerFunctions.SingleTransformer;
-import ShallowInternalComment = CommentResponse.ShallowInternalComment;
-import InternalComment = CommentResponse.InternalComment;
-import CommentServiceReadResponseMessage = CommentResponse.CommentServiceReadResponseMessage;
-import { Resolver } from "../Resolvers";
-
-// The topic used for sending get requests to the event details microservice.
-export const EVENT_DETAILS_SERVICE_TOPIC_GET: string = 'events.details.get';
-
-// The topic used for sending requests to add an event.
-const EVENT_DETAILS_SERVICE_TOPIC_CREATE: string = 'events.details.create';
-
-// The topic used for sending modification requests for an event.
-const EVENT_DETAILS_SERVICE_TOPIC_UPDATE: string = 'events.details.update';
-
-// The topic used for sending event deletion requests.
-const EVENT_DETAILS_SERVICE_TOPIC_DELETE: string = 'events.details.delete';
+import { Constants } from "../../utilities/Constants";
+import ROUTING_KEY = Constants.ROUTING_KEY;
 
 export class EventGatewayAttachment implements GatewayAttachmentInterface {
     // TODO: bit dangerous using ! - maybe add null checks?
@@ -125,7 +105,7 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
             };
 
             await send(
-                EVENT_DETAILS_SERVICE_TOPIC_DELETE,
+                ROUTING_KEY.event.delete,
                 msg,
                 res,
                 GenericHandlerFunctions.handleReadSingleResponseFactory(),
@@ -209,7 +189,7 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
             }
 
             await send(
-                EVENT_DETAILS_SERVICE_TOPIC_UPDATE,
+                ROUTING_KEY.event.update,
                 msg,
                 res,
                 GenericHandlerFunctions.handleDefaultResponseFactory(),
@@ -314,7 +294,7 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
         }
 
         await send(
-            EVENT_DETAILS_SERVICE_TOPIC_GET,
+            ROUTING_KEY.event.read,
             msg,
             res,
             GenericHandlerFunctions.handleDefaultResponseFactory(Resolver.resolveEvents(
@@ -346,7 +326,7 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
             outgoingMessage.id = req.params.id;
 
             await send(
-                EVENT_DETAILS_SERVICE_TOPIC_GET,
+                ROUTING_KEY.event.read,
                 outgoingMessage,
                 res,
                 GenericHandlerFunctions.handleReadSingleResponseFactory(
@@ -409,7 +389,7 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
             };
 
             await send(
-                EVENT_DETAILS_SERVICE_TOPIC_CREATE,
+                ROUTING_KEY.event.create,
                 msg,
                 res,
                 GenericHandlerFunctions.handleDefaultResponseFactory(),
@@ -440,7 +420,7 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
         msg.stateID = req.params.id;
 
         await send(
-            EVENT_DETAILS_SERVICE_TOPIC_GET,
+            ROUTING_KEY.event.read,
             msg,
             res,
             GenericHandlerFunctions.handleDefaultResponseFactory(Resolver.resolveEvents(
@@ -473,7 +453,7 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
         msg.anyVenues = [req.params.id];
 
         await send(
-            EVENT_DETAILS_SERVICE_TOPIC_GET,
+            ROUTING_KEY.event.read,
             msg,
             res,
             GenericHandlerFunctions.handleDefaultResponseFactory(Resolver.resolveEvents(

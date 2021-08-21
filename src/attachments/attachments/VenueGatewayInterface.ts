@@ -13,15 +13,10 @@ import ReadVenueMessage = VenueMessage.ReadVenueMessage;
 import DeleteVenueMessage = VenueMessage.DeleteVenueMessage;
 import CreateVenueMessage = VenueMessage.CreateVenueMessage;
 import UpdateVenueMessage = VenueMessage.UpdateVenueMessage;
+import { Constants } from "../../utilities/Constants";
+import ROUTING_KEY = Constants.ROUTING_KEY;
 
 export class VenueGatewayInterface implements GatewayAttachmentInterface {
-    private readonly VENUE_CREATE_KEY = 'venues.details.create';
-
-    private readonly VENUE_DELETE_KEY = 'venues.details.delete';
-
-    private readonly VENUE_UPDATE_KEY = 'venues.details.update';
-
-    public static readonly VENUE_READ_KEY = 'venues.details.get';
 
     private readonly COLOR_REGEX = /^#?([0-9A-Fa-f]{3}([0-9A-Fa-f]{3})?)$/;
 
@@ -88,7 +83,7 @@ export class VenueGatewayInterface implements GatewayAttachmentInterface {
             };
 
             sendRequest(
-                VenueGatewayInterface.VENUE_READ_KEY,
+                ROUTING_KEY.venues.read,
                 outgoingMessage,
                 response,
                 GenericHandlerFunctions.handleReadSingleResponseFactory(Resolver.resolveSingleVenue(
@@ -120,7 +115,7 @@ export class VenueGatewayInterface implements GatewayAttachmentInterface {
             };
 
             sendRequest(
-                this.VENUE_DELETE_KEY,
+                ROUTING_KEY.venues.delete,
                 outgoingMessage,
                 response,
                 GenericHandlerFunctions.handleReadSingleResponseFactory(),
@@ -157,7 +152,7 @@ export class VenueGatewayInterface implements GatewayAttachmentInterface {
             };
 
             sendRequest(
-                this.VENUE_CREATE_KEY,
+                ROUTING_KEY.venues.create,
                 outgoingMessage,
                 response,
                 GenericHandlerFunctions.handleDefaultResponseFactory(),
@@ -214,7 +209,7 @@ export class VenueGatewayInterface implements GatewayAttachmentInterface {
             });
 
             sendRequest(
-                VenueGatewayInterface.VENUE_READ_KEY,
+                ROUTING_KEY.venues.read,
                 outgoingMessage,
                 response,
                 GenericHandlerFunctions.handleDefaultResponseFactory(Resolver.resolveVenues(
@@ -281,7 +276,7 @@ export class VenueGatewayInterface implements GatewayAttachmentInterface {
             console.log(outgoingMessage);
 
             sendRequest(
-                this.VENUE_UPDATE_KEY,
+                ROUTING_KEY.venues.update,
                 outgoingMessage,
                 response,
                 GenericHandlerFunctions.handleDefaultResponseFactory(),

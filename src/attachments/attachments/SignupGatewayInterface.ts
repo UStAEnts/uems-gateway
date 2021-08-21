@@ -13,15 +13,10 @@ import SignupReadSchema = SignupMessage.ReadSignupMessage;
 import CreateSignupMessage = SignupMessage.CreateSignupMessage;
 import DeleteSignupMessage = SignupMessage.DeleteSignupMessage;
 import UpdateSignupMessage = SignupMessage.UpdateSignupMessage;
+import { Constants } from "../../utilities/Constants";
+import ROUTING_KEY = Constants.ROUTING_KEY;
 
 export class SignupGatewayInterface implements GatewayAttachmentInterface {
-    private readonly SIGNUP_CREATE_KEY = 'events.signups.create';
-
-    private readonly SIGNUP_DELETE_KEY = 'events.signups.delete';
-
-    private readonly SIGNUP_UPDATE_KEY = 'events.signups.update';
-
-    public static readonly SIGNUP_READ_KEY = 'events.signups.get';
 
     private _resolver!: EntityResolver;
 
@@ -109,7 +104,7 @@ export class SignupGatewayInterface implements GatewayAttachmentInterface {
             const validProperties: (keyof SignupReadSchema)[] = [
                 'id',
                 'date',
-                'userid',
+                'signupUser',
                 'dateRangeBegin',
                 'dateRangeEnd',
                 'role',
@@ -123,7 +118,7 @@ export class SignupGatewayInterface implements GatewayAttachmentInterface {
             });
 
             await send(
-                SignupGatewayInterface.SIGNUP_READ_KEY,
+                ROUTING_KEY.signups.read,
                 outgoing,
                 res,
                 GenericHandlerFunctions.handleDefaultResponseFactory(Resolver.resolveSignups(
@@ -167,7 +162,7 @@ export class SignupGatewayInterface implements GatewayAttachmentInterface {
             };
 
             await send(
-                SignupGatewayInterface.SIGNUP_READ_KEY,
+                ROUTING_KEY.signups.read,
                 outgoingMessage,
                 res,
                 GenericHandlerFunctions.handleReadSingleResponseFactory(Resolver.resolveSingleSignup(
@@ -197,6 +192,7 @@ export class SignupGatewayInterface implements GatewayAttachmentInterface {
                 ['role'],
                 {
                     role: (x) => typeof (x) === 'string',
+                    signupUser: (x) => typeof (x) === 'string' || typeof (x) === 'undefined',
                 },
             );
 
@@ -210,12 +206,12 @@ export class SignupGatewayInterface implements GatewayAttachmentInterface {
                 status: 0,
                 userID: req.uemsUser.userID,
                 eventID: req.params.eventID,
-                userid: req.uemsUser.userID,
+                signupUser: req.params.signupUser,
                 role: req.body.role,
             };
 
             await send(
-                this.SIGNUP_CREATE_KEY,
+                ROUTING_KEY.signups.create,
                 outgoingMessage,
                 res,
                 GenericHandlerFunctions.handleDefaultResponseFactory(),
@@ -253,7 +249,7 @@ export class SignupGatewayInterface implements GatewayAttachmentInterface {
             };
 
             await send(
-                this.SIGNUP_DELETE_KEY,
+                ROUTING_KEY.signups.delete,
                 outgoingMessage,
                 res,
                 GenericHandlerFunctions.handleReadSingleResponseFactory(),
@@ -304,7 +300,7 @@ export class SignupGatewayInterface implements GatewayAttachmentInterface {
             });
 
             await send(
-                this.SIGNUP_UPDATE_KEY,
+                ROUTING_KEY.signups.update,
                 outgoing,
                 res,
                 GenericHandlerFunctions.handleDefaultResponseFactory(),

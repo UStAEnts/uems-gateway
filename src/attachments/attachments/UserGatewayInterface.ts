@@ -2,7 +2,7 @@ import { GatewayMk2 } from '../../Gateway';
 import { Request, Response } from 'express';
 import { MessageUtilities } from '../../utilities/MessageUtilities';
 import { constants } from 'http2';
-import { MessageIntention, UserMessage, UserResponseValidator } from '@uems/uemscommlib';
+import { UserMessage, UserResponseValidator } from '@uems/uemscommlib';
 import { GenericHandlerFunctions } from '../GenericHandlerFunctions';
 import GatewayAttachmentInterface = GatewayMk2.GatewayAttachmentInterface;
 import SendRequestFunction = GatewayMk2.SendRequestFunction;
@@ -10,15 +10,10 @@ import ReadUserMessage = UserMessage.ReadUserMessage;
 import CreateUserMessage = UserMessage.CreateUserMessage;
 import DeleteUserMessage = UserMessage.DeleteUserMessage;
 import UpdateUserMessage = UserMessage.UpdateUserMessage;
+import { Constants } from "../../utilities/Constants";
+import ROUTING_KEY = Constants.ROUTING_KEY;
 
 export class UserGatewayInterface implements GatewayAttachmentInterface {
-    private readonly USER_CREATE_KEY = 'user.details.create';
-
-    private readonly USER_DELETE_KEY = 'user.details.delete';
-
-    private readonly USER_UPDATE_KEY = 'user.details.update';
-
-    public static readonly USER_READ_KEY = 'user.details.get';
 
     generateInterfaces(
         send: GatewayMk2.SendRequestFunction,
@@ -104,7 +99,7 @@ export class UserGatewayInterface implements GatewayAttachmentInterface {
             });
 
             await send(
-                UserGatewayInterface.USER_READ_KEY,
+                ROUTING_KEY.user.read,
                 outgoing,
                 res,
                 GenericHandlerFunctions.handleDefaultResponseFactory(),
@@ -132,7 +127,7 @@ export class UserGatewayInterface implements GatewayAttachmentInterface {
             };
 
             await send(
-                UserGatewayInterface.USER_READ_KEY,
+                ROUTING_KEY.user.read,
                 outgoingMessage,
                 res,
                 GenericHandlerFunctions.handleReadSingleResponseFactory(),
@@ -174,7 +169,7 @@ export class UserGatewayInterface implements GatewayAttachmentInterface {
             if (req.body.profile) outgoingMessage.profile = req.body.profile;
 
             await send(
-                this.USER_CREATE_KEY,
+                ROUTING_KEY.user.create,
                 outgoingMessage,
                 res,
                 GenericHandlerFunctions.handleDefaultResponseFactory(),
@@ -203,7 +198,7 @@ export class UserGatewayInterface implements GatewayAttachmentInterface {
             };
 
             await send(
-                this.USER_DELETE_KEY,
+                ROUTING_KEY.user.delete,
                 outgoingMessage,
                 res,
                 GenericHandlerFunctions.handleReadSingleResponseFactory(),
@@ -265,7 +260,7 @@ export class UserGatewayInterface implements GatewayAttachmentInterface {
             });
 
             await send(
-                this.USER_UPDATE_KEY,
+                ROUTING_KEY.user.update,
                 outgoing,
                 res,
                 GenericHandlerFunctions.handleDefaultResponseFactory(),

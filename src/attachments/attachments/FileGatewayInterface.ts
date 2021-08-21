@@ -19,15 +19,11 @@ import QueryByFileMessage = FileBindingMessage.QueryByFileMessage;
 import BindFilesToEventMessage = FileBindingMessage.BindFilesToEventMessage;
 import UnbindFilesFromEventMessage = FileBindingMessage.UnbindFilesFromEventMessage;
 import FileResponseMessage = FileResponse.FileResponseMessage;
+import { Constants } from "../../utilities/Constants";
+import ROUTING_KEY = Constants.ROUTING_KEY;
 
 export class FileGatewayInterface implements GatewayAttachmentInterface {
-    private readonly FILE_CREATE_KEY = 'file.details.create';
 
-    private readonly FILE_DELETE_KEY = 'file.details.delete';
-
-    private readonly FILE_UPDATE_KEY = 'file.details.update';
-
-    public static readonly FILE_READ_KEY = 'file.details.get';
 
     private _resolver!: EntityResolver;
 
@@ -142,7 +138,7 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
             });
 
             await send(
-                FileGatewayInterface.FILE_READ_KEY,
+                ROUTING_KEY.file.read,
                 outgoing,
                 res,
                 GenericHandlerFunctions.handleDefaultResponseFactory(Resolver.resolveFiles(
@@ -174,7 +170,7 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
 
             outgoingMessage.id = req.params.id;
             await send(
-                FileGatewayInterface.FILE_READ_KEY,
+                ROUTING_KEY.file.read,
                 outgoingMessage,
                 res,
                 GenericHandlerFunctions.handleReadSingleResponseFactory(Resolver.resolveSingleFile(
@@ -208,7 +204,6 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
                 msg_intention: 'CREATE',
                 status: 0,
                 userID: req.uemsUser.userID,
-                userid: req.uemsUser.userID,
                 name: req.body.name,
                 filename: req.body.filename,
                 size: req.body.size,
@@ -216,7 +211,7 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
             };
 
             await send(
-                this.FILE_CREATE_KEY,
+                ROUTING_KEY.file.create,
                 outgoingMessage,
                 res,
                 async (http, timestamp, raw, status) => {
@@ -261,7 +256,7 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
             };
 
             await send(
-                this.FILE_DELETE_KEY,
+                ROUTING_KEY.file.delete,
                 outgoingMessage,
                 res,
                 GenericHandlerFunctions.handleReadSingleResponseFactory(),
@@ -303,7 +298,7 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
             });
 
             await send(
-                this.FILE_UPDATE_KEY,
+                ROUTING_KEY.file.update,
                 outgoing,
                 res,
                 GenericHandlerFunctions.handleDefaultResponseFactory(),
@@ -332,7 +327,7 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
             };
 
             await send(
-                'file.events.read',
+                ROUTING_KEY.fileBinding.read,
                 outgoingMessage,
                 res,
                 GenericHandlerFunctions.handleDefaultResponseFactory(Resolver.resolveEventsForFileBinding(
@@ -364,7 +359,7 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
             };
 
             await send(
-                'file.events.read',
+                ROUTING_KEY.fileBinding.read,
                 outgoingMessage,
                 res,
                 GenericHandlerFunctions.handleDefaultResponseFactory(Resolver.resolveFilesForFileBinding(
@@ -410,7 +405,7 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
             };
 
             await send(
-                'file.events.read',
+                ROUTING_KEY.fileBinding.create,
                 outgoingMessage,
                 res,
                 GenericHandlerFunctions.handleDefaultResponseFactory(),
@@ -449,7 +444,7 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
             };
 
             await send(
-                'file.events.read',
+                ROUTING_KEY.fileBinding.delete,
                 outgoingMessage,
                 res,
                 GenericHandlerFunctions.handleDefaultResponseFactory(),

@@ -2,27 +2,19 @@ import { GatewayMk2 } from '../../Gateway';
 import { Request, Response } from 'express';
 import { MessageUtilities } from '../../utilities/MessageUtilities';
 import { constants } from 'http2';
-import { TopicResponse, MsgStatus, TopicResponseValidator, TopicMessage } from '@uems/uemscommlib';
-import { ErrorCodes } from '../../constants/ErrorCodes';
+import { TopicMessage, TopicResponse, TopicResponseValidator } from '@uems/uemscommlib';
+import { GenericHandlerFunctions } from "../GenericHandlerFunctions";
+import { Constants } from "../../utilities/Constants";
 import GatewayAttachmentInterface = GatewayMk2.GatewayAttachmentInterface;
 import SendRequestFunction = GatewayMk2.SendRequestFunction;
 import TopicReadSchema = TopicMessage.ReadTopicMessage;
-import MinimalMessageType = GatewayMk2.MinimalMessageType;
-import TopicResponseMessage = TopicResponse.TopicResponseMessage;
-import { GenericHandlerFunctions } from "../GenericHandlerFunctions";
 import ReadTopicMessage = TopicMessage.ReadTopicMessage;
 import CreateTopicMessage = TopicMessage.CreateTopicMessage;
 import DeleteTopicMessage = TopicMessage.DeleteTopicMessage;
 import UpdateTopicMessage = TopicMessage.UpdateTopicMessage;
+import ROUTING_KEY = Constants.ROUTING_KEY;
 
 export class TopicGatewayInterface implements GatewayAttachmentInterface {
-    private readonly TOPIC_CREATE_KEY = 'topics.details.create';
-
-    private readonly TOPIC_DELETE_KEY = 'topics.details.delete';
-
-    private readonly TOPIC_UPDATE_KEY = 'topics.details.update';
-
-    public static readonly TOPIC_READ_KEY = 'topics.details.get';
 
     private readonly COLOR_REGEX = /^#?([0-9A-Fa-f]{3}([0-9A-Fa-f]{3})?)$/;
 
@@ -108,7 +100,7 @@ export class TopicGatewayInterface implements GatewayAttachmentInterface {
             });
 
             await send(
-                TopicGatewayInterface.TOPIC_READ_KEY,
+                ROUTING_KEY.topic.read,
                 outgoing,
                 res,
                 GenericHandlerFunctions.handleDefaultResponseFactory(),
@@ -136,7 +128,7 @@ export class TopicGatewayInterface implements GatewayAttachmentInterface {
             };
 
             await send(
-                TopicGatewayInterface.TOPIC_READ_KEY,
+                ROUTING_KEY.topic.read,
                 outgoingMessage,
                 res,
                 GenericHandlerFunctions.handleReadSingleResponseFactory(),
@@ -174,7 +166,7 @@ export class TopicGatewayInterface implements GatewayAttachmentInterface {
             };
 
             await send(
-                this.TOPIC_CREATE_KEY,
+                ROUTING_KEY.topic.create,
                 outgoingMessage,
                 res,
                 GenericHandlerFunctions.handleDefaultResponseFactory(),
@@ -203,7 +195,7 @@ export class TopicGatewayInterface implements GatewayAttachmentInterface {
             };
 
             await send(
-                this.TOPIC_DELETE_KEY,
+                ROUTING_KEY.topic.delete,
                 outgoingMessage,
                 res,
                 GenericHandlerFunctions.handleReadSingleResponseFactory(),
@@ -263,7 +255,7 @@ export class TopicGatewayInterface implements GatewayAttachmentInterface {
             });
 
             await send(
-                this.TOPIC_UPDATE_KEY,
+                ROUTING_KEY.topic.update,
                 outgoing,
                 res,
                 GenericHandlerFunctions.handleDefaultResponseFactory(),
