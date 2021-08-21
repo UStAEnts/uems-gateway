@@ -1,15 +1,10 @@
 import { GatewayMk2 } from '../Gateway';
 import { MessageUtilities } from '../utilities/MessageUtilities';
-import { VenueGatewayInterface } from '../attachments/attachments/VenueGatewayInterface';
-import { UserGatewayInterface } from '../attachments/attachments/UserGatewayInterface';
-import { EntStateGatewayInterface } from '../attachments/attachments/EntStateGatewayInterface';
-import { EquipmentGatewayInterface } from '../attachments/attachments/EquipmentGatewayInterface';
-import { StateGatewayInterface } from '../attachments/attachments/StateGatewayInterface';
-import { EntStateResponse, EquipmentResponse, EventResponse, FileResponse, StateResponse, UserResponse, VenueResponse } from '@uems/uemscommlib';
-import { FileGatewayInterface } from '../attachments/attachments/FileGatewayInterface';
-import { _byFile } from '../log/Log';
+import { EntStateResponse, EquipmentResponse, EventResponse, FileResponse, MsgStatus, StateResponse, UserResponse, VenueResponse } from '@uems/uemscommlib';
+import { _byFile } from "../log/Log";
 import { Constants } from "../utilities/Constants";
-import ROUTING_KEY = Constants.ROUTING_KEY;
+import MinimalMessageType = GatewayMk2.MinimalMessageType;
+import has = MessageUtilities.has;
 import GatewayMessageHandler = GatewayMk2.GatewayMessageHandler;
 import InternalEntState = EntStateResponse.InternalEntState;
 import InternalEquipment = EquipmentResponse.InternalEquipment;
@@ -22,14 +17,67 @@ import ShallowInternalEvent = EventResponse.ShallowInternalEvent;
 import InternalEvent = EventResponse.InternalEvent;
 import InternalFile = FileResponse.InternalFile;
 import ShallowInternalFile = FileResponse.ShallowInternalFile;
+import ROUTING_KEY = Constants.ROUTING_KEY;
 
 const _l = _byFile(__filename);
 
 export class EntityResolver {
+    private _timeout: NodeJS.Timeout;
+    private _pendingMessageIDs: {
+        [key: number]: {
+            callback: (entity: any | null) => void,
+            reject: (entity: any | null) => void,
+            submitted: number,
+            name: string,
+            stack: Error,
+        }
+    } = {};
+
     private _handler: GatewayMessageHandler;
 
     constructor(handler: GatewayMk2.GatewayMessageHandler) {
         this._handler = handler;
+        this._timeout = setInterval(this.terminate, 10000);
+    }
+
+    public stop() {
+        clearInterval(this._timeout);
+    }
+
+    private terminate = () => {
+        const now = Date.now();
+        for (const entry of Object.keys(this._pendingMessageIDs) as unknown as number[]) {
+            if (now - this._pendingMessageIDs[entry].submitted > 10000) {
+                _l.warn(`failed to resolve ${this._pendingMessageIDs[entry].name} after 10 seconds, rejecting`);
+                this._pendingMessageIDs[entry].reject(new Error('timed out'));
+                delete this._pendingMessageIDs[entry];
+            }
+        }
+    };
+
+    public intercept(id: number): boolean {
+        return has(this._pendingMessageIDs, id);
+    }
+
+    public consume(message: MinimalMessageType) {
+        const entry = this._pendingMessageIDs[message.msg_id];
+        if (!entry) return;
+
+        delete this._pendingMessageIDs[message.msg_id];
+
+        if (message.status !== MsgStatus.SUCCESS) {
+            _l.warn(`failed to resolve ${entry.name} because message status ${message.status}`);
+            entry.reject(message);
+            return;
+        }
+
+        if (!has(message, 'result')) {
+            _l.warn(`failed to resolve ${entry.name} because there was no result`, { message });
+            entry.reject(message);
+            return;
+        }
+
+        entry.callback(message.result);
     }
 
     public resolve<T>(id: string, key: string, userID: string, middleware?: (value: any) => T): Promise<T> {
@@ -68,7 +116,14 @@ export class EntityResolver {
                 }
             };
 
-            this._handler.interceptResponseCallback(query.msg_id, callback, reject);
+            this._pendingMessageIDs[query.msg_id] = {
+                reject,
+                callback,
+                submitted: Date.now(),
+                name,
+                stack,
+            };
+
             _l.debug(`publishing request for :: ${query.msg_id} of READ for ${key}`);
 
             this._handler.publish(key, query);
@@ -144,4 +199,5 @@ export class EntityResolver {
             owner: await this.resolveUser(shallowFile.owner, userID),
         };
     };
+
 }
