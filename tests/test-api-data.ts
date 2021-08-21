@@ -295,7 +295,6 @@ export const POST_EVENTS_EVENTID_FILES_MISSING = {}
 export const GET_EVENTS_EVENTID_SIGNUPS_VALID = {
     id: 'JuxQcIdSZlgI+t//EHyNwA==',
     date: '656',
-    userid: '98iI/fbS/e0sO5mtQl1Ruw==',
     dateRangeBegin: '794',
     dateRangeEnd: '865',
     role: 'qIVDB4H8HBdRQb5M1Y00vw=='
