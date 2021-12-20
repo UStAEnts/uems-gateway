@@ -10,7 +10,7 @@ import { constants } from 'http2';
 import { EntityResolver } from './resolver/EntityResolver';
 import { has, MessageValidator, MsgStatus } from '@uems/uemscommlib';
 import * as util from 'util';
-import { _byFile, _byFileWithTag, _ml } from './log/Log';
+import { _byFile, _byFileWithTag } from './log/Log';
 
 const _l = _byFile(__filename);
 const _t = _byFileWithTag(__filename, 'terminator');
@@ -116,17 +116,41 @@ export namespace GatewayMk2 {
         private _pendingInterceptMessageIDs: {
             [key: number]: {
                 /**
-                 * Callback to execute if this is a successful response. It will respond with the successful result
-                 * from the message
-                 * @param response the successful message
+                 * The default handler to be called on a request resolving or rejecting
                  */
-                callback: (response: any | null) => void,
+                conclude: {
+                    /**
+                     * Callback to execute if this is a successful response. It will respond with the successful result
+                     * from the message
+                     * @param response the successful message
+                     */
+                    resolve: (response: any | null) => void,
+                    /**
+                     * Callback to execute if this is a failed response. It will reject with the failed response in
+                     * whatever form that takes
+                     * @param response the failed response
+                     */
+                    reject: (response: any | null) => void,
+                },
                 /**
-                 * Callback to execute if this is a failed response. It will reject with the failed response in whatever
-                 * form that takes
-                 * @param response the failed response
+                 * Holds the executors for timeouts and the maount of time until a timeout
                  */
-                reject: (response: any | null) => void,
+                timeout?: {
+                    /**
+                     * The amount of time in milliseconds that this request should run before being terminated
+                     */
+                    time: number,
+                    /**
+                     * The executor to be called, if present, when the request times out
+                     */
+                    executor?: () => void | Promise<void>,
+                },
+                /**
+                 * A validator to be run against the response data. It should return a boolean or a promise resolving
+                 * to a boolean. A rejecting promise will be equivalent to a false value
+                 * @param data the data to validate
+                 */
+                validator?: (data: any) => Promise<boolean> | boolean,
                 /**
                  * The time at which this request was submitted
                  */
@@ -192,7 +216,7 @@ export namespace GatewayMk2 {
                 if (now - this._pendingInterceptMessageIDs[entry].submitted > 10000) {
                     _l.warn(`failed to resolve ${this._pendingInterceptMessageIDs[entry]
                         .name} after 10 seconds, rejecting`);
-                    this._pendingInterceptMessageIDs[entry].reject(new Error('timed out'));
+                    this._pendingInterceptMessageIDs[entry].conclude.reject(new Error('timed out'));
                     delete this._pendingInterceptMessageIDs[entry];
                 }
             }
@@ -216,17 +240,17 @@ export namespace GatewayMk2 {
 
             if (message.status !== MsgStatus.SUCCESS) {
                 _l.warn(`failed to resolve ${entry.name} because message status ${message.status}`);
-                entry.reject(message);
+                entry.conclude.reject(message);
                 return;
             }
 
             if (!has(message, 'result')) {
                 _l.warn(`failed to resolve ${entry.name} because there was no result`, { message });
-                entry.reject(message);
+                entry.conclude.reject(message);
                 return;
             }
 
-            entry.callback(message.result);
+            entry.conclude.resolve(message.result);
         }
 
         /**
@@ -237,8 +261,10 @@ export namespace GatewayMk2 {
         public interceptResponse(messageID: number): Promise<any> {
             return new Promise((res, reject) => {
                 this._pendingInterceptMessageIDs[messageID] = {
-                    reject,
-                    callback: res,
+                    conclude: {
+                        resolve: res,
+                        reject,
+                    },
                     name: `intercept request for ${messageID}`,
                     stack: new Error(),
                     submitted: Date.now(),
@@ -255,8 +281,10 @@ export namespace GatewayMk2 {
          */
         public interceptResponseCallback(messageID: number, callback: (res: any) => void, reject: (res: any) => void) {
             this._pendingInterceptMessageIDs[messageID] = {
-                reject,
-                callback,
+                conclude: {
+                    reject,
+                    resolve: callback,
+                },
                 name: `intercept request for ${messageID}`,
                 stack: new Error(),
                 submitted: Date.now(),
@@ -429,9 +457,70 @@ export namespace GatewayMk2 {
             return this.publish(key, message);
         };
 
-        public buildSend(key: string, messge: { msg_id: number, [key: string]: any }) {
+        public buildSend(key: string, message: { msg_id: number, [key: string]: any }) {
             // Needs to build a message object, return a builder object that allows for more customisation
+            const basic: GatewayMessageHandler['_pendingInterceptMessageIDs'][number] = {
+                conclude: {
+                    resolve: () => undefined,
+                    reject: () => undefined,
+                },
+                name: `intercept-autogen-${key}-${Date.now()}`,
+                submitted: 0,
+                stack: new Error(),
+            };
 
+            const builder = {
+                reply: (executor: (typeof basic)['conclude']['resolve']) => {
+                    basic.conclude.resolve = executor;
+                    return builder;
+                },
+                fail: (executor: (typeof basic)['conclude']['reject']) => {
+                    basic.conclude.reject = executor;
+                    return builder;
+                },
+                timeout: (time: number) => {
+                    basic.timeout = { time };
+                    return builder;
+                },
+                onTimeout: (executor: () => void | Promise<void>) => {
+                    if (basic.timeout) {
+                        basic.timeout.executor = executor;
+                    } else {
+                        throw new Error('cannot define handler without timeout value');
+                    }
+                    return builder;
+                },
+                validate: (validator: (typeof basic)['validator']) => {
+                    basic.validator = validator;
+                    return builder;
+                },
+                name: (name: string) => {
+                    basic.name = name;
+                    return builder;
+                },
+                submit: () => {
+                    basic.submitted = Date.now();
+                    basic.stack = new Error();
+
+                    const res = basic.conclude.resolve;
+                    basic.conclude.resolve = async (d: any) => {
+                        if (basic.validator) {
+                            if (await basic.validator(d)) {
+                                res(d);
+                            } else {
+                                basic.conclude.reject(d);
+                            }
+                        } else {
+                            res(d);
+                        }
+                    };
+
+                    this._pendingInterceptMessageIDs[message.msg_id] = basic;
+                    this.publish(key, JSON.stringify(message));
+                },
+            };
+
+            return builder;
         }
     }
 

@@ -182,8 +182,8 @@ export class DeletePipelineManager {
         this._handler = handler;
     }
 
-    private handleDeleteReply(pipeline: DeletePipeline, service: ServiceName){
-        if (pipeline.actions[service].status === 'pending'){
+    private handleDeleteReply(pipeline: DeletePipeline, service: ServiceName) {
+        if (pipeline.actions[service].status === 'pending') {
             pipeline.actions[service] = {
                 status: ''
             }
@@ -276,6 +276,17 @@ export class DeletePipelineManager {
                 msg_id: id,
             };
         };
+
+        const validator = new DiscoveryResponseValidator().validate;
+
+        this._handler.buildSend(ROUTING_KEY.ent.discover, makeMessage('state.athena'))
+            .name('discover-ents')
+            .timeout(4000)
+            .onTimeout(() => undefined) // TODO: add timeout handling
+            .reply(this.handleDiscoveryReply(pipeline, 'state.athena'))
+            .fail(() => undefined) // TODO: add failure handling
+            .validate(validator)
+            .submit();
 
         this._handler.publish(ROUTING_KEY.ent.discover, makeMessage('state.athena'));
         this._handler.publish(ROUTING_KEY.equipment.discover, makeMessage('equipment.hephaestus'));
