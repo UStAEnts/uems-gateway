@@ -529,6 +529,7 @@ export namespace GatewayMk2 {
         generateInterfaces(
             send: SendRequestFunction,
             resolver: EntityResolver,
+            handler: GatewayMessageHandler,
         ): GatewayInterfaceActionType[] | Promise<GatewayInterfaceActionType[]>;
 
     }

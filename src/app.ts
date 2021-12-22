@@ -132,6 +132,7 @@ async function main() {
             ],
             handler.sendRequest.bind(handler),
             resolver,
+            handler,
         );
         await expressApp.react((message) => {
             handler.publish('user.details.assert', message);

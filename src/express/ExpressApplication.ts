@@ -16,6 +16,7 @@ import { tryApplyTrait } from "@uems/micro-builder/build/src";
 import GatewayAttachmentInterface = GatewayMk2.GatewayAttachmentInterface;
 import SendRequestFunction = GatewayMk2.SendRequestFunction;
 import AssertUserMessage = UserMessage.AssertUserMessage;
+import GatewayMessageHandler = GatewayMk2.GatewayMessageHandler;
 
 const MongoStore = connectMongo(session);
 
@@ -207,9 +208,9 @@ export class ExpressApplication {
         __.info('created a new API router');
     }
 
-    async attach(attachments: GatewayAttachmentInterface[], send: SendRequestFunction, resolver: EntityResolver) {
+    async attach(attachments: GatewayAttachmentInterface[], send: SendRequestFunction, resolver: EntityResolver, handler: GatewayMessageHandler) {
         const resolvedAttachments = await Promise.all(
-            attachments.map((attachment) => attachment.generateInterfaces(send, resolver)),
+            attachments.map((attachment) => attachment.generateInterfaces(send, resolver, handler)),
         );
 
         for (const attachment of resolvedAttachments) {
