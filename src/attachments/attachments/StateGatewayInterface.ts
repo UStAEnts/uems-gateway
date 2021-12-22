@@ -2,7 +2,7 @@ import { GatewayMk2 } from '../../Gateway';
 import { Request, Response } from 'express';
 import { MessageUtilities } from '../../utilities/MessageUtilities';
 import { constants } from 'http2';
-import { EntStateMessage, MessageIntention, StateMessage, StateResponseValidator } from '@uems/uemscommlib';
+import { EntStateMessage, MessageIntention, MsgStatus, StateMessage, StateResponseValidator } from '@uems/uemscommlib';
 import { GenericHandlerFunctions } from '../GenericHandlerFunctions';
 import GatewayAttachmentInterface = GatewayMk2.GatewayAttachmentInterface;
 import SendRequestFunction = GatewayMk2.SendRequestFunction;
@@ -13,15 +13,25 @@ import DeleteStateMessage = StateMessage.DeleteStateMessage;
 import UpdateStateMessage = StateMessage.UpdateStateMessage;
 import { Constants } from "../../utilities/Constants";
 import ROUTING_KEY = Constants.ROUTING_KEY;
+import { EntityResolver } from "../../resolver/EntityResolver";
+import GatewayMessageHandler = GatewayMk2.GatewayMessageHandler;
+import { removeAndReply, removeEntity } from "../DeletePipelines";
+import { ErrorCodes } from "../../constants/ErrorCodes";
 
 export class StateGatewayInterface implements GatewayAttachmentInterface {
 
     private readonly COLOR_REGEX = /^#?([0-9A-Fa-f]{3}([0-9A-Fa-f]{3})?)$/;
+    private resolver?: EntityResolver;
+    private handler?: GatewayMessageHandler;
 
     generateInterfaces(
         send: GatewayMk2.SendRequestFunction,
+        resolver: EntityResolver,
+        handler: GatewayMessageHandler,
     ): GatewayMk2.GatewayInterfaceActionType[] | Promise<GatewayMk2.GatewayInterfaceActionType[]> {
         const validator = new StateResponseValidator();
+        this.resolver = resolver;
+        this.handler = handler;
 
         return [
             {
@@ -183,20 +193,30 @@ export class StateGatewayInterface implements GatewayAttachmentInterface {
                 return;
             }
 
-            const outgoingMessage: DeleteStateMessage = {
-                msg_id: MessageUtilities.generateMessageIdentifier(),
-                msg_intention: 'DELETE',
-                status: 0,
-                userID: req.uemsUser.userID,
-                id: req.params.id,
-            };
 
-            await send(
-                ROUTING_KEY.states.delete,
-                outgoingMessage,
-                res,
-                GenericHandlerFunctions.handleReadSingleResponseFactory(),
-            );
+            if (this.resolver && this.handler) {
+                await removeAndReply({
+                    assetID: req.params.id,
+                    assetType: 'state',
+                }, this.resolver, this.handler, res);
+            } else {
+                res.status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
+                    .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
+            }
+            // const outgoingMessage: DeleteStateMessage = {
+            //     msg_id: MessageUtilities.generateMessageIdentifier(),
+            //     msg_intention: 'DELETE',
+            //     status: 0,
+            //     userID: req.uemsUser.userID,
+            //     id: req.params.id,
+            // };
+            //
+            // await send(
+            //     ROUTING_KEY.states.delete,
+            //     outgoingMessage,
+            //     res,
+            //     GenericHandlerFunctions.handleReadSingleResponseFactory(),
+            // );
         };
     }
 

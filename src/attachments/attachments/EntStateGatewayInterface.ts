@@ -2,7 +2,7 @@ import { GatewayMk2 } from '../../Gateway';
 import { Request, Response } from 'express';
 import { MessageUtilities } from '../../utilities/MessageUtilities';
 import { constants } from 'http2';
-import { EntStateMessage, EntStateResponseValidator } from '@uems/uemscommlib';
+import { EntStateMessage, EntStateResponseValidator, MsgStatus } from '@uems/uemscommlib';
 import { GenericHandlerFunctions } from '../GenericHandlerFunctions';
 import GatewayAttachmentInterface = GatewayMk2.GatewayAttachmentInterface;
 import SendRequestFunction = GatewayMk2.SendRequestFunction;
@@ -12,15 +12,26 @@ import CreateEntStateMessage = EntStateMessage.CreateEntStateMessage;
 import UpdateEntStateMessage = EntStateMessage.UpdateEntStateMessage;
 import { Constants } from "../../utilities/Constants";
 import ROUTING_KEY = Constants.ROUTING_KEY;
+import { removeAndReply, removeEntity } from "../DeletePipelines";
+import { EntityResolver } from "../../resolver/EntityResolver";
+import GatewayMessageHandler = GatewayMk2.GatewayMessageHandler;
+import { ErrorCodes } from "../../constants/ErrorCodes";
 
 export class EntStateGatewayInterface implements GatewayAttachmentInterface {
 
     private readonly COLOR_REGEX = /^#?([0-9A-Fa-f]{3}([0-9A-Fa-f]{3})?)$/;
 
+    private resolver?: EntityResolver;
+    private handler?: GatewayMessageHandler;
+
     generateInterfaces(
-        send: GatewayMk2.SendRequestFunction
+        send: GatewayMk2.SendRequestFunction,
+        resolver: EntityResolver,
+        handler: GatewayMessageHandler,
     ): GatewayMk2.GatewayInterfaceActionType[] | Promise<GatewayMk2.GatewayInterfaceActionType[]> {
         const validator = new EntStateResponseValidator();
+        this.resolver = resolver;
+        this.handler = handler;
 
         return [
             {
@@ -38,7 +49,7 @@ export class EntStateGatewayInterface implements GatewayAttachmentInterface {
             {
                 action: 'delete',
                 path: '/ents/:id',
-                handle: this.deleteEntStateHandler(send),
+                handle: this.deleteEntStateHandler(send, resolver, handler),
                 additionalValidator: validator,
             },
             {
@@ -173,7 +184,7 @@ export class EntStateGatewayInterface implements GatewayAttachmentInterface {
         };
     }
 
-    private deleteEntStateHandler(send: SendRequestFunction) {
+    private deleteEntStateHandler(send: GatewayMk2.SendRequestFunction, resolver: EntityResolver, handler: GatewayMessageHandler) {
         return async (req: Request, res: Response) => {
             if (!MessageUtilities.has(req.params, 'id')) {
                 res
@@ -185,19 +196,30 @@ export class EntStateGatewayInterface implements GatewayAttachmentInterface {
                 return;
             }
 
-            const outgoingMessage: any = {
-                msg_id: MessageUtilities.generateMessageIdentifier(),
-                msg_intention: 'DELETE',
-                status: 0,
-                id: req.params.id,
-            };
 
-            await send(
-                ROUTING_KEY.ent.delete,
-                outgoingMessage,
-                res,
-                GenericHandlerFunctions.handleReadSingleResponseFactory(),
-            );
+            if (this.resolver && this.handler) {
+                await removeAndReply({
+                    assetID: req.params.id,
+                    assetType: 'ent',
+                }, this.resolver, this.handler, res);
+            } else {
+                res.status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
+                    .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
+            }
+            //
+            // const outgoingMessage: any = {
+            //     msg_id: MessageUtilities.generateMessageIdentifier(),
+            //     msg_intention: 'DELETE',
+            //     status: 0,
+            //     id: req.params.id,
+            // };
+            //
+            // await send(
+            //     ROUTING_KEY.ent.delete,
+            //     outgoingMessage,
+            //     res,
+            //     GenericHandlerFunctions.handleReadSingleResponseFactory(),
+            // );
         };
     }
 

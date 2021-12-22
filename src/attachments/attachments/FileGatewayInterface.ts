@@ -21,17 +21,21 @@ import UnbindFilesFromEventMessage = FileBindingMessage.UnbindFilesFromEventMess
 import FileResponseMessage = FileResponse.FileResponseMessage;
 import { Constants } from "../../utilities/Constants";
 import ROUTING_KEY = Constants.ROUTING_KEY;
+import GatewayMessageHandler = GatewayMk2.GatewayMessageHandler;
+import { removeAndReply, removeEntity } from "../DeletePipelines";
 
 export class FileGatewayInterface implements GatewayAttachmentInterface {
 
-
     private _resolver!: EntityResolver;
+    private handler?: GatewayMessageHandler;
 
     generateInterfaces(
         send: GatewayMk2.SendRequestFunction,
         resolver: EntityResolver,
+        handler: GatewayMessageHandler,
     ): GatewayMk2.GatewayInterfaceActionType[] | Promise<GatewayMk2.GatewayInterfaceActionType[]> {
         this._resolver = resolver;
+        this.handler = handler;
 
         const validator = new FileResponseValidator();
 
@@ -247,20 +251,31 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
                     }));
                 return;
             }
-            const outgoingMessage: DeleteFileMessage = {
-                msg_id: MessageUtilities.generateMessageIdentifier(),
-                msg_intention: 'DELETE',
-                status: 0,
-                userID: req.uemsUser.userID,
-                id: req.params.id,
-            };
 
-            await send(
-                ROUTING_KEY.file.delete,
-                outgoingMessage,
-                res,
-                GenericHandlerFunctions.handleReadSingleResponseFactory(),
-            );
+
+            if (this._resolver && this.handler) {
+                await removeAndReply({
+                    assetID: req.params.id,
+                    assetType: 'file',
+                }, this._resolver, this.handler, res);
+            } else {
+                res.status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
+                    .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
+            }
+            // const outgoingMessage: DeleteFileMessage = {
+            //     msg_id: MessageUtilities.generateMessageIdentifier(),
+            //     msg_intention: 'DELETE',
+            //     status: 0,
+            //     userID: req.uemsUser.userID,
+            //     id: req.params.id,
+            // };
+            //
+            // await send(
+            //     ROUTING_KEY.file.delete,
+            //     outgoingMessage,
+            //     res,
+            //     GenericHandlerFunctions.handleReadSingleResponseFactory(),
+            // );
         };
     }
 

@@ -2,7 +2,7 @@ import { GatewayMk2 } from '../../Gateway';
 import { Request, Response } from 'express';
 import { MessageUtilities } from '../../utilities/MessageUtilities';
 import { constants } from 'http2';
-import { TopicMessage, TopicResponse, TopicResponseValidator } from '@uems/uemscommlib';
+import { MsgStatus, TopicMessage, TopicResponse, TopicResponseValidator } from '@uems/uemscommlib';
 import { GenericHandlerFunctions } from "../GenericHandlerFunctions";
 import { Constants } from "../../utilities/Constants";
 import GatewayAttachmentInterface = GatewayMk2.GatewayAttachmentInterface;
@@ -13,15 +13,25 @@ import CreateTopicMessage = TopicMessage.CreateTopicMessage;
 import DeleteTopicMessage = TopicMessage.DeleteTopicMessage;
 import UpdateTopicMessage = TopicMessage.UpdateTopicMessage;
 import ROUTING_KEY = Constants.ROUTING_KEY;
+import { EntityResolver } from "../../resolver/EntityResolver";
+import GatewayMessageHandler = GatewayMk2.GatewayMessageHandler;
+import { removeAndReply, removeEntity } from "../DeletePipelines";
+import { ErrorCodes } from "../../constants/ErrorCodes";
 
 export class TopicGatewayInterface implements GatewayAttachmentInterface {
 
     private readonly COLOR_REGEX = /^#?([0-9A-Fa-f]{3}([0-9A-Fa-f]{3})?)$/;
+    private resolver?: EntityResolver;
+    private handler?: GatewayMessageHandler;
 
     generateInterfaces(
-        send: GatewayMk2.SendRequestFunction
+        send: GatewayMk2.SendRequestFunction,
+    resolver: EntityResolver,
+    handler: GatewayMessageHandler,
     ): GatewayMk2.GatewayInterfaceActionType[] | Promise<GatewayMk2.GatewayInterfaceActionType[]> {
         const validator = new TopicResponseValidator();
+        this.resolver = resolver;
+        this.handler = handler;
 
         return [
             {
@@ -186,20 +196,30 @@ export class TopicGatewayInterface implements GatewayAttachmentInterface {
                 return;
             }
 
-            const outgoingMessage: DeleteTopicMessage = {
-                msg_id: MessageUtilities.generateMessageIdentifier(),
-                msg_intention: 'DELETE',
-                status: 0,
-                userID: req.uemsUser.userID,
-                id: req.params.id,
-            };
 
-            await send(
-                ROUTING_KEY.topic.delete,
-                outgoingMessage,
-                res,
-                GenericHandlerFunctions.handleReadSingleResponseFactory(),
-            );
+            if (this.resolver && this.handler) {
+                await removeAndReply({
+                    assetID: req.params.id,
+                    assetType: 'topic',
+                }, this.resolver, this.handler, res);
+            } else {
+                res.status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
+                    .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
+            }
+            // const outgoingMessage: DeleteTopicMessage = {
+            //     msg_id: MessageUtilities.generateMessageIdentifier(),
+            //     msg_intention: 'DELETE',
+            //     status: 0,
+            //     userID: req.uemsUser.userID,
+            //     id: req.params.id,
+            // };
+            //
+            // await send(
+            //     ROUTING_KEY.topic.delete,
+            //     outgoingMessage,
+            //     res,
+            //     GenericHandlerFunctions.handleReadSingleResponseFactory(),
+            // );
         };
     }
 

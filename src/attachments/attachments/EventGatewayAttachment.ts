@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { CommentMessage, CommentResponse, EventMessage, EventResponse, EventResponseValidator, VenueResponse } from '@uems/uemscommlib';
+import { CommentMessage, CommentResponse, EventMessage, EventResponse, EventResponseValidator, MsgStatus, VenueResponse } from '@uems/uemscommlib';
 import { MessageUtilities } from '../../utilities/MessageUtilities';
 import { GatewayMk2 } from '../../Gateway';
 import { EntityResolver } from '../../resolver/EntityResolver';
@@ -18,18 +18,24 @@ import ReadCommentMessage = CommentMessage.ReadCommentMessage;
 import CreateCommentMessage = CommentMessage.CreateCommentMessage;
 import { Constants } from "../../utilities/Constants";
 import ROUTING_KEY = Constants.ROUTING_KEY;
+import GatewayMessageHandler = GatewayMk2.GatewayMessageHandler;
+import { removeAndReply, removeEntity } from "../DeletePipelines";
+import { ErrorCodes } from "../../constants/ErrorCodes";
 
 export class EventGatewayAttachment implements GatewayAttachmentInterface {
     // TODO: bit dangerous using ! - maybe add null checks?
     private _resolver!: EntityResolver;
+    private handler?: GatewayMessageHandler;
 
     async generateInterfaces(
         send: GatewayMk2.SendRequestFunction,
         resolver: EntityResolver,
+        handler: GatewayMessageHandler,
     ): Promise<GatewayInterfaceActionType[]> {
         const validator = await EventResponseValidator.setup();
 
         this._resolver = resolver;
+        this.handler = handler;
 
         return [
             // EVENTS ONLY
@@ -60,7 +66,7 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
             {
                 action: 'delete',
                 path: '/events/:id',
-                handle: EventGatewayAttachment.deleteEventHandler(send),
+                handle: EventGatewayAttachment.deleteEventHandler(send, handler, resolver),
                 additionalValidator: validator,
             },
             // EVENT <--> STATE LINK
@@ -92,24 +98,32 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
         ];
     }
 
-    private static deleteEventHandler(send: SendRequestFunction) {
+    private static deleteEventHandler(send: SendRequestFunction, hand: GatewayMessageHandler, resolve: EntityResolver) {
         return async (req: Request, res: Response) => {
-            const eventId = req.params.id;
 
-            const msg: DeleteEventMessage = {
-                msg_id: MessageUtilities.generateMessageIdentifier(),
-                status: 0,
-                msg_intention: 'DELETE',
-                id: eventId,
-                userID: req.uemsUser.userID,
-            };
-
-            await send(
-                ROUTING_KEY.event.delete,
-                msg,
-                res,
-                GenericHandlerFunctions.handleReadSingleResponseFactory(),
-            );
+            if (resolve && hand) {
+                await removeAndReply({
+                    assetID: req.params.id,
+                    assetType: 'event',
+                }, resolve, hand, res);
+            } else {
+                res.status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
+                    .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
+            }
+            // const msg: DeleteEventMessage = {
+            //     msg_id: MessageUtilities.generateMessageIdentifier(),
+            //     status: 0,
+            //     msg_intention: 'DELETE',
+            //     id: eventId,
+            //     userID: req.uemsUser.userID,
+            // };
+            //
+            // await send(
+            //     ROUTING_KEY.event.delete,
+            //     msg,
+            //     res,
+            //     GenericHandlerFunctions.handleReadSingleResponseFactory(),
+            // );
         };
     }
 
