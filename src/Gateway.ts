@@ -245,8 +245,8 @@ export namespace GatewayMk2 {
             }
 
             if (!has(message, 'result')) {
-                _l.warn(`failed to resolve ${entry.name} because there was no result`, { message });
-                entry.conclude.reject(message);
+                _l.warn(`resolving message for ${entry.name} contained no result, resolving with default`, { message });
+                entry.conclude.resolve(message);
                 return;
             }
 
