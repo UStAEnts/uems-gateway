@@ -140,17 +140,17 @@ describe('EventGatewayAttachment.ts', () => {
         });
     });
 
-    describe('DELETE /events/:id', () => {
-        it('sends on a valid message', async () => {
-            await testValidRoute(
-                routes['delete.events.id'],
-                undefined,
-                'body',
-                send,
-                { id: 'abc' },
-            );
-        });
-    });
+    // describe('DELETE /events/:id', () => {
+    //     it('sends on a valid message', async () => {
+    //         await testValidRoute(
+    //             routes['delete.events.id'],
+    //             undefined,
+    //             'body',
+    //             send,
+    //             { id: 'abc' },
+    //         );
+    //     });
+    // });
 
     describe('GET /states/:id/events', () => {
         it('sends on a valid message', async () => {

@@ -79,17 +79,17 @@ describe('UserGatewayInterface.ts', () => {
         });
     });
 
-    describe('DELETE /user/:id', () => {
-        it('sends on a valid message', async () => {
-            await testValidRoute(
-                routes['delete.user.id'],
-                undefined,
-                'query',
-                send,
-                { id: 'abc' },
-            );
-        });
-    });
+    // describe('DELETE /user/:id', () => {
+    //     it('sends on a valid message', async () => {
+    //         await testValidRoute(
+    //             routes['delete.user.id'],
+    //             undefined,
+    //             'query',
+    //             send,
+    //             { id: 'abc' },
+    //         );
+    //     });
+    // });
 
     describe('GET /user/:id', () => {
         it('sends on a valid message', async () => {

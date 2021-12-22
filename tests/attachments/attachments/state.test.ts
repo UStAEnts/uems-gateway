@@ -92,17 +92,17 @@ describe('StateGatewayInterface.ts', () => {
         });
     });
 
-    describe('DELETE /states/:id', () => {
-        it('sends on a valid message', async () => {
-            await testValidRoute(
-                routes['delete.states.id'],
-                undefined,
-                'body',
-                send,
-                { id: 'abc' },
-            );
-        });
-    });
+    // describe('DELETE /states/:id', () => {
+    //     it('sends on a valid message', async () => {
+    //         await testValidRoute(
+    //             routes['delete.states.id'],
+    //             undefined,
+    //             'body',
+    //             send,
+    //             { id: 'abc' },
+    //         );
+    //     });
+    // });
 
     describe('GET /states/:id', () => {
         it('sends on a valid message', async () => {

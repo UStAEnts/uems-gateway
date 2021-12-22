@@ -102,17 +102,17 @@ describe('FileGatewayInterface.ts', () => {
         });
     });
 
-    describe('DELETE /files/:id', () => {
-        it('sends on a valid message', async () => {
-            await testValidRoute(
-                routes['delete.files.id'],
-                undefined,
-                'query',
-                send,
-                { id: 'abc' },
-            );
-        });
-    });
+    // describe('DELETE /files/:id', () => {
+    //     it('sends on a valid message', async () => {
+    //         await testValidRoute(
+    //             routes['delete.files.id'],
+    //             undefined,
+    //             'query',
+    //             send,
+    //             { id: 'abc' },
+    //         );
+    //     });
+    // });
 
     describe('GET /files/:id', () => {
         it('sends on a valid message', async () => {

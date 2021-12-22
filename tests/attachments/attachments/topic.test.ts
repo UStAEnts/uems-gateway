@@ -89,17 +89,17 @@ describe('TopicGatewayInterface.ts', () => {
         });
     });
 
-    describe('DELETE /topics/:id', () => {
-        it('sends on a valid message', async () => {
-            await testValidRoute(
-                routes['delete.topics.id'],
-                undefined,
-                'body',
-                send,
-                { id: 'abc' },
-            );
-        });
-    });
+    // describe('DELETE /topics/:id', () => {
+    //     it('sends on a valid message', async () => {
+    //         await testValidRoute(
+    //             routes['delete.topics.id'],
+    //             undefined,
+    //             'body',
+    //             send,
+    //             { id: 'abc' },
+    //         );
+    //     });
+    // });
 
     describe('GET /topics/:id', () => {
         it('sends on a valid message', async () => {

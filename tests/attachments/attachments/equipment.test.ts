@@ -90,17 +90,17 @@ describe('EquipmentGatewayInterface.ts', () => {
         });
     });
 
-    describe('DELETE /equipment/:id', () => {
-        it('sends on a valid message', async () => {
-            await testValidRoute(
-                routes['delete.equipment.id'],
-                undefined,
-                'body',
-                send,
-                { id: 'abc' },
-            );
-        });
-    });
+    // describe('DELETE /equipment/:id', () => {
+    //     it('sends on a valid message', async () => {
+    //         await testValidRoute(
+    //             routes['delete.equipment.id'],
+    //             undefined,
+    //             'body',
+    //             send,
+    //             { id: 'abc' },
+    //         );
+    //     });
+    // });
 
     describe('GET /equipment/:id', () => {
         it('sends on a valid message', async () => {

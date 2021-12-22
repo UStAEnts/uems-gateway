@@ -84,20 +84,20 @@ describe('SignupGatewayInterface.ts', () => {
         });
     });
 
-    describe('DELETE /events/:id/signups/:id', () => {
-        it('sends on a valid message', async () => {
-            await testValidRoute(
-                routes['delete.events.id.signups.id'],
-                undefined,
-                'body',
-                send,
-                {
-                    eventID: 'abc',
-                    id: 'abc',
-                },
-            );
-        });
-    });
+    // describe('DELETE /events/:id/signups/:id', () => {
+    //     it('sends on a valid message', async () => {
+    //         await testValidRoute(
+    //             routes['delete.events.id.signups.id'],
+    //             undefined,
+    //             'body',
+    //             send,
+    //             {
+    //                 eventID: 'abc',
+    //                 id: 'abc',
+    //             },
+    //         );
+    //     });
+    // });
 
     describe('GET /events/:id/signups/:id', () => {
         it('sends on a valid message', async () => {

@@ -89,17 +89,17 @@ describe('EntStateGatewayInterface.ts', () => {
         });
     });
 
-    describe('DELETE /ents/:id', () => {
-        it('sends on a valid message', async () => {
-            await testValidRoute(
-                routes['delete.ents.id'],
-                undefined,
-                'body',
-                send,
-                { id: 'abc' },
-            );
-        });
-    });
+    // describe('DELETE /ents/:id', () => {
+    //     it('sends on a valid message', async () => {
+    //         await testValidRoute(
+    //             routes['delete.ents.id'],
+    //             undefined,
+    //             'body',
+    //             send,
+    //             { id: 'abc' },
+    //         );
+    //     });
+    // });
 
     describe('GET /ents/:id', () => {
         it('sends on a valid message', async () => {
