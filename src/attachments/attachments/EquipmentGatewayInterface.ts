@@ -2,7 +2,7 @@ import { GatewayMk2 } from '../../Gateway';
 import { Request, Response } from 'express';
 import { MessageUtilities } from '../../utilities/MessageUtilities';
 import { constants } from 'http2';
-import { EquipmentMessage, EquipmentResponseValidator } from '@uems/uemscommlib';
+import { EquipmentMessage, EquipmentResponseValidator, MsgStatus } from '@uems/uemscommlib';
 import { GenericHandlerFunctions } from '../GenericHandlerFunctions';
 import { Resolver } from "../Resolvers";
 import { EntityResolver } from "../../resolver/EntityResolver";
@@ -14,16 +14,22 @@ import DeleteEquipmentMessage = EquipmentMessage.DeleteEquipmentMessage;
 import UpdateEquipmentMessage = EquipmentMessage.UpdateEquipmentMessage;
 import { Constants } from "../../utilities/Constants";
 import ROUTING_KEY = Constants.ROUTING_KEY;
+import GatewayMessageHandler = GatewayMk2.GatewayMessageHandler;
+import { removeAndReply, removeEntity } from "../DeletePipelines";
+import { ErrorCodes } from "../../constants/ErrorCodes";
 
 export class EquipmentGatewayInterface implements GatewayAttachmentInterface {
 
     private resolver?: EntityResolver;
+    private handler?: GatewayMessageHandler;
 
     generateInterfaces(
         send: GatewayMk2.SendRequestFunction,
         resolver: EntityResolver,
+        handler: GatewayMessageHandler,
     ): GatewayMk2.GatewayInterfaceActionType[] | Promise<GatewayMk2.GatewayInterfaceActionType[]> {
         this.resolver = resolver;
+        this.handler = handler;
 
         const validator = new EquipmentResponseValidator();
 
@@ -235,20 +241,31 @@ export class EquipmentGatewayInterface implements GatewayAttachmentInterface {
                 return;
             }
 
-            const outgoingMessage: DeleteEquipmentMessage = {
-                msg_id: MessageUtilities.generateMessageIdentifier(),
-                msg_intention: 'DELETE',
-                status: 0,
-                userID: req.uemsUser.userID,
-                id: req.params.id,
-            };
 
-            await send(
-                ROUTING_KEY.equipment.delete,
-                outgoingMessage,
-                res,
-                GenericHandlerFunctions.handleReadSingleResponseFactory(),
-            );
+            if (this.resolver && this.handler) {
+                await removeAndReply({
+                    assetID: req.params.id,
+                    assetType: 'equipment',
+                }, this.resolver, this.handler, res);
+            } else {
+                res.status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
+                    .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
+            }
+            //
+            // const outgoingMessage: DeleteEquipmentMessage = {
+            //     msg_id: MessageUtilities.generateMessageIdentifier(),
+            //     msg_intention: 'DELETE',
+            //     status: 0,
+            //     userID: req.uemsUser.userID,
+            //     id: req.params.id,
+            // };
+            //
+            // await send(
+            //     ROUTING_KEY.equipment.delete,
+            //     outgoingMessage,
+            //     res,
+            //     GenericHandlerFunctions.handleReadSingleResponseFactory(),
+            // );
         };
     }
 

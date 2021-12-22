@@ -22,7 +22,9 @@ describe('VenueGatewayInterface.ts', () => {
     beforeAll(async () => {
         // @ts-ignore
         const resolver: EntityResolver = null;
-        const entries = await new VenueGatewayInterface().generateInterfaces(send, resolver);
+        // @ts-ignore
+        const handler: GatewayMessageHandler = null;
+        const entries = await new VenueGatewayInterface().generateInterfaces(send, resolver, handler);
 
         routes = {
             'get.venues': entries
@@ -99,17 +101,17 @@ describe('VenueGatewayInterface.ts', () => {
         });
     });
 
-    describe('DELETE /venues/:id', () => {
-        it('sends on a valid message', async () => {
-            await testValidRoute(
-                routes['delete.venues.id'],
-                undefined,
-                'query',
-                send,
-                { id: 'abc' },
-            );
-        });
-    });
+    // describe('DELETE /venues/:id', () => {
+    //     it('sends on a valid message', async () => {
+    //         await testValidRoute(
+    //             routes['delete.venues.id'],
+    //             undefined,
+    //             'query',
+    //             send,
+    //             { id: 'abc' },
+    //         );
+    //     });
+    // });
 
     describe('PATCH /venues/:id', () => {
         it('rejects on wrong parameter types', async () => {

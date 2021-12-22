@@ -2,7 +2,7 @@ import { GatewayMk2 } from '../../Gateway';
 import { Request, Response } from 'express';
 import { MessageUtilities } from '../../utilities/MessageUtilities';
 import { constants } from 'http2';
-import { SignupMessage, SignupResponseValidator } from '@uems/uemscommlib';
+import { MsgStatus, SignupMessage, SignupResponseValidator } from '@uems/uemscommlib';
 import { GenericHandlerFunctions } from '../GenericHandlerFunctions';
 import { EntityResolver } from '../../resolver/EntityResolver';
 import { Resolver } from '../Resolvers';
@@ -15,16 +15,22 @@ import DeleteSignupMessage = SignupMessage.DeleteSignupMessage;
 import UpdateSignupMessage = SignupMessage.UpdateSignupMessage;
 import { Constants } from "../../utilities/Constants";
 import ROUTING_KEY = Constants.ROUTING_KEY;
+import GatewayMessageHandler = GatewayMk2.GatewayMessageHandler;
+import { removeAndReply, removeEntity } from "../DeletePipelines";
+import { ErrorCodes } from "../../constants/ErrorCodes";
 
 export class SignupGatewayInterface implements GatewayAttachmentInterface {
 
     private _resolver!: EntityResolver;
+    private handler?: GatewayMessageHandler;
 
     generateInterfaces(
         send: GatewayMk2.SendRequestFunction,
         resolver: EntityResolver,
+        handler: GatewayMessageHandler,
     ): GatewayMk2.GatewayInterfaceActionType[] | Promise<GatewayMk2.GatewayInterfaceActionType[]> {
         this._resolver = resolver;
+        this.handler = handler;
 
         const validator = new SignupResponseValidator();
 
@@ -240,20 +246,31 @@ export class SignupGatewayInterface implements GatewayAttachmentInterface {
                     }));
                 return;
             }
-            const outgoingMessage: DeleteSignupMessage = {
-                msg_id: MessageUtilities.generateMessageIdentifier(),
-                msg_intention: 'DELETE',
-                status: 0,
-                userID: req.uemsUser.userID,
-                id: req.params.id,
-            };
 
-            await send(
-                ROUTING_KEY.signups.delete,
-                outgoingMessage,
-                res,
-                GenericHandlerFunctions.handleReadSingleResponseFactory(),
-            );
+
+            if (this._resolver && this.handler) {
+                await removeAndReply({
+                    assetID: req.params.id,
+                    assetType: 'signup',
+                }, this._resolver, this.handler, res);
+            } else {
+                res.status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
+                    .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
+            }
+            // const outgoingMessage: DeleteSignupMessage = {
+            //     msg_id: MessageUtilities.generateMessageIdentifier(),
+            //     msg_intention: 'DELETE',
+            //     status: 0,
+            //     userID: req.uemsUser.userID,
+            //     id: req.params.id,
+            // };
+            //
+            // await send(
+            //     ROUTING_KEY.signups.delete,
+            //     outgoingMessage,
+            //     res,
+            //     GenericHandlerFunctions.handleReadSingleResponseFactory(),
+            // );
         };
     }
 

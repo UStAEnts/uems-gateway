@@ -26,7 +26,9 @@ describe('EventGatewayAttachment.ts', () => {
     beforeAll(async () => {
         // @ts-ignore
         const resolver: EntityResolver = null;
-        const entries = await new EventGatewayAttachment().generateInterfaces(send, resolver);
+        // @ts-ignore
+        const handler: GatewayMessageHandler = null;
+        const entries = await new EventGatewayAttachment().generateInterfaces(send, resolver, handler);
 
         routes = {
             'get.events': entries
@@ -138,17 +140,17 @@ describe('EventGatewayAttachment.ts', () => {
         });
     });
 
-    describe('DELETE /events/:id', () => {
-        it('sends on a valid message', async () => {
-            await testValidRoute(
-                routes['delete.events.id'],
-                undefined,
-                'body',
-                send,
-                { id: 'abc' },
-            );
-        });
-    });
+    // describe('DELETE /events/:id', () => {
+    //     it('sends on a valid message', async () => {
+    //         await testValidRoute(
+    //             routes['delete.events.id'],
+    //             undefined,
+    //             'body',
+    //             send,
+    //             { id: 'abc' },
+    //         );
+    //     });
+    // });
 
     describe('GET /states/:id/events', () => {
         it('sends on a valid message', async () => {

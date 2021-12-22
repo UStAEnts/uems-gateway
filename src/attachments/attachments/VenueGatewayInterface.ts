@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { GatewayMk2 } from '../../Gateway';
 import { MessageUtilities } from '../../utilities/MessageUtilities';
 import { constants } from 'http2';
-import { VenueMessage, VenueResponse, VenueResponseValidator } from '@uems/uemscommlib';
+import { MsgStatus, VenueMessage, VenueResponse, VenueResponseValidator } from '@uems/uemscommlib';
 import { EntityResolver } from '../../resolver/EntityResolver';
 import { GenericHandlerFunctions } from '../GenericHandlerFunctions';
 import { Resolver } from "../Resolvers";
@@ -15,18 +15,24 @@ import CreateVenueMessage = VenueMessage.CreateVenueMessage;
 import UpdateVenueMessage = VenueMessage.UpdateVenueMessage;
 import { Constants } from "../../utilities/Constants";
 import ROUTING_KEY = Constants.ROUTING_KEY;
+import GatewayMessageHandler = GatewayMk2.GatewayMessageHandler;
+import { DeleteAction, removeAndReply, removeEntity } from "../DeletePipelines";
+import { ErrorCodes } from "../../constants/ErrorCodes";
 
 export class VenueGatewayInterface implements GatewayAttachmentInterface {
 
     private readonly COLOR_REGEX = /^#?([0-9A-Fa-f]{3}([0-9A-Fa-f]{3})?)$/;
 
     private resolver!: EntityResolver;
+    private handler?: GatewayMessageHandler;
 
     public generateInterfaces(
         sendRequest: SendRequestFunction,
         resolver: EntityResolver,
+        handler: GatewayMessageHandler,
     ): GatewayInterfaceActionType[] {
         this.resolver = resolver;
+        this.handler = handler;
 
         return [
             {
@@ -95,7 +101,7 @@ export class VenueGatewayInterface implements GatewayAttachmentInterface {
     }
 
     private handleDeleteRequest(sendRequest: SendRequestFunction) {
-        return (request: Request, response: Response) => {
+        return async (request: Request, response: Response) => {
             if (!MessageUtilities.has(request.params, 'id')) {
                 response
                     .status(constants.HTTP_STATUS_BAD_REQUEST)
@@ -106,20 +112,15 @@ export class VenueGatewayInterface implements GatewayAttachmentInterface {
                 return;
             }
 
-            const outgoingMessage: DeleteVenueMessage = {
-                msg_id: MessageUtilities.generateMessageIdentifier(),
-                msg_intention: 'DELETE',
-                status: 0,
-                userID: request.uemsUser.userID,
-                id: request.params.id,
-            };
-
-            sendRequest(
-                ROUTING_KEY.venues.delete,
-                outgoingMessage,
-                response,
-                GenericHandlerFunctions.handleReadSingleResponseFactory(),
-            );
+            if (this.resolver && this.handler) {
+                await removeAndReply({
+                    assetID: request.params.id,
+                    assetType: 'venue',
+                }, this.resolver, this.handler, response);
+            } else {
+                response.status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
+                    .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
+            }
         };
     }
 

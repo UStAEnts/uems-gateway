@@ -22,7 +22,9 @@ describe('SignupGatewayInterface.ts', () => {
     beforeAll(async () => {
         // @ts-ignore
         const resolver: EntityResolver = null;
-        const entries = await new SignupGatewayInterface().generateInterfaces(send, resolver);
+        // @ts-ignore
+        const handler: GatewayMessageHandler = null;
+        const entries = await new SignupGatewayInterface().generateInterfaces(send, resolver, handler);
 
         routes = {
             'get.events.id.signups': entries
@@ -82,20 +84,20 @@ describe('SignupGatewayInterface.ts', () => {
         });
     });
 
-    describe('DELETE /events/:id/signups/:id', () => {
-        it('sends on a valid message', async () => {
-            await testValidRoute(
-                routes['delete.events.id.signups.id'],
-                undefined,
-                'body',
-                send,
-                {
-                    eventID: 'abc',
-                    id: 'abc',
-                },
-            );
-        });
-    });
+    // describe('DELETE /events/:id/signups/:id', () => {
+    //     it('sends on a valid message', async () => {
+    //         await testValidRoute(
+    //             routes['delete.events.id.signups.id'],
+    //             undefined,
+    //             'body',
+    //             send,
+    //             {
+    //                 eventID: 'abc',
+    //                 id: 'abc',
+    //             },
+    //         );
+    //     });
+    // });
 
     describe('GET /events/:id/signups/:id', () => {
         it('sends on a valid message', async () => {

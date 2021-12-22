@@ -11,7 +11,7 @@
     "manifestSrc": ["uems.local.host"]
   },
   "session": {
-    "mongoURL": "mongodb://root:example@mongo:27017/session-store?authMechanism=SCRAM-SHA-1&authSource=admin",
+    "mongoURL": "mongodb://root:example@localhost:27017/session-store?authMechanism=SCRAM-SHA-1&authSource=admin",
     "name": "ueid",
     "secure": false,
     "domain": "localhost",

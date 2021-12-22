@@ -3,6 +3,7 @@ import { GatewayMk2 } from '../../../src/Gateway';
 import { GET_TOPICS_INVALID, GET_TOPICS_VALID, PATCH_TOPICS_TOPICID_INVALID, PATCH_TOPICS_TOPICID_VALID, POST_TOPICS_INVALID, POST_TOPICS_MISSING, POST_TOPICS_VALID } from '../../test-api-data';
 import { testMissingParameters, testParameterTypes, testValidRoute } from '../../utils';
 import GatewayInterfaceActionType = GatewayMk2.GatewayInterfaceActionType;
+import { EntityResolver } from "../../../src/resolver/EntityResolver";
 
 describe('TopicGatewayInterface.ts', () => {
     const send = jest.fn();
@@ -19,7 +20,11 @@ describe('TopicGatewayInterface.ts', () => {
     });
 
     beforeAll(async () => {
-        const entries = await new TopicGatewayInterface().generateInterfaces(send);
+        // @ts-ignore
+        const resolver: EntityResolver = null;
+        // @ts-ignore
+        const handler: GatewayMessageHandler = null;
+        const entries = await new TopicGatewayInterface().generateInterfaces(send, resolver, handler);
 
         routes = {
             'get.topics': entries
@@ -84,17 +89,17 @@ describe('TopicGatewayInterface.ts', () => {
         });
     });
 
-    describe('DELETE /topics/:id', () => {
-        it('sends on a valid message', async () => {
-            await testValidRoute(
-                routes['delete.topics.id'],
-                undefined,
-                'body',
-                send,
-                { id: 'abc' },
-            );
-        });
-    });
+    // describe('DELETE /topics/:id', () => {
+    //     it('sends on a valid message', async () => {
+    //         await testValidRoute(
+    //             routes['delete.topics.id'],
+    //             undefined,
+    //             'body',
+    //             send,
+    //             { id: 'abc' },
+    //         );
+    //     });
+    // });
 
     describe('GET /topics/:id', () => {
         it('sends on a valid message', async () => {

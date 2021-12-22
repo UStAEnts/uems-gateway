@@ -26,7 +26,9 @@ describe('FileGatewayInterface.ts', () => {
     beforeAll(async () => {
         // @ts-ignore
         const resolver: EntityResolver = null;
-        const entries = await new FileGatewayInterface().generateInterfaces(send, resolver);
+        // @ts-ignore
+        const handler: GatewayMessageHandler = null;
+        const entries = await new FileGatewayInterface().generateInterfaces(send, resolver, handler);
 
         routes = {
             'get.files': entries
@@ -100,17 +102,17 @@ describe('FileGatewayInterface.ts', () => {
         });
     });
 
-    describe('DELETE /files/:id', () => {
-        it('sends on a valid message', async () => {
-            await testValidRoute(
-                routes['delete.files.id'],
-                undefined,
-                'query',
-                send,
-                { id: 'abc' },
-            );
-        });
-    });
+    // describe('DELETE /files/:id', () => {
+    //     it('sends on a valid message', async () => {
+    //         await testValidRoute(
+    //             routes['delete.files.id'],
+    //             undefined,
+    //             'query',
+    //             send,
+    //             { id: 'abc' },
+    //         );
+    //     });
+    // });
 
     describe('GET /files/:id', () => {
         it('sends on a valid message', async () => {

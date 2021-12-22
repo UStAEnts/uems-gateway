@@ -3,6 +3,7 @@ import { GatewayMk2 } from '../../../src/Gateway';
 import { GET_USER_INVALID, GET_USER_VALID, PATCH_USER_USERID_VALID, POST_USER_MISSING, POST_USER_VALID } from '../../test-api-data';
 import { testMissingParameters, testParameterTypes, testValidRoute } from '../../utils';
 import GatewayInterfaceActionType = GatewayMk2.GatewayInterfaceActionType;
+import { EntityResolver } from "../../../src/resolver/EntityResolver";
 
 describe('UserGatewayInterface.ts', () => {
     const send = jest.fn();
@@ -19,7 +20,11 @@ describe('UserGatewayInterface.ts', () => {
     });
 
     beforeAll(async () => {
-        const entries = await new UserGatewayInterface().generateInterfaces(send);
+        // @ts-ignore
+        const resolver: EntityResolver = null;
+        // @ts-ignore
+        const handler: GatewayMessageHandler = null;
+        const entries = await new UserGatewayInterface().generateInterfaces(send, resolver, handler);
 
         routes = {
             'get.user': entries
@@ -74,17 +79,17 @@ describe('UserGatewayInterface.ts', () => {
         });
     });
 
-    describe('DELETE /user/:id', () => {
-        it('sends on a valid message', async () => {
-            await testValidRoute(
-                routes['delete.user.id'],
-                undefined,
-                'query',
-                send,
-                { id: 'abc' },
-            );
-        });
-    });
+    // describe('DELETE /user/:id', () => {
+    //     it('sends on a valid message', async () => {
+    //         await testValidRoute(
+    //             routes['delete.user.id'],
+    //             undefined,
+    //             'query',
+    //             send,
+    //             { id: 'abc' },
+    //         );
+    //     });
+    // });
 
     describe('GET /user/:id', () => {
         it('sends on a valid message', async () => {
