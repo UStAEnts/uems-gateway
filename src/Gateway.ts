@@ -516,7 +516,7 @@ export namespace GatewayMk2 {
                     };
 
                     this._pendingInterceptMessageIDs[message.msg_id] = basic;
-                    this.publish(key, JSON.stringify(message));
+                    this.publish(key, message);
                 },
             };
 
