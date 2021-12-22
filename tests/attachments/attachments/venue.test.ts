@@ -22,7 +22,9 @@ describe('VenueGatewayInterface.ts', () => {
     beforeAll(async () => {
         // @ts-ignore
         const resolver: EntityResolver = null;
-        const entries = await new VenueGatewayInterface().generateInterfaces(send, resolver);
+        // @ts-ignore
+        const handler: GatewayMessageHandler = null;
+        const entries = await new VenueGatewayInterface().generateInterfaces(send, resolver, handler);
 
         routes = {
             'get.venues': entries

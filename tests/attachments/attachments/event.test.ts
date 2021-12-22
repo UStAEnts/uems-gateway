@@ -26,7 +26,9 @@ describe('EventGatewayAttachment.ts', () => {
     beforeAll(async () => {
         // @ts-ignore
         const resolver: EntityResolver = null;
-        const entries = await new EventGatewayAttachment().generateInterfaces(send, resolver);
+        // @ts-ignore
+        const handler: GatewayMessageHandler = null;
+        const entries = await new EventGatewayAttachment().generateInterfaces(send, resolver, handler);
 
         routes = {
             'get.events': entries

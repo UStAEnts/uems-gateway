@@ -26,7 +26,9 @@ describe('FileGatewayInterface.ts', () => {
     beforeAll(async () => {
         // @ts-ignore
         const resolver: EntityResolver = null;
-        const entries = await new FileGatewayInterface().generateInterfaces(send, resolver);
+        // @ts-ignore
+        const handler: GatewayMessageHandler = null;
+        const entries = await new FileGatewayInterface().generateInterfaces(send, resolver, handler);
 
         routes = {
             'get.files': entries

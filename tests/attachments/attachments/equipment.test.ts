@@ -4,6 +4,7 @@ import { GatewayMk2 } from '../../../src/Gateway';
 import { GET_EQUIPMENT_INVALID, GET_EQUIPMENT_VALID, PATCH_EQUIPMENT_EQUIPMENTID_INVALID, PATCH_EQUIPMENT_EQUIPMENTID_VALID, POST_EQUIPMENT_INVALID, POST_EQUIPMENT_MISSING, POST_EQUIPMENT_VALID } from '../../test-api-data';
 import { testMissingParameters, testParameterTypes, testValidRoute } from '../../utils';
 import GatewayInterfaceActionType = GatewayMk2.GatewayInterfaceActionType;
+import GatewayMessageHandler = GatewayMk2.GatewayMessageHandler;
 
 describe('EquipmentGatewayInterface.ts', () => {
     const send = jest.fn();
@@ -22,7 +23,9 @@ describe('EquipmentGatewayInterface.ts', () => {
     beforeAll(async () => {
         // @ts-ignore
         const resolver: EntityResolver = null;
-        const entries = await new EquipmentGatewayInterface().generateInterfaces(send, resolver);
+        // @ts-ignore
+        const handler: GatewayMessageHandler = null;
+        const entries = await new EquipmentGatewayInterface().generateInterfaces(send, resolver, handler);
 
         routes = {
             'get.equipment': entries

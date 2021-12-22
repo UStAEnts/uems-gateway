@@ -22,7 +22,9 @@ describe('SignupGatewayInterface.ts', () => {
     beforeAll(async () => {
         // @ts-ignore
         const resolver: EntityResolver = null;
-        const entries = await new SignupGatewayInterface().generateInterfaces(send, resolver);
+        // @ts-ignore
+        const handler: GatewayMessageHandler = null;
+        const entries = await new SignupGatewayInterface().generateInterfaces(send, resolver, handler);
 
         routes = {
             'get.events.id.signups': entries
