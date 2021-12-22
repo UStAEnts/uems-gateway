@@ -36,80 +36,37 @@
 //     This could easily get massive. A complete log should be persisted for record keeping but the in memory version
 //     should only contain the IDs of assets which have not completed their entire pipeline yet
 
-import { DiscoveryMessage, DiscoveryResponse, has } from '@uems/uemscommlib';
-import { EntityResolver } from "../resolver/EntityResolver";
-import { GatewayMk2 } from "../Gateway";
+import { DiscoveryMessage, DiscoveryResponse } from '@uems/uemscommlib';
+import { EntityResolver } from '../resolver/EntityResolver';
+import { GatewayMk2 } from '../Gateway';
+import { Constants } from '../utilities/Constants';
+import { MessageUtilities } from '../utilities/MessageUtilities';
+import { DiscoveryValidators } from '@uems/uemscommlib/build/discovery/DiscoveryValidators';
 import GatewayMessageHandler = GatewayMk2.GatewayMessageHandler;
-import { Constants } from "../utilities/Constants";
 import ROUTING_KEY = Constants.ROUTING_KEY;
-import { MessageUtilities } from "../utilities/MessageUtilities";
-import { DiscoveryValidators } from "@uems/uemscommlib/build/discovery/DiscoveryValidators";
 import DiscoveryResponseValidator = DiscoveryValidators.DiscoveryResponseValidator;
+import { _byFile } from "../log/Log";
+import { Response } from "express";
+import { constants } from "http2";
+import { ErrorCodes } from "../constants/ErrorCodes";
 
-type ServiceName = 'event.dionysus' | 'state.athena' | 'file.hermes' | 'venue.tartarus' | 'user.hera' |
-    'equipment.hephaestus';
-const SERVICE_NAME: ServiceName[] = [
-    'event.dionysus',
-    'state.athena',
-    'file.hermes',
-    'venue.tartarus',
-    'user.hera',
-    'equipment.hephaestus',
+const _l = _byFile(__filename);
+type Entity = 'ent' | 'state' | 'topic' | 'equipment' | 'event' | 'signup' | 'file' | 'user' | 'venue';
+const ENTITIES: Entity[] = [
+    'ent', 'state', 'topic', 'equipment', 'event', 'signup', 'file', 'user', 'venue',
 ];
 
-const DISCOVER_KEYS: Record<ServiceName, string[]> = {
-    'state.athena': [ROUTING_KEY.ent.discover, ROUTING_KEY.states.discover, ROUTING_KEY.topic.discover],
-    'equipment.hephaestus': [ROUTING_KEY.equipment.discover],
-    'event.dionysus': [ROUTING_KEY.event.discover, ROUTING_KEY.signups.discover],
-    'file.hermes': [ROUTING_KEY.file.discover, ROUTING_KEY.fileBinding.discover],
-    'user.hera': [ROUTING_KEY.user.discover],
-    'venue.tartarus': [ROUTING_KEY.venues.discover],
+const ROUTING_KEY_MAPPING: Record<Entity, { discover: string, delete: string }> = {
+    ent: ROUTING_KEY.ent,
+    equipment: ROUTING_KEY.equipment,
+    event: ROUTING_KEY.event,
+    file: ROUTING_KEY.file,
+    signup: ROUTING_KEY.signups,
+    state: ROUTING_KEY.states,
+    topic: ROUTING_KEY.topic,
+    user: ROUTING_KEY.user,
+    venue: ROUTING_KEY.venues,
 };
-
-const DELETE_KEYS: Record<ServiceName, string[]> = {
-    'state.athena': [ROUTING_KEY.ent.delete, ROUTING_KEY.states.delete, ROUTING_KEY.topic.delete],
-    'equipment.hephaestus': [ROUTING_KEY.equipment.delete],
-    'event.dionysus': [ROUTING_KEY.event.delete, ROUTING_KEY.signups.delete],
-    'file.hermes': [ROUTING_KEY.file.delete, ROUTING_KEY.fileBinding.delete],
-    'user.hera': [ROUTING_KEY.user.delete],
-    'venue.tartarus': [ROUTING_KEY.venues.delete],
-};
-
-/**
- * Records properties of a pipeline that has not yet executed. This is just the status as there is no additional data
- * to be stored with the status
- */
-type PendingPipeline = {
-    status: 'pending',
-};
-
-/**
- * Records the properties of a pipeline that has failed. This status contains the time and errors of every failure to
- * execute as well as the time at which the next retry should happen.
- */
-type FailedPipeline = {
-    status: 'failed',
-    errors: {
-        time: number,
-        error: string,
-    }[],
-    nextRetry: number,
-};
-
-/**
- * Records the properties of a pipeline that has succeeded, holds when it succeeded and how many attempts it took to be
- * successful for error reporting
- */
-type SuccessfulPipeline = {
-    status: 'success',
-    completed: number,
-    attempts: number,
-};
-
-/**
- * Composite type for {@link PendingPipeline}, {@link FailedPipeline} and {@link SuccessfulPipeline}..
- */
-type PipelineStatus = PendingPipeline | FailedPipeline | SuccessfulPipeline;
 
 /**
  * Contains the pipelines which are currently being executed or are waiting to be executed. Any records in this should
@@ -124,184 +81,308 @@ type EntityIdentifier = {
     assetID: DiscoveryMessage.DeleteMessage['assetID'],
 };
 
-/**
- * Represents a pipeline which interacts with multiple services tracking the asset information and the state of the
- * pipelines executing against each service
- */
-type DeletePipeline = {
+enum DeleteState {
     /**
-     * The entity which should be deleted from across all services
+     * Waiting for the pipeline to be started. Indicates that the pipeline has been created but no messages have yet
+     * been sent
      */
-    entity: EntityIdentifier,
+    AWAIT_START,
     /**
-     * Contains whether this pipeline has been started yet
+     * Messages have been sent to the external services and are waiting for a reply from the microservices.
      */
-    started: boolean,
+    AWAIT_REPLY,
     /**
-     * The response of discovery finding where this record is present on other services.
+     * The results have been received from the microservices and are waiting to be processed to determine the next step.
      */
-    discovery: {
-        /**
-         * The responses of each service
-         */
-        responses: Record<ServiceName, DiscoveryResponse.DiscoverResponse | null>,
-        /**
-         * When the process was started to allow for timing out of delete requests
-         */
-        started: number,
-        /**
-         * When the discovery phase ended
-         */
-        ended?: number,
-    },
+    PROCESSING,
     /**
-     * The computed set of services which contain any references to this entity from the discovery phase. These are
-     * the only services which will receive full delete messages
+     * Delete messages have been sent to the services but have not received confirmation from them all yet that the
+     * action was successful.
      */
-    relevantServices: ServiceName[],
+    AWAIT_CONFIRM,
     /**
-     * The actions actually being executed on remote services, these should either be in the pending, running or failed
-     * states.
+     * Waiting to process all the delete reply messages
      */
-    actions: Record<ServiceName, PipelineStatus>,
+    DELETE_PROCESSING,
     /**
-     * The resolver instance associated with this delete request
+     * Pipeline has concluded with all steps occurring successfully.
      */
-    resolver: EntityResolver,
-};
+    SUCCESSFUL,
+    /**
+     * The process has failed at some point during the process.
+     */
+    FAILED,
+}
 
-export class DeletePipelineManager {
+export class DeleteAction {
+    private _identifier: number;
 
-    private _activePipelines: DeletePipeline[] = [];
+    private _entity: EntityIdentifier;
 
-    private _deleteLogDescriptor: number | undefined;
+    private _state: DeleteState;
+
+    private _startTime: number | null = null;
+
+    private _discoveryResponses: Partial<Record<Entity, DiscoveryResponse.DiscoverResponse>> = {};
+
+    private _deleteResponses: Partial<Record<Entity, DiscoveryResponse.DeleteResponse>> = {};
+
+    private _resolver: EntityResolver;
+
+    private _targets?: Entity[];
 
     private _handler: GatewayMessageHandler;
 
-    constructor(handler: GatewayMk2.GatewayMessageHandler) {
+    private _onSuccess?: () => void;
+
+    private _onFailure?: (success: Entity[], fail: Entity[], error?: Error) => void;
+
+    private _onDependents?: () => void;
+
+    constructor(entity: EntityIdentifier, resolver: EntityResolver, handler: GatewayMessageHandler) {
+        this._entity = entity;
+        this._resolver = resolver;
         this._handler = handler;
+        this._identifier = Math.floor(10000 * Math.random());
+        this._state = DeleteState.AWAIT_START;
+
+        _l.debug('Request to delete entity', { entity });
     }
 
-    private handleDeleteReply(pipeline: DeletePipeline, service: ServiceName) {
-        if (pipeline.actions[service].status === 'pending') {
-            pipeline.actions[service] = {
-                status: ''
-            }
+    private fail(error: string): void;
+    private fail(error: string, success: Entity[], failure: Entity[]): void;
+    private fail(error: string, success?: Entity[], failure?: Entity[]): void {
+        _l.debug('Request to delete entity has failed', {
+            entity: this._entity,
+            reason: error,
+        });
+
+        this._state = DeleteState.FAILED;
+        if (this._onFailure) {
+            this._onFailure(success ?? [], failure ?? ENTITIES, new Error(error));
+        } else {
+            throw new Error(`Error: ${error} (success: ${success ?? []} | fail: ${failure ?? ENTITIES})`);
         }
     }
 
-    private finishDiscovery(pipeline: DeletePipeline) {
-        const failed = Object.entries(pipeline.discovery.responses)
-            .filter((e) => e[1] === null);
-        if (failed.length > 0) throw new Error('one pipeline has failed');
-
-        // Check if there are any that reject this deletion
-        const restrict = Object.entries(pipeline.discovery.responses)
-            .filter((a) => a[1] != null && a[1].restrict > 0).length;
-        if (restrict > 0) throw new Error('cannot delete');
-
-        // Figure out which pipelines need handled
-        const targetedServices = Object.entries(pipeline.discovery.responses)
-            .filter((a) => a[1] != null && a[1].modify > 0)
-            .map((e) => e[0]) as ServiceName[];
-
-        // Mark them all as pending and then we need to send the messages
-        pipeline.relevantServices = targetedServices;
-        for (const service of targetedServices) {
-            pipeline.actions[service] = {
-                status: 'pending',
-            };
+    public execute() {
+        if (this._state !== DeleteState.AWAIT_START) {
+            this.fail('Delete pipeline cannot be executed when it is already started');
+            return;
         }
+        _l.debug('Delete has begun', { entity: this._entity });
 
-        const message: DiscoveryMessage.DeleteMessage = {
-            assetType: pipeline.entity.assetType,
-            assetID: pipeline.entity.assetID,
+        // For each service we want to transmit a new message
+        const validate = new DiscoveryResponseValidator();
+        const validator = validate.validate.bind(validate);
+
+        const make: (() => DiscoveryMessage.DiscoverMessage) = () => ({
+            assetType: this._entity.assetType,
+            assetID: this._entity.assetID,
             status: 0,
             userID: 'anonymous',
-            msg_id: MessageUtilities.generateMessageIdentifier(),
             msg_intention: 'READ',
-            execute: true,
-        };
+            msg_id: MessageUtilities.generateMessageIdentifier(),
+        });
 
-        const makeMessage = (service: ServiceName) => {
-            const id = MessageUtilities.generateMessageIdentifier();
-            const handler = this.handleDeleteReply(pipeline, service);
-            this._handler.interceptResponseCallback(id, handler, () => handler(null));
-            return {
-                ...message,
-                msg_id: id,
-            };
-        };
+        this._state = DeleteState.AWAIT_REPLY;
+        ENTITIES.forEach((entity) => {
+            this._handler.buildSend(ROUTING_KEY_MAPPING[entity].discover, make())
+                .name(`discover.${entity}`)
+                .timeout(4000)
+                .onTimeout(() => this.handleTimeout(entity)) // TODO: add timeout handling
+                .reply((r) => this.handleDiscoverReply(entity, r))
+                .fail(() => this.handleFailure(entity)) // TODO: add failure handling
+                .validate(validator)
+                .submit();
+        });
+    }
 
-        // Transmit the delete messages
-        for (const service of targetedServices) {
-            DELETE_KEYS[service].forEach((s) => this._handler.publish(s, makeMessage(service)));
+    private handleDiscoverReply(entity: Entity, response: DiscoveryResponse.DiscoverResponse) {
+        if (this._state !== DeleteState.AWAIT_REPLY) return;
+        _l.debug(`Discover received from ${entity}`, {
+            entity: this._entity,
+            response,
+        });
+
+        this._discoveryResponses[entity] = response;
+
+        // If every key as a reply response now we can move into processing
+        if (ENTITIES.every((service) => this._discoveryResponses[service] !== undefined)) {
+            this._state = DeleteState.PROCESSING;
+            this.process();
         }
     }
 
-    private handleDiscoveryReply(pipeline: DeletePipeline, service: ServiceName) {
-        return async (entity: any | null) => {
-            const validation = await new DiscoveryResponseValidator().validate(entity);
-            if (!validation) {
-                if (!has(pipeline.discovery.responses, service)) pipeline.discovery.responses[service] = null;
+    private process() {
+        if (this._state !== DeleteState.PROCESSING) return;
+
+        const restrict = Object.values(this._discoveryResponses)
+            .filter((e) => e && e.restrict > 0).length;
+        this._targets = Object.entries(this._discoveryResponses)
+            .filter((e) => e[1] && e[1].modify > 0)
+            .map((e) => e[0]) as Entity[];
+
+        _l.debug('Processing', {
+            entity: this._entity,
+            restrict,
+            target: this._targets,
+        });
+
+        if (restrict > 0) {
+            const restricted = Object.entries(this._discoveryResponses)
+                .filter((e) => (e[1]?.restrict ?? 0) > 0)
+                .map((e) => e[0]);
+            if (this._onDependents) {
+                this._onDependents();
             } else {
-                pipeline.discovery.responses[service] = entity;
+                this.fail(`Cannot delete this entity because services are depending on it: ${restricted}`);
             }
+            return;
+        }
 
-            if (Object.keys(pipeline.discovery.responses).length === SERVICE_NAME.length) {
-                // All response have been received, move on to next stage
-                this.finishDiscovery(pipeline);
-            }
-        };
-    }
-
-    protected executeDiscovery(pipeline: DeletePipeline) {
-        pipeline.started = true;
-
-        const message: DiscoveryMessage.DiscoverMessage = {
-            assetType: pipeline.entity.assetType,
-            assetID: pipeline.entity.assetID,
+        const make = (): DiscoveryMessage.DeleteMessage => ({
+            assetType: this._entity.assetType,
+            assetID: this._entity.assetID,
             status: 0,
             userID: 'anonymous',
-            msg_id: MessageUtilities.generateMessageIdentifier(),
             msg_intention: 'READ',
-        };
+            msg_id: MessageUtilities.generateMessageIdentifier(),
+            execute: true,
+        });
 
-        const makeMessage = (service: ServiceName) => {
-            const id = MessageUtilities.generateMessageIdentifier();
-            const handler = this.handleDiscoveryReply(pipeline, service);
-            this._handler.interceptResponseCallback(id, handler, () => handler(null));
-            return {
-                ...message,
-                msg_id: id,
-            };
-        };
+        const validator = new DiscoveryResponseValidator();
+        const validateFunction = validator.validate.bind(validator);
 
-        const validator = new DiscoveryResponseValidator().validate;
+        this._state = DeleteState.AWAIT_CONFIRM;
+        this._targets.forEach((entity) => {
+            this._handler.buildSend(ROUTING_KEY_MAPPING[entity].delete, make())
+                .name(`delete.${entity}`)
+                .timeout(4000)
+                .onTimeout(() => this.handleTimeout(entity)) // TODO: add timeout handling
+                .reply((r) => this.handleDeleteReply(entity, r))
+                .fail(() => this.handleFailure(entity)) // TODO: add failure handling
+                .validate(validateFunction)
+                .submit();
+        });
+    }
 
-        this._handler.buildSend(ROUTING_KEY.ent.discover, makeMessage('state.athena'))
-            .name('discover-ents')
-            .timeout(4000)
-            .onTimeout(() => undefined) // TODO: add timeout handling
-            .reply(this.handleDiscoveryReply(pipeline, 'state.athena'))
-            .fail(() => undefined) // TODO: add failure handling
-            .validate(validator)
-            .submit();
+    private handleDeleteReply(entity: Entity, response: DiscoveryResponse.DeleteResponse) {
+        if (this._state !== DeleteState.AWAIT_CONFIRM) return;
+        if (!this._targets) {
+            this.fail('Targets is somehow undefined when trying to await confirmations');
+            return;
+        }
 
-        this._handler.publish(ROUTING_KEY.ent.discover, makeMessage('state.athena'));
-        this._handler.publish(ROUTING_KEY.equipment.discover, makeMessage('equipment.hephaestus'));
-        this._handler.publish(ROUTING_KEY.event.discover, makeMessage('event.dionysus'));
-        this._handler.publish(ROUTING_KEY.file.discover, makeMessage('file.hermes'));
-        this._handler.publish(ROUTING_KEY.fileBinding.discover, makeMessage('file.hermes'));
-        this._handler.publish(ROUTING_KEY.signups.discover, makeMessage('event.dionysus'));
-        this._handler.publish(ROUTING_KEY.states.discover, makeMessage('state.athena'));
-        this._handler.publish(ROUTING_KEY.topic.discover, makeMessage('state.athena'));
-        this._handler.publish(ROUTING_KEY.user.discover, makeMessage('user.hera'));
-        this._handler.publish(ROUTING_KEY.venues.discover, makeMessage('venue.tartarus'));
+        _l.debug(`Delete response received from ${entity}`, {
+            entity: this._entity,
+            response,
+        });
+
+        this._deleteResponses[entity] = response;
+
+        // If every key as a reply response now we can move into processing
+        if (this._targets.every((service) => this._deleteResponses[service] !== undefined)) {
+            this._state = DeleteState.DELETE_PROCESSING;
+            this.conclude();
+        }
+    }
+
+    private conclude() {
+        if (this._state !== DeleteState.DELETE_PROCESSING) return;
+        if (this._targets === undefined) {
+            this.fail('targets undefined in delete_processing state');
+            return;
+        }
+
+        const successful = Object.values(this._deleteResponses)
+            .filter((e) => e && e.successful).length;
+
+        _l.debug('Concluded', {
+            entity: this._entity,
+            successful,
+        });
+
+        if (successful !== this._targets.length) {
+            const failed = Object.values(this._deleteResponses)
+                .filter((e) => e && !e.successful);
+            this.fail(`Some targets were not successful: ${failed}`);
+            return;
+        }
+
+        this._state = DeleteState.SUCCESSFUL;
+        if (this._onSuccess) this._onSuccess();
+    }
+
+    private handleFailure(service: Entity) {
+        this.fail(`Failure received: ${service}`, [], [service]);
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars,class-methods-use-this
+    private handleTimeout(service: Entity) {
+        _l.debug('Timeout for service received', {
+            entity: this._entity,
+            service,
+        });
+        // TODO: timeout?
+    }
+
+    set onDependents(value: () => void) {
+        this._onDependents = value;
+    }
+
+    set onSuccess(value: () => void) {
+        this._onSuccess = value;
+    }
+
+    set onFailure(value: (success: Entity[], fail: Entity[], error?: Error) => void) {
+        this._onFailure = value;
     }
 }
 
-function executeDiscovery(pipeline: DeletePipeline) {
-    pipeline.started = true;
+export function removeEntity(entity: EntityIdentifier, resolver: EntityResolver, handler: GatewayMessageHandler) {
+    return new Promise((res, rej) => {
+        const action = new DeleteAction(entity, resolver, handler);
+        action.onFailure = rej;
+        action.onSuccess = res;
+        action.execute();
+    });
+}
 
+export function removeAndReply(
+    entity: EntityIdentifier,
+    resolver: EntityResolver,
+    handler: GatewayMessageHandler,
+    response: Response,
+) {
+    return new Promise<boolean>((resolve, reject) => {
+
+        const pipeline = new DeleteAction(entity, resolver, handler);
+
+        pipeline.onSuccess = () => {
+            response.status(constants.HTTP_STATUS_OK)
+                .json(MessageUtilities.wrapInSuccess(entity.assetID));
+            resolve(true);
+        };
+
+        pipeline.onDependents = () => {
+            response.status(constants.HTTP_STATUS_CONFLICT)
+                .json(MessageUtilities.wrapInFailure(ErrorCodes.DEPENDENTS));
+            resolve(false);
+        };
+
+        pipeline.onFailure = (success, fail, error) => {
+            response
+                .status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
+                .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
+            _l.error('Failed to delete due to an error', {
+                success,
+                fail,
+                error,
+            });
+            reject(error);
+        };
+
+        pipeline.execute();
+    });
 }
