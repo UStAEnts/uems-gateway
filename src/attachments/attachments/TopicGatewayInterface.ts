@@ -2,21 +2,20 @@ import { GatewayMk2 } from '../../Gateway';
 import { Request, Response } from 'express';
 import { MessageUtilities } from '../../utilities/MessageUtilities';
 import { constants } from 'http2';
-import { MsgStatus, TopicMessage, TopicResponse, TopicResponseValidator } from '@uems/uemscommlib';
-import { GenericHandlerFunctions } from "../GenericHandlerFunctions";
-import { Constants } from "../../utilities/Constants";
+import { TopicMessage, TopicResponseValidator } from '@uems/uemscommlib';
+import { GenericHandlerFunctions } from '../GenericHandlerFunctions';
+import { Constants } from '../../utilities/Constants';
+import { EntityResolver } from '../../resolver/EntityResolver';
+import { removeAndReply } from '../DeletePipelines';
+import { ErrorCodes } from '../../constants/ErrorCodes';
 import GatewayAttachmentInterface = GatewayMk2.GatewayAttachmentInterface;
 import SendRequestFunction = GatewayMk2.SendRequestFunction;
-import TopicReadSchema = TopicMessage.ReadTopicMessage;
 import ReadTopicMessage = TopicMessage.ReadTopicMessage;
+import TopicReadSchema = TopicMessage.ReadTopicMessage;
 import CreateTopicMessage = TopicMessage.CreateTopicMessage;
-import DeleteTopicMessage = TopicMessage.DeleteTopicMessage;
 import UpdateTopicMessage = TopicMessage.UpdateTopicMessage;
 import ROUTING_KEY = Constants.ROUTING_KEY;
-import { EntityResolver } from "../../resolver/EntityResolver";
 import GatewayMessageHandler = GatewayMk2.GatewayMessageHandler;
-import { removeAndReply, removeEntity } from "../DeletePipelines";
-import { ErrorCodes } from "../../constants/ErrorCodes";
 
 export class TopicGatewayInterface implements GatewayAttachmentInterface {
 
@@ -26,8 +25,8 @@ export class TopicGatewayInterface implements GatewayAttachmentInterface {
 
     generateInterfaces(
         send: GatewayMk2.SendRequestFunction,
-    resolver: EntityResolver,
-    handler: GatewayMessageHandler,
+        resolver: EntityResolver,
+        handler: GatewayMessageHandler,
     ): GatewayMk2.GatewayInterfaceActionType[] | Promise<GatewayMk2.GatewayInterfaceActionType[]> {
         const validator = new TopicResponseValidator();
         this.resolver = resolver;
@@ -198,7 +197,6 @@ export class TopicGatewayInterface implements GatewayAttachmentInterface {
                     }));
                 return;
             }
-
 
             if (this.resolver && this.handler) {
                 await removeAndReply({

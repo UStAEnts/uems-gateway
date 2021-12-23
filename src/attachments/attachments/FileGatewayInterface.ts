@@ -7,22 +7,21 @@ import { GenericHandlerFunctions } from '../GenericHandlerFunctions';
 import { ErrorCodes } from '../../constants/ErrorCodes';
 import { EntityResolver } from '../../resolver/EntityResolver';
 import { Resolver } from '../Resolvers';
+import { Constants } from '../../utilities/Constants';
+import { removeAndReply } from '../DeletePipelines';
 import GatewayAttachmentInterface = GatewayMk2.GatewayAttachmentInterface;
 import SendRequestFunction = GatewayMk2.SendRequestFunction;
 import FileReadSchema = FileMessage.ReadFileMessage;
 import ReadFileMessage = FileMessage.ReadFileMessage;
 import CreateFileMessage = FileMessage.CreateFileMessage;
-import DeleteFileMessage = FileMessage.DeleteFileMessage;
 import UpdateFileMessage = FileMessage.UpdateFileMessage;
 import QueryByEventMessage = FileBindingMessage.QueryByEventMessage;
 import QueryByFileMessage = FileBindingMessage.QueryByFileMessage;
 import BindFilesToEventMessage = FileBindingMessage.BindFilesToEventMessage;
 import UnbindFilesFromEventMessage = FileBindingMessage.UnbindFilesFromEventMessage;
 import FileResponseMessage = FileResponse.FileResponseMessage;
-import { Constants } from "../../utilities/Constants";
 import ROUTING_KEY = Constants.ROUTING_KEY;
 import GatewayMessageHandler = GatewayMk2.GatewayMessageHandler;
-import { removeAndReply, removeEntity } from "../DeletePipelines";
 
 export class FileGatewayInterface implements GatewayAttachmentInterface {
 
@@ -259,7 +258,6 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
                     }));
                 return;
             }
-
 
             if (this._resolver && this.handler) {
                 await removeAndReply({

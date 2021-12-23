@@ -2,22 +2,21 @@ import { GatewayMk2 } from '../../Gateway';
 import { Request, Response } from 'express';
 import { MessageUtilities } from '../../utilities/MessageUtilities';
 import { constants } from 'http2';
-import { MsgStatus, SignupMessage, SignupResponseValidator } from '@uems/uemscommlib';
+import { SignupMessage, SignupResponseValidator } from '@uems/uemscommlib';
 import { GenericHandlerFunctions } from '../GenericHandlerFunctions';
 import { EntityResolver } from '../../resolver/EntityResolver';
 import { Resolver } from '../Resolvers';
+import { Constants } from '../../utilities/Constants';
+import { removeAndReply } from '../DeletePipelines';
+import { ErrorCodes } from '../../constants/ErrorCodes';
 import GatewayAttachmentInterface = GatewayMk2.GatewayAttachmentInterface;
 import SendRequestFunction = GatewayMk2.SendRequestFunction;
 import ReadSignupMessage = SignupMessage.ReadSignupMessage;
 import SignupReadSchema = SignupMessage.ReadSignupMessage;
 import CreateSignupMessage = SignupMessage.CreateSignupMessage;
-import DeleteSignupMessage = SignupMessage.DeleteSignupMessage;
 import UpdateSignupMessage = SignupMessage.UpdateSignupMessage;
-import { Constants } from "../../utilities/Constants";
 import ROUTING_KEY = Constants.ROUTING_KEY;
 import GatewayMessageHandler = GatewayMk2.GatewayMessageHandler;
-import { removeAndReply, removeEntity } from "../DeletePipelines";
-import { ErrorCodes } from "../../constants/ErrorCodes";
 
 export class SignupGatewayInterface implements GatewayAttachmentInterface {
 
@@ -253,7 +252,6 @@ export class SignupGatewayInterface implements GatewayAttachmentInterface {
                     }));
                 return;
             }
-
 
             if (this._resolver && this.handler) {
                 await removeAndReply({

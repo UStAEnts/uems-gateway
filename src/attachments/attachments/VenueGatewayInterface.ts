@@ -2,22 +2,21 @@ import { Request, Response } from 'express';
 import { GatewayMk2 } from '../../Gateway';
 import { MessageUtilities } from '../../utilities/MessageUtilities';
 import { constants } from 'http2';
-import { MsgStatus, VenueMessage, VenueResponse, VenueResponseValidator } from '@uems/uemscommlib';
+import { VenueMessage, VenueResponseValidator } from '@uems/uemscommlib';
 import { EntityResolver } from '../../resolver/EntityResolver';
 import { GenericHandlerFunctions } from '../GenericHandlerFunctions';
-import { Resolver } from "../Resolvers";
+import { Resolver } from '../Resolvers';
+import { Constants } from '../../utilities/Constants';
+import { removeAndReply } from '../DeletePipelines';
+import { ErrorCodes } from '../../constants/ErrorCodes';
 import SendRequestFunction = GatewayMk2.SendRequestFunction;
 import GatewayAttachmentInterface = GatewayMk2.GatewayAttachmentInterface;
 import GatewayInterfaceActionType = GatewayMk2.GatewayInterfaceActionType;
 import ReadVenueMessage = VenueMessage.ReadVenueMessage;
-import DeleteVenueMessage = VenueMessage.DeleteVenueMessage;
 import CreateVenueMessage = VenueMessage.CreateVenueMessage;
 import UpdateVenueMessage = VenueMessage.UpdateVenueMessage;
-import { Constants } from "../../utilities/Constants";
 import ROUTING_KEY = Constants.ROUTING_KEY;
 import GatewayMessageHandler = GatewayMk2.GatewayMessageHandler;
-import { DeleteAction, removeAndReply, removeEntity } from "../DeletePipelines";
-import { ErrorCodes } from "../../constants/ErrorCodes";
 
 export class VenueGatewayInterface implements GatewayAttachmentInterface {
 

@@ -2,20 +2,19 @@ import { GatewayMk2 } from '../../Gateway';
 import { Request, Response } from 'express';
 import { MessageUtilities } from '../../utilities/MessageUtilities';
 import { constants } from 'http2';
-import { MsgStatus, UserMessage, UserResponseValidator } from '@uems/uemscommlib';
+import { UserMessage, UserResponseValidator } from '@uems/uemscommlib';
 import { GenericHandlerFunctions } from '../GenericHandlerFunctions';
+import { Constants } from '../../utilities/Constants';
+import { EntityResolver } from '../../resolver/EntityResolver';
+import { removeAndReply } from '../DeletePipelines';
+import { ErrorCodes } from '../../constants/ErrorCodes';
 import GatewayAttachmentInterface = GatewayMk2.GatewayAttachmentInterface;
 import SendRequestFunction = GatewayMk2.SendRequestFunction;
 import ReadUserMessage = UserMessage.ReadUserMessage;
 import CreateUserMessage = UserMessage.CreateUserMessage;
-import DeleteUserMessage = UserMessage.DeleteUserMessage;
 import UpdateUserMessage = UserMessage.UpdateUserMessage;
-import { Constants } from "../../utilities/Constants";
 import ROUTING_KEY = Constants.ROUTING_KEY;
-import { EntityResolver } from "../../resolver/EntityResolver";
 import GatewayMessageHandler = GatewayMk2.GatewayMessageHandler;
-import { removeAndReply, removeEntity } from "../DeletePipelines";
-import { ErrorCodes } from "../../constants/ErrorCodes";
 
 export class UserGatewayInterface implements GatewayAttachmentInterface {
 
@@ -203,7 +202,6 @@ export class UserGatewayInterface implements GatewayAttachmentInterface {
                     }));
                 return;
             }
-
 
             if (this.resolver && this.handler) {
                 await removeAndReply({

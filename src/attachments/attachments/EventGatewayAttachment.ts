@@ -1,26 +1,25 @@
 import { Request, Response } from 'express';
-import { CommentMessage, CommentResponse, EventMessage, EventResponse, EventResponseValidator, MsgStatus, VenueResponse } from '@uems/uemscommlib';
+import { CommentMessage, EventMessage, EventResponse, EventResponseValidator } from '@uems/uemscommlib';
 import { MessageUtilities } from '../../utilities/MessageUtilities';
 import { GatewayMk2 } from '../../Gateway';
 import { EntityResolver } from '../../resolver/EntityResolver';
 import { constants } from 'http2';
 import { GenericHandlerFunctions } from '../GenericHandlerFunctions';
-import { Resolver } from "../Resolvers";
+import { Resolver } from '../Resolvers';
+import { Constants } from '../../utilities/Constants';
+import { removeAndReply } from '../DeletePipelines';
+import { ErrorCodes } from '../../constants/ErrorCodes';
 import GatewayAttachmentInterface = GatewayMk2.GatewayAttachmentInterface;
 import SendRequestFunction = GatewayMk2.SendRequestFunction;
 import GatewayInterfaceActionType = GatewayMk2.GatewayInterfaceActionType;
-import DeleteEventMessage = EventMessage.DeleteEventMessage;
 import UpdateEventMessage = EventMessage.UpdateEventMessage;
 import ReadEventMessage = EventMessage.ReadEventMessage;
 import CreateEventMessage = EventMessage.CreateEventMessage;
 import ShallowInternalEvent = EventResponse.ShallowInternalEvent;
 import ReadCommentMessage = CommentMessage.ReadCommentMessage;
 import CreateCommentMessage = CommentMessage.CreateCommentMessage;
-import { Constants } from "../../utilities/Constants";
 import ROUTING_KEY = Constants.ROUTING_KEY;
 import GatewayMessageHandler = GatewayMk2.GatewayMessageHandler;
-import { removeAndReply, removeEntity } from "../DeletePipelines";
-import { ErrorCodes } from "../../constants/ErrorCodes";
 
 export class EventGatewayAttachment implements GatewayAttachmentInterface {
     // TODO: bit dangerous using ! - maybe add null checks?
