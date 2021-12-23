@@ -66,7 +66,7 @@ export namespace GatewayMk2 {
         path: string,
         handle: RequestHandler,
         additionalValidator?: MessageValidator,
-        secure?: boolean,
+        secure?: string[],
     };
 
     export class GatewayMessageHandler {

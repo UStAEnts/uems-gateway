@@ -10,7 +10,7 @@ export class SystemGatewayInterface implements GatewayAttachmentInterface {
                 action: 'get',
                 path: '/whoami',
                 handle: SystemGatewayInterface.me(),
-                secure: true,
+                secure: [],
             },
         ];
     }

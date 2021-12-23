@@ -202,13 +202,13 @@ export class ExpressApplication {
 
         for (const attachment of resolvedAttachments) {
             attachment.forEach((value) => {
-                const secure = value.secure ?? true;
+                const secure = value.secure ?? [];
                 const handle = (req: Request, res: Response) => value.handle(req, res, () => false);
 
                 if (secure) {
                     this._apiRouter[value.action].bind(this._apiRouter)(
                         value.path,
-                        this._protector(),
+                        this._protector(orProtect(...secure)),
                         (req, res) => {
                             if (req.uemsUser === undefined) {
                                 res.sendStatus(constants.HTTP_STATUS_UNAUTHORIZED);
