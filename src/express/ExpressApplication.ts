@@ -10,13 +10,13 @@ import { join } from 'path';
 import { __ } from "../log/Log";
 import { UserMessage } from "@uems/uemscommlib";
 import { MessageUtilities } from "../utilities/MessageUtilities";
-import KeycloakConnect, { Keycloak } from "keycloak-connect";
 import { constants } from "http2";
 import { tryApplyTrait } from "@uems/micro-builder/build/src";
 import GatewayAttachmentInterface = GatewayMk2.GatewayAttachmentInterface;
 import SendRequestFunction = GatewayMk2.SendRequestFunction;
 import AssertUserMessage = UserMessage.AssertUserMessage;
 import GatewayMessageHandler = GatewayMk2.GatewayMessageHandler;
+import { auth, requiresAuth } from "express-openid-connect";
 
 const MongoStore = connectMongo(session);
 
@@ -50,20 +50,11 @@ export const ExpressConfiguration = z.object({
         }),
     }),
     keycloak: z.object({
-        'confidential-port': z.string()
-            .or(z.number()),
-        'auth-server-url': z.string(),
-        resource: z.string(),
-        'ssl-required': z.string(),
-        'bearer-only': z.boolean()
-            .optional(),
-        realm: z.string(),
-        credentials: z.object({
-            secret: z.string(),
-        })
-            .optional(),
-        'public-client': z.boolean()
-            .optional(),
+        baseURL: z.string(),
+        issuerURL: z.string(),
+        clientID: z.string(),
+        secret: z.string(),
+        idpLogout: z.boolean().optional(),
     })
         .nonstrict(),
 });
@@ -71,7 +62,7 @@ export const ExpressConfiguration = z.object({
 export type ExpressConfigurationType = z.infer<typeof ExpressConfiguration>;
 
 export class ExpressApplication {
-    private static readonly DISABLE_PROTECTIONS = true;
+    private static readonly DISABLE_PROTECTIONS = false;
 
     private _app: Application;
 
@@ -79,7 +70,7 @@ export class ExpressApplication {
 
     private _apiRouter: Router;
 
-    private _keycloak: Keycloak;
+    // private _keycloak: Keycloak;
 
     private _protector: () => RequestHandler;
 
@@ -127,13 +118,25 @@ export class ExpressApplication {
             ttl: configuration.session.sessionTimeToLive,
         });
 
-        this._keycloak = new KeycloakConnect({
-            store,
-        }, configuration.keycloak);
+        this._app.use(auth({
+            ...configuration.keycloak,
+            // issuerBaseURL: 'https://lemur-3.cloud-iam.com/auth/realms/uems-dev',
+            // baseURL: 'http://localhost:15450',
+            // clientID: 'uems-debug',
+            // idpLogout: true,
+            session: {
+                store,
+            },
+            authRequired: false,
+        }));
 
+        // this._keycloak = new KeycloakConnect({
+        //     store,
+        // }, configuration.keycloak);
+        //
         this._protector = ExpressApplication.DISABLE_PROTECTIONS
             ? () => ((req, res, next) => next())
-            : this._keycloak.protect;
+            : requiresAuth;
 
         // Configure sessions for users that need to be backed by the database using connect-mongo.
         this._app.use(session({
@@ -151,7 +154,7 @@ export class ExpressApplication {
         }));
 
         // Then register the Auth0 Authentication manager using all the config options
-        this._app.use(this._keycloak.middleware());
+        // this._app.use(this._keycloak.middleware());
         // this._app.use(auth({
         //     ...configuration.auth0,
         // }));
@@ -192,15 +195,28 @@ export class ExpressApplication {
             });
         }
         this._app.use(this._protector(), (req, res, next) => {
-            if (req.kauth && req.kauth.grant && req.kauth.grant.id_token && req.kauth.grant.id_token.content) {
+            // console.log(util.inspect(req.oidc.user, true, null, true));
+            // console.log(util.inspect(req.oidc.idTokenClaims, true, null, true));
+            // @ts-ignore
+            // console.log(req.oidc.user.sub);
+            if (req.oidc.user) {
                 req.uemsUser = {
-                    userID: req.kauth.grant.id_token.content.sub,
-                    username: req.kauth.grant.id_token.content.preferred_username,
-                    email: req.kauth.grant.id_token.content.email,
-                    fullName: req.kauth.grant.id_token.content.name,
-                    profile: req.kauth.grant.id_token.content.picture ?? 'https://placehold.it/200x200',
+                    userID: req.oidc.user.sub,
+                    username: req.oidc.user.preferred_username,
+                    email: req.oidc.user.email,
+                    fullName: req.oidc.user.name,
+                    profile: req.oidc.user.picture ?? 'https://placehold.it/200x200',
                 };
             }
+            // if (req.kauth && req.kauth.grant && req.kauth.grant.id_token && req.kauth.grant.id_token.content) {
+            //     req.uemsUser = {
+            //         userID: req.kauth.grant.id_token.content.sub,
+            //         username: req.kauth.grant.id_token.content.preferred_username,
+            //         email: req.kauth.grant.id_token.content.email,
+            //         fullName: req.kauth.grant.id_token.content.name,
+            //         profile: req.kauth.grant.id_token.content.picture ?? 'https://placehold.it/200x200',
+            //     };
+            // }
             next();
         });
 

@@ -21,15 +21,10 @@
     }
   },
   "keycloak": {
-  "realm": "uems-dev",
-  "auth-server-url": "https://lemur-2.cloud-iam.com/auth/",
-  "ssl-required": "external",
-  "resource": "uems-dev",
-  "verify-token-audience": true,
-  "credentials": {
-    "secret": "afabe70b-b1bf-4b6d-8408-c32bda7d2c54"
-  },
-  "confidential-port": 0,
-  "policy-enforcer": {}
+    "baseURL": "http://localhost:15450",
+    "issuerURL":  "https://lemur-3.cloud-iam.com/auth/realms/uems-dev",
+    "clientID": "uems-debug",
+    "secret": "xxxxxxxxxxxxxxxxxx",
+    "idpLogout": true
 }
 }
