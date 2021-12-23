@@ -51,7 +51,7 @@ export const ExpressConfiguration = z.object({
     }),
     keycloak: z.object({
         baseURL: z.string(),
-        issuerURL: z.string(),
+        issuerBaseURL: z.string(),
         clientID: z.string(),
         secret: z.string(),
         idpLogout: z.boolean().optional(),
