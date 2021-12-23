@@ -26,6 +26,8 @@ const GATEWAY_EXCHANGE: string = 'gateway';
 // The exchange used for fanning / distributing requests out to the microservices.
 const REQUEST_EXCHANGE: string = 'request';
 
+type SecureRoles = 'admin' | 'extended' | 'ops' | 'ents';
+
 type OutStandingReq = {
     unique_id: Number,
     response: Response,
@@ -66,7 +68,7 @@ export namespace GatewayMk2 {
         path: string,
         handle: RequestHandler,
         additionalValidator?: MessageValidator,
-        secure?: string[] | false,
+        secure?: SecureRoles[] | false,
     };
 
     export class GatewayMessageHandler {
