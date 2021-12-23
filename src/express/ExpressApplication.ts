@@ -70,8 +70,6 @@ export class ExpressApplication {
 
     private _apiRouter: Router;
 
-    // private _keycloak: Keycloak;
-
     private _protector: () => RequestHandler;
 
     /**
@@ -120,20 +118,12 @@ export class ExpressApplication {
 
         this._app.use(auth({
             ...configuration.keycloak,
-            // issuerBaseURL: 'https://lemur-3.cloud-iam.com/auth/realms/uems-dev',
-            // baseURL: 'http://localhost:15450',
-            // clientID: 'uems-debug',
-            // idpLogout: true,
             session: {
                 store,
             },
             authRequired: false,
         }));
 
-        // this._keycloak = new KeycloakConnect({
-        //     store,
-        // }, configuration.keycloak);
-        //
         this._protector = ExpressApplication.DISABLE_PROTECTIONS
             ? () => ((req, res, next) => next())
             : requiresAuth;
@@ -152,12 +142,6 @@ export class ExpressApplication {
             },
             store,
         }));
-
-        // Then register the Auth0 Authentication manager using all the config options
-        // this._app.use(this._keycloak.middleware());
-        // this._app.use(auth({
-        //     ...configuration.auth0,
-        // }));
 
         this._app.use((req, res, next) => {
             res.on('finish', () => {
@@ -195,10 +179,6 @@ export class ExpressApplication {
             });
         }
         this._app.use(this._protector(), (req, res, next) => {
-            // console.log(util.inspect(req.oidc.user, true, null, true));
-            // console.log(util.inspect(req.oidc.idTokenClaims, true, null, true));
-            // @ts-ignore
-            // console.log(req.oidc.user.sub);
             if (req.oidc.user) {
                 req.uemsUser = {
                     userID: req.oidc.user.sub,
@@ -208,15 +188,6 @@ export class ExpressApplication {
                     profile: req.oidc.user.picture ?? 'https://placehold.it/200x200',
                 };
             }
-            // if (req.kauth && req.kauth.grant && req.kauth.grant.id_token && req.kauth.grant.id_token.content) {
-            //     req.uemsUser = {
-            //         userID: req.kauth.grant.id_token.content.sub,
-            //         username: req.kauth.grant.id_token.content.preferred_username,
-            //         email: req.kauth.grant.id_token.content.email,
-            //         fullName: req.kauth.grant.id_token.content.name,
-            //         profile: req.kauth.grant.id_token.content.picture ?? 'https://placehold.it/200x200',
-            //     };
-            // }
             next();
         });
 
