@@ -45,6 +45,7 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
                 path: '/files',
                 handle: this.queryFilesHandler(send),
                 additionalValidator: validator,
+                // TODO: [https://app.asana.com/0/0/1201549453029903/f] requires specific secure rules
             },
             {
                 action: 'post',
@@ -57,40 +58,47 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
                 path: '/files/:id',
                 handle: this.deleteFileHandler(send),
                 additionalValidator: validator,
+                secure: ['ops', 'admin'],
             },
             {
                 action: 'get',
                 path: '/files/:id',
                 handle: this.getFileHandler(send),
                 additionalValidator: validator,
+                // TODO: [https://app.asana.com/0/0/1201549453029903/f] requires specific secure rules
             },
             {
                 action: 'patch',
                 path: '/files/:id',
                 handle: this.updateFileHandler(send),
                 additionalValidator: validator,
+                secure: ['ops', 'admin'],
             },
             {
                 action: 'get',
                 path: '/files/:id/events',
                 handle: this.getEventsByFileHandler(send),
                 // TODO: add validator
+                // TODO: [https://app.asana.com/0/0/1201549453029903/f] requires specific secure rules
             },
             {
                 action: 'get',
                 path: '/events/:id/files',
                 handle: this.getFilesByEventsHandler(send),
                 // TODO: add validator
+                // TODO: [https://app.asana.com/0/0/1201549453029903/f] requires specific secure rules
             },
             {
                 action: 'post',
                 path: '/events/:id/files',
                 handle: this.postFileToEventHandler(send),
+                // TODO: [https://app.asana.com/0/0/1201549453029903/f] requires specific secure rules
             },
             {
                 action: 'delete',
                 path: '/events/:eventID/files/:fileID',
                 handle: this.deleteFileFromEventHandler(send),
+                secure: ['ops', 'admin'],
             },
         ];
     }

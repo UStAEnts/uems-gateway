@@ -45,12 +45,14 @@ export class StateGatewayInterface implements GatewayAttachmentInterface {
                 path: '/states',
                 handle: this.createStateHandler(send),
                 additionalValidator: validator,
+                secure: ['ops', 'admin'],
             },
             {
                 action: 'delete',
                 path: '/states/:id',
                 handle: this.deleteStateHandler(send),
                 additionalValidator: validator,
+                secure: ['ops', 'admin'],
             },
             {
                 action: 'get',
@@ -63,6 +65,7 @@ export class StateGatewayInterface implements GatewayAttachmentInterface {
                 path: '/states/:id',
                 handle: this.updateStateHandler(send),
                 additionalValidator: validator,
+                secure: ['ops', 'admin'],
             },
         ];
     }

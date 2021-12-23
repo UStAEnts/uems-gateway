@@ -45,12 +45,14 @@ export class TopicGatewayInterface implements GatewayAttachmentInterface {
                 path: '/topics',
                 handle: this.createTopicHandler(send),
                 additionalValidator: validator,
+                secure: ['admin', 'ops'],
             },
             {
                 action: 'delete',
                 path: '/topics/:id',
                 handle: this.deleteTopicHandler(send),
                 additionalValidator: validator,
+                secure: ['admin', 'ops'],
             },
             {
                 action: 'get',
@@ -63,6 +65,7 @@ export class TopicGatewayInterface implements GatewayAttachmentInterface {
                 path: '/topics/:id',
                 handle: this.updateTopicHandler(send),
                 additionalValidator: validator,
+                secure: ['admin', 'ops'],
             },
         ];
     }

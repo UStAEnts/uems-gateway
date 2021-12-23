@@ -50,24 +50,28 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
                 path: '/events',
                 handle: this.getEventsHandler(send),
                 additionalValidator: validator,
+                // TODO: [https://app.asana.com/0/0/1201549453029903/f] requires specific secure rules
             },
             {
                 action: 'get',
                 path: '/events/:id',
                 handle: this.getEventHandler(send),
                 additionalValidator: validator,
+                // TODO: [https://app.asana.com/0/0/1201549453029903/f] requires specific secure rules
             },
             {
                 action: 'patch',
                 path: '/events/:id',
                 handle: EventGatewayAttachment.updateEventHandler(send),
                 additionalValidator: validator,
+                // TODO: [https://app.asana.com/0/0/1201549453029903/f] requires specific secure rules
             },
             {
                 action: 'delete',
                 path: '/events/:id',
                 handle: EventGatewayAttachment.deleteEventHandler(send, handler, resolver),
                 additionalValidator: validator,
+                secure: ['ops', 'admin'], // events shouldn't be deleted, just cancelled
             },
             // EVENT <--> STATE LINK
             {
@@ -75,6 +79,7 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
                 path: '/states/:id/events',
                 handle: this.getEventsByState(send),
                 additionalValidator: validator,
+                // TODO: [https://app.asana.com/0/0/1201549453029903/f] requires specific secure rules
             },
             // EVENT <--> VENUE LINK
             {
@@ -82,6 +87,7 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
                 path: '/venues/:id/events',
                 handle: this.getEventsByVenue(send),
                 additionalValidator: validator,
+                // TODO: [https://app.asana.com/0/0/1201549453029903/f] requires specific secure rules
             },
             // EVENT COMMENTS
             {
@@ -89,11 +95,13 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
                 path: '/events/:id/comments',
                 handle: this.getCommentsForEvent(send),
                 additionalValidator: validator,
+                // TODO: [https://app.asana.com/0/0/1201549453029903/f] requires specific secure rules
             },
             {
                 action: 'post',
                 path: '/events/:id/comments',
                 handle: this.postCommentsForEvent(send),
+                // TODO: [https://app.asana.com/0/0/1201549453029903/f] requires specific secure rules
             },
         ];
     }

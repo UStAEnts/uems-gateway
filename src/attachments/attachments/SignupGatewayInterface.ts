@@ -40,30 +40,37 @@ export class SignupGatewayInterface implements GatewayAttachmentInterface {
                 path: '/events/:eventID/signups',
                 handle: this.querySignupsHandler(send),
                 additionalValidator: validator,
+                secure: ['ents'],
             },
             {
                 action: 'post',
                 path: '/events/:eventID/signups',
                 handle: this.createSignupHandler(send),
                 additionalValidator: validator,
+                // TODO: [https://app.asana.com/0/0/1201549453029903/f] requires specific secure rules
+                //       Adding on behalf means extra permissions, adding themselves does not
             },
             {
                 action: 'delete',
                 path: '/events/:eventID/signups/:id',
                 handle: this.deleteSignupHandler(send),
                 additionalValidator: validator,
+                // TODO: [https://app.asana.com/0/0/1201549453029903/f] requires specific secure rules
+                //       Removing self none, removing others extra
             },
             {
                 action: 'get',
                 path: '/events/:eventID/signups/:id',
                 handle: this.getSignupHandler(send),
                 additionalValidator: validator,
+                // TODO: [https://app.asana.com/0/0/1201549453029903/f] requires specific secure rules
             },
             {
                 action: 'patch',
                 path: '/events/:eventID/signups/:id',
                 handle: this.updateSignupHandler(send),
                 additionalValidator: validator,
+                // TODO: [https://app.asana.com/0/0/1201549453029903/f] requires specific secure rules
             },
         ];
     }

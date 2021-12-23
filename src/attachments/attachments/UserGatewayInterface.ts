@@ -43,24 +43,28 @@ export class UserGatewayInterface implements GatewayAttachmentInterface {
                 path: '/user',
                 handle: this.createUserHandler(send),
                 additionalValidator: validator,
+                secure: ['admin'],
             },
             {
                 action: 'delete',
                 path: '/user/:id',
                 handle: this.deleteUserHandler(send),
                 additionalValidator: validator,
+                secure: ['admin'],
             },
             {
                 action: 'get',
                 path: '/user/:id',
                 handle: this.getUserHandler(send),
                 additionalValidator: validator,
+                // TODO: [https://app.asana.com/0/0/1201549453029903/f] requires specific secure rules
             },
             {
                 action: 'patch',
                 path: '/user/:id',
                 handle: this.updateUserHandler(send),
                 additionalValidator: validator,
+                secure: ['admin'],
             },
         ];
     }

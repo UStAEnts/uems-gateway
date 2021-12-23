@@ -52,18 +52,21 @@ export class VenueGatewayInterface implements GatewayAttachmentInterface {
                 path: '/venues',
                 handle: this.handleCreateRequest(sendRequest),
                 additionalValidator: new VenueResponseValidator(),
+                secure: ['admin', 'ops'],
             },
             {
                 action: 'delete',
                 path: '/venues/:id',
                 handle: this.handleDeleteRequest(sendRequest),
                 additionalValidator: new VenueResponseValidator(),
+                secure: ['admin', 'ops'],
             },
             {
                 action: 'patch',
                 path: '/venues/:id',
                 handle: this.handleUpdateRequest(sendRequest),
                 additionalValidator: new VenueResponseValidator(),
+                secure: ['admin', 'ops'],
             },
         ];
     }

@@ -39,30 +39,35 @@ export class EquipmentGatewayInterface implements GatewayAttachmentInterface {
                 path: '/equipment',
                 handle: this.queryEquipmentsHandler(send),
                 additionalValidator: validator,
+                secure: ['admin', 'ents'],
             },
             {
                 action: 'post',
                 path: '/equipment',
                 handle: this.createEquipmentHandler(send),
                 additionalValidator: validator,
+                secure: ['admin', 'ents'],
             },
             {
                 action: 'delete',
                 path: '/equipment/:id',
                 handle: this.deleteEquipmentHandler(send),
                 additionalValidator: validator,
+                secure: ['admin', 'ents'],
             },
             {
                 action: 'get',
                 path: '/equipment/:id',
                 handle: this.getEquipmentHandler(send),
                 additionalValidator: validator,
+                secure: ['admin', 'ents'],
             },
             {
                 action: 'patch',
                 path: '/equipment/:id',
                 handle: this.updateEquipmentHandler(send),
                 additionalValidator: validator,
+                secure: ['admin', 'ents'],
             },
         ];
     }
