@@ -234,16 +234,16 @@ export const PATCH_EVENTS_EVENTID_INVALID = {
 
 // POST /events/{eventID}/comments post-events-eventID-comments
 export const POST_EVENTS_EVENTID_COMMENTS_VALID = {
-    category: 'OyTInYyBtLVfLmRrniMT+w==',
+    topic: 'OyTInYyBtLVfLmRrniMT+w==',
     requiresAttention: true,
     body: 'X6c0MbAJGLM5ex/eKaeY0Q=='
 }
 export const POST_EVENTS_EVENTID_COMMENTS_INVALID = {
-    category: 'khfhrN5S3MLPZSZGZKd+EA==',
+    topic: 'khfhrN5S3MLPZSZGZKd+EA==',
     requiresAttention: 995,
     body: 'lmjd6Utd1brUFgTLyTP4gg=='
 }
-export const POST_EVENTS_EVENTID_COMMENTS_MISSING = { category: 'ignbgtQRw6vMpr7GWc9kkw==', requiresAttention: true }
+export const POST_EVENTS_EVENTID_COMMENTS_MISSING = { topic: 'ignbgtQRw6vMpr7GWc9kkw==', requiresAttention: true }
 
 // GET /files get-files
 export const GET_FILES_VALID = {
