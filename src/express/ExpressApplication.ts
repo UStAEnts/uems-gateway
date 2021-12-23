@@ -1,5 +1,5 @@
 import * as z from 'zod';
-import express, { Application, Request, RequestHandler, Response, Router } from 'express';
+import express, { Application, Request, RequestHandler, Response, Router, NextFunction } from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import session from 'express-session';
@@ -7,16 +7,19 @@ import connectMongo from 'connect-mongo';
 import { GatewayMk2 } from '../Gateway';
 import { EntityResolver } from '../resolver/EntityResolver';
 import { join } from 'path';
-import { __ } from "../log/Log";
-import { UserMessage } from "@uems/uemscommlib";
-import { MessageUtilities } from "../utilities/MessageUtilities";
-import { constants } from "http2";
-import { tryApplyTrait } from "@uems/micro-builder/build/src";
+import { __ } from '../log/Log';
+import { UserMessage } from '@uems/uemscommlib';
+import { MessageUtilities } from '../utilities/MessageUtilities';
+import { constants } from 'http2';
+import { tryApplyTrait } from '@uems/micro-builder/build/src';
 import GatewayAttachmentInterface = GatewayMk2.GatewayAttachmentInterface;
 import SendRequestFunction = GatewayMk2.SendRequestFunction;
 import AssertUserMessage = UserMessage.AssertUserMessage;
 import GatewayMessageHandler = GatewayMk2.GatewayMessageHandler;
-import { auth, requiresAuth } from "express-openid-connect";
+import * as util from 'util';
+import KeycloakConnect from 'keycloak-connect';
+import { AuthUtilities } from "../utilities/AuthUtilities";
+import orProtect = AuthUtilities.orProtect;
 
 const MongoStore = connectMongo(session);
 
@@ -50,11 +53,12 @@ export const ExpressConfiguration = z.object({
         }),
     }),
     keycloak: z.object({
-        baseURL: z.string(),
-        issuerBaseURL: z.string(),
+        authServerBase: z.string(),
+        realm: z.string(),
         clientID: z.string(),
         secret: z.string(),
-        idpLogout: z.boolean().optional(),
+        confidentialPort: z.string().or(z.number()),
+        sslRequired: z.string(),
     })
         .nonstrict(),
 });
@@ -70,7 +74,7 @@ export class ExpressApplication {
 
     private _apiRouter: Router;
 
-    private _protector: () => RequestHandler;
+    private _protector: (...x:any[]) => RequestHandler;
 
     /**
      * Contains the last set of requests that were successful (anything except internal errors) and failed (internal
@@ -94,7 +98,7 @@ export class ExpressApplication {
                     'manifest-src': ["'self'", ...configuration.auth.manifestSrc],
                     'script-src': ["'self'", ...configuration.uems.hashes.map((e) => `'${e}'`)],
                     'connect-src': ["'self'"],
-                    'img-src': ['*']
+                    'img-src': ['*'],
                 },
             },
         }));
@@ -116,18 +120,6 @@ export class ExpressApplication {
             ttl: configuration.session.sessionTimeToLive,
         });
 
-        this._app.use(auth({
-            ...configuration.keycloak,
-            session: {
-                store,
-            },
-            authRequired: false,
-        }));
-
-        this._protector = ExpressApplication.DISABLE_PROTECTIONS
-            ? () => ((req, res, next) => next())
-            : requiresAuth;
-
         // Configure sessions for users that need to be backed by the database using connect-mongo.
         this._app.use(session({
             saveUninitialized: true,
@@ -142,6 +134,27 @@ export class ExpressApplication {
             },
             store,
         }));
+
+
+        const keycloak = new KeycloakConnect({
+            store,
+        }, {
+            'auth-server-url': configuration.keycloak.authServerBase,
+            realm: configuration.keycloak.realm,
+            resource: configuration.keycloak.clientID,
+            'confidential-port': configuration.keycloak.confidentialPort,
+            'ssl-required': configuration.keycloak.sslRequired,
+            // @ts-ignore - see https://github.com/keycloak/keycloak-nodejs-connect/pull/289
+            secret: configuration.keycloak.secret,
+        });
+        this._app.use(keycloak.middleware({
+            logout: '/logout',
+            admin: '/',
+        }));
+
+        this._protector = ExpressApplication.DISABLE_PROTECTIONS
+            ? () => ((req, res, next) => next())
+            : keycloak.protect.bind(keycloak);
 
         this._app.use((req, res, next) => {
             res.on('finish', () => {
@@ -179,13 +192,28 @@ export class ExpressApplication {
             });
         }
         this._app.use(this._protector(), (req, res, next) => {
-            if (req.oidc.user) {
+            // console.log('id token', util.inspect(req.oidc.idToken, true, null, true));
+            // console.log('refresh token', util.inspect(req.oidc.refreshToken, true, null, true));
+            // console.log('access token', util.inspect(req.oidc.accessToken, true, null, true));
+            // console.log('id token claims', util.inspect(req.oidc.idTokenClaims, true, null, true));
+            // console.log('user', util.inspect(req.oidc.user, true, null, true));
+            console.log('kauth', util.inspect(req.kauth, true, null, true));
+            // if (req.oidc.user) {
+            //     req.uemsUser = {
+            //         userID: req.oidc.user.sub,
+            //         username: req.oidc.user.preferred_username,
+            //         email: req.oidc.user.email,
+            //         fullName: req.oidc.user.name,
+            //         profile: req.oidc.user.picture ?? 'https://placehold.it/200x200',
+            //     };
+            // }
+            if (req.kauth && req.kauth.grant && req.kauth.grant.id_token && req.kauth.grant.id_token.content) {
                 req.uemsUser = {
-                    userID: req.oidc.user.sub,
-                    username: req.oidc.user.preferred_username,
-                    email: req.oidc.user.email,
-                    fullName: req.oidc.user.name,
-                    profile: req.oidc.user.picture ?? 'https://placehold.it/200x200',
+                    userID: req.kauth.grant.id_token.content.sub,
+                    username: req.kauth.grant.id_token.content.preferred_username,
+                    email: req.kauth.grant.id_token.content.email,
+                    fullName: req.kauth.grant.id_token.content.name,
+                    profile: req.kauth.grant.id_token.content.picture ?? 'https://placehold.it/200x200',
                 };
             }
             next();
