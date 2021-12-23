@@ -233,7 +233,7 @@ export class ExpressApplication {
                 const secure = value.secure ?? [];
                 const handle = (req: Request, res: Response) => value.handle(req, res, () => false);
 
-                if (secure) {
+                if (typeof (secure) !== 'boolean') {
                     this._apiRouter[value.action].bind(this._apiRouter)(
                         value.path,
                         this._protector(orProtect(...secure)),
