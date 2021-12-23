@@ -519,7 +519,7 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
                 ['body'],
                 {
                     // Required
-                    category: (x) => typeof (x) === 'string',
+                    topic: (x) => typeof (x) === 'string',
                     requiresAttention: (x) => typeof (x) === 'boolean',
                     body: (x) => typeof (x) === 'string',
                 },
@@ -530,7 +530,7 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
             }
 
             const {
-                category,
+                topic,
                 requiresAttention,
                 body,
             } = request.body;
@@ -541,7 +541,7 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
                 msg_intention: 'CREATE',
                 userID: request.uemsUser.userID,
 
-                category,
+                topic,
                 requiresAttention,
                 body,
 
