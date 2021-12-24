@@ -69,6 +69,7 @@ export async function testValidRoute(
     send: jest.Mock,
     params?: any,
     skipChild: boolean = false,
+    roles?: string[],
 ) {
     const response = new Response();
     const fake = response as unknown as express.Response;
@@ -76,6 +77,7 @@ export async function testValidRoute(
         location === 'query' ? data : undefined,
         location === 'body' ? data : undefined,
         params,
+        roles,
     );
     await route.handle(req, fake, () => false);
 

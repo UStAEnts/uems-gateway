@@ -1,10 +1,17 @@
 import { Request } from "express";
 
-export const request = (query?: any, body?: any, params?: any): Request => ({
+export const request = (query?: any, body?: any, params?: any, roles?: string[]): Request => ({
     query,
     body,
     params,
     uemsUser: MOCK_UEMS_USER,
+    kauth: {
+        grant: {
+            access_token: {
+                hasRole: (role: string) => (roles ?? []).includes(role),
+            },
+        },
+    },
 } as unknown as Request);
 
 export const MOCK_UEMS_USER = {
@@ -14,7 +21,6 @@ export const MOCK_UEMS_USER = {
     fullName: 'fullname',
     email: 'email',
 };
-
 
 // GET /ents get-ents
 export const GET_ENTS_VALID = {
@@ -41,7 +47,10 @@ export const POST_ENTS_INVALID = {
     icon: 'BqyJIKNx4biv5kJHwKy6fg==',
     color: 'i0FpRf6DL3PExwaJaglSfw=='
 }
-export const POST_ENTS_MISSING = { icon: 'AWmAXFSPzAZM+fHOQV3qiw==', color: '#3CB5BD' }
+export const POST_ENTS_MISSING = {
+    icon: 'AWmAXFSPzAZM+fHOQV3qiw==',
+    color: '#3CB5BD'
+}
 
 // GET /ents/{entID} get-ents-entID
 export const GET_ENTS_ENTID_VALID = {}
@@ -243,7 +252,10 @@ export const POST_EVENTS_EVENTID_COMMENTS_INVALID = {
     requiresAttention: 995,
     body: 'lmjd6Utd1brUFgTLyTP4gg=='
 }
-export const POST_EVENTS_EVENTID_COMMENTS_MISSING = { topic: 'ignbgtQRw6vMpr7GWc9kkw==', requiresAttention: true }
+export const POST_EVENTS_EVENTID_COMMENTS_MISSING = {
+    topic: 'ignbgtQRw6vMpr7GWc9kkw==',
+    requiresAttention: true
+}
 
 // GET /files get-files
 export const GET_FILES_VALID = {
@@ -285,7 +297,10 @@ export const POST_FILES_MISSING = {
 }
 
 // PATCH /files/{fileID} patch-files-fileID
-export const PATCH_FILES_FILEID_VALID = { name: 'Bdrw0Wz7zOWf0qanGPMsrw==', type: 'egYZY3zGx+7u++9tanBWxw==' }
+export const PATCH_FILES_FILEID_VALID = {
+    name: 'Bdrw0Wz7zOWf0qanGPMsrw==',
+    type: 'egYZY3zGx+7u++9tanBWxw=='
+}
 
 // POST /events/{eventID}/files post-events-eventID-files
 export const POST_EVENTS_EVENTID_FILES_VALID = { fileID: '7oYjUS5DbFyaZy/pUMTT/w==' }
@@ -340,7 +355,10 @@ export const POST_STATES_INVALID = {
     icon: 'iz5iHX6Yy3bHQh1e4KnMow==',
     color: 'Eu+T4aBSbE5b03Ov1wgUBw=='
 }
-export const POST_STATES_MISSING = { icon: 'MVPV6XEyjwx7JKpZQp2Tvw==', color: '#DF28C3' }
+export const POST_STATES_MISSING = {
+    icon: 'MVPV6XEyjwx7JKpZQp2Tvw==',
+    color: '#DF28C3'
+}
 
 // PATCH /states/{stateID} patch-states-stateID
 export const PATCH_STATES_STATEID_VALID = {
@@ -464,16 +482,27 @@ export const GET_VENUES_INVALID = {
 }
 
 // POST /venues post-venues
-export const POST_VENUES_VALID = { name: 'FreNzaTKA22ZBMb9aqok7g==', capacity: 864, color: '#D882A1' }
+export const POST_VENUES_VALID = {
+    name: 'FreNzaTKA22ZBMb9aqok7g==',
+    capacity: 864,
+    color: '#D882A1'
+}
 export const POST_VENUES_INVALID = {
     name: 'ntIXhzToOWT7cM1fhfzPqQ==',
     capacity: 'sSlS39lqQKMsnpBOlZRgjw==',
     color: '#045CA2'
 }
-export const POST_VENUES_MISSING = { capacity: 695, color: '#FDD7D7' }
+export const POST_VENUES_MISSING = {
+    capacity: 695,
+    color: '#FDD7D7'
+}
 
 // PATCH /venues/{venueID} patch-venues-venueID
-export const PATCH_VENUES_VENUEID_VALID = { name: 'cn4p3gSnw9YMJi7Ftei1NA==', capacity: 277, color: '#1B8D63' }
+export const PATCH_VENUES_VENUEID_VALID = {
+    name: 'cn4p3gSnw9YMJi7Ftei1NA==',
+    capacity: 277,
+    color: '#1B8D63'
+}
 export const PATCH_VENUES_VENUEID_INVALID = {
     name: 'ggofpbsuTTlIjH6sZkK6ig==',
     capacity: 'NmfZGz/wdHUpk4hMYC8wSQ==',
