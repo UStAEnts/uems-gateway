@@ -69,9 +69,6 @@ export class SignupGatewayInterface implements GatewayAttachmentInterface {
                 path: '/events/:eventID/signups/:id',
                 handle: this.updateSignupHandler(send),
                 additionalValidator: validator,
-                // TODO: [https://app.asana.com/0/0/1201549453029903/f] requires specific secure rules
-                //       need to figure out how to implement this one, will have to be done on the service via comms
-                //       as we just pass an ID on thisrather than identities.
             },
         ];
     }
@@ -338,12 +335,20 @@ export class SignupGatewayInterface implements GatewayAttachmentInterface {
                 return;
             }
 
+            let localOnly = true;
+            if (req.kauth && req.kauth.grant && req.kauth.grant.access_token) {
+                if (orProtect('admin')(req.kauth.grant.access_token)) {
+                    localOnly = false;
+                }
+            }
+
             const outgoing: UpdateSignupMessage = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 msg_intention: 'UPDATE',
                 status: 0,
                 userID: req.uemsUser.userID,
                 id: req.params.id,
+                localOnly,
             };
 
             const parameters = req.body;

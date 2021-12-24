@@ -96,7 +96,6 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
                 action: 'post',
                 path: '/events/:id/comments',
                 handle: this.postCommentsForEvent(send),
-                // TODO: [https://app.asana.com/0/0/1201549453029903/f] requires specific secure rules
             },
         ];
     }
