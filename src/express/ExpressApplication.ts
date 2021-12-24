@@ -57,7 +57,8 @@ export const ExpressConfiguration = z.object({
         realm: z.string(),
         clientID: z.string(),
         secret: z.string(),
-        confidentialPort: z.string().or(z.number()),
+        confidentialPort: z.string()
+            .or(z.number()),
         sslRequired: z.string(),
     })
         .nonstrict(),
@@ -74,7 +75,7 @@ export class ExpressApplication {
 
     private _apiRouter: Router;
 
-    private _protector: (...x:any[]) => RequestHandler;
+    private _protector: (...x: any[]) => RequestHandler;
 
     /**
      * Contains the last set of requests that were successful (anything except internal errors) and failed (internal
@@ -135,7 +136,6 @@ export class ExpressApplication {
             store,
         }));
 
-
         const keycloak = new KeycloakConnect({
             store,
         }, {
@@ -192,21 +192,6 @@ export class ExpressApplication {
             });
         }
         this._app.use(this._protector(), (req, res, next) => {
-            // console.log('id token', util.inspect(req.oidc.idToken, true, null, true));
-            // console.log('refresh token', util.inspect(req.oidc.refreshToken, true, null, true));
-            // console.log('access token', util.inspect(req.oidc.accessToken, true, null, true));
-            // console.log('id token claims', util.inspect(req.oidc.idTokenClaims, true, null, true));
-            // console.log('user', util.inspect(req.oidc.user, true, null, true));
-            console.log('kauth', util.inspect(req.kauth, true, null, true));
-            // if (req.oidc.user) {
-            //     req.uemsUser = {
-            //         userID: req.oidc.user.sub,
-            //         username: req.oidc.user.preferred_username,
-            //         email: req.oidc.user.email,
-            //         fullName: req.oidc.user.name,
-            //         profile: req.oidc.user.picture ?? 'https://placehold.it/200x200',
-            //     };
-            // }
             if (req.kauth && req.kauth.grant && req.kauth.grant.id_token && req.kauth.grant.id_token.content) {
                 req.uemsUser = {
                     userID: req.kauth.grant.id_token.content.sub,
