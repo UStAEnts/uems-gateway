@@ -577,6 +577,12 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
                 body,
             } = request.body;
 
+            let localOnly = true;
+            if (request.kauth && request.kauth.grant && request.kauth.grant.access_token) {
+                // req.kauth.grant.kauth
+                if (orProtect('ops', 'ents', 'admin')(request.kauth.grant.access_token)) localOnly = false;
+            }
+
             const msg: CreateCommentMessage = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 status: 0, // 0 Code used when the status is still to be decided.
@@ -586,6 +592,7 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
                 topic,
                 requiresAttention,
                 body,
+                localAssetOnly: localOnly,
 
                 assetID: request.params.id,
                 assetType: 'event',
