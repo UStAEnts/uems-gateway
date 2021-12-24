@@ -45,14 +45,14 @@ export class EntStateGatewayInterface implements GatewayAttachmentInterface {
                 path: '/ents',
                 handle: this.createEntStateHandler(send),
                 additionalValidator: validator,
-                secure: ['admin', 'ops'],
+                secure: ['ents', 'admin', 'ops'],
             },
             {
                 action: 'delete',
                 path: '/ents/:id',
                 handle: this.deleteEntStateHandler(send, resolver, handler),
                 additionalValidator: validator,
-                secure: ['admin', 'ops'],
+                secure: ['ents', 'admin', 'ops'],
             },
             {
                 action: 'get',
@@ -65,7 +65,7 @@ export class EntStateGatewayInterface implements GatewayAttachmentInterface {
                 path: '/ents/:id',
                 handle: this.updateEntStateHandler(send),
                 additionalValidator: validator,
-                secure: ['admin', 'ops'],
+                secure: ['ents', 'admin', 'ops'],
             },
         ];
     }
