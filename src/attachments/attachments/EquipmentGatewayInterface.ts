@@ -2,21 +2,20 @@ import { GatewayMk2 } from '../../Gateway';
 import { Request, Response } from 'express';
 import { MessageUtilities } from '../../utilities/MessageUtilities';
 import { constants } from 'http2';
-import { EquipmentMessage, EquipmentResponseValidator, MsgStatus } from '@uems/uemscommlib';
+import { EquipmentMessage, EquipmentResponseValidator } from '@uems/uemscommlib';
 import { GenericHandlerFunctions } from '../GenericHandlerFunctions';
-import { Resolver } from "../Resolvers";
-import { EntityResolver } from "../../resolver/EntityResolver";
+import { Resolver } from '../Resolvers';
+import { EntityResolver } from '../../resolver/EntityResolver';
+import { Constants } from '../../utilities/Constants';
+import { removeAndReply } from '../DeletePipelines';
+import { ErrorCodes } from '../../constants/ErrorCodes';
 import GatewayAttachmentInterface = GatewayMk2.GatewayAttachmentInterface;
 import SendRequestFunction = GatewayMk2.SendRequestFunction;
 import ReadEquipmentMessage = EquipmentMessage.ReadEquipmentMessage;
 import CreateEquipmentMessage = EquipmentMessage.CreateEquipmentMessage;
-import DeleteEquipmentMessage = EquipmentMessage.DeleteEquipmentMessage;
 import UpdateEquipmentMessage = EquipmentMessage.UpdateEquipmentMessage;
-import { Constants } from "../../utilities/Constants";
 import ROUTING_KEY = Constants.ROUTING_KEY;
 import GatewayMessageHandler = GatewayMk2.GatewayMessageHandler;
-import { removeAndReply, removeEntity } from "../DeletePipelines";
-import { ErrorCodes } from "../../constants/ErrorCodes";
 
 export class EquipmentGatewayInterface implements GatewayAttachmentInterface {
 
@@ -39,30 +38,35 @@ export class EquipmentGatewayInterface implements GatewayAttachmentInterface {
                 path: '/equipment',
                 handle: this.queryEquipmentsHandler(send),
                 additionalValidator: validator,
+                secure: ['admin', 'ents'],
             },
             {
                 action: 'post',
                 path: '/equipment',
                 handle: this.createEquipmentHandler(send),
                 additionalValidator: validator,
+                secure: ['admin', 'ents'],
             },
             {
                 action: 'delete',
                 path: '/equipment/:id',
                 handle: this.deleteEquipmentHandler(send),
                 additionalValidator: validator,
+                secure: ['admin', 'ents'],
             },
             {
                 action: 'get',
                 path: '/equipment/:id',
                 handle: this.getEquipmentHandler(send),
                 additionalValidator: validator,
+                secure: ['admin', 'ents'],
             },
             {
                 action: 'patch',
                 path: '/equipment/:id',
                 handle: this.updateEquipmentHandler(send),
                 additionalValidator: validator,
+                secure: ['admin', 'ents'],
             },
         ];
     }
@@ -240,7 +244,6 @@ export class EquipmentGatewayInterface implements GatewayAttachmentInterface {
                     }));
                 return;
             }
-
 
             if (this.resolver && this.handler) {
                 await removeAndReply({

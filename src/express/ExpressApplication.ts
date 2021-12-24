@@ -1,5 +1,5 @@
 import * as z from 'zod';
-import express, { Application, Request, RequestHandler, Response, Router } from 'express';
+import express, { Application, Request, RequestHandler, Response, Router, NextFunction } from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import session from 'express-session';
@@ -7,16 +7,19 @@ import connectMongo from 'connect-mongo';
 import { GatewayMk2 } from '../Gateway';
 import { EntityResolver } from '../resolver/EntityResolver';
 import { join } from 'path';
-import { __ } from "../log/Log";
-import { UserMessage } from "@uems/uemscommlib";
-import { MessageUtilities } from "../utilities/MessageUtilities";
-import KeycloakConnect, { Keycloak } from "keycloak-connect";
-import { constants } from "http2";
-import { tryApplyTrait } from "@uems/micro-builder/build/src";
+import { __ } from '../log/Log';
+import { UserMessage } from '@uems/uemscommlib';
+import { MessageUtilities } from '../utilities/MessageUtilities';
+import { constants } from 'http2';
+import { tryApplyTrait } from '@uems/micro-builder/build/src';
 import GatewayAttachmentInterface = GatewayMk2.GatewayAttachmentInterface;
 import SendRequestFunction = GatewayMk2.SendRequestFunction;
 import AssertUserMessage = UserMessage.AssertUserMessage;
 import GatewayMessageHandler = GatewayMk2.GatewayMessageHandler;
+import * as util from 'util';
+import KeycloakConnect from 'keycloak-connect';
+import { AuthUtilities } from "../utilities/AuthUtilities";
+import orProtect = AuthUtilities.orProtect;
 
 const MongoStore = connectMongo(session);
 
@@ -50,20 +53,13 @@ export const ExpressConfiguration = z.object({
         }),
     }),
     keycloak: z.object({
-        'confidential-port': z.string()
-            .or(z.number()),
-        'auth-server-url': z.string(),
-        resource: z.string(),
-        'ssl-required': z.string(),
-        'bearer-only': z.boolean()
-            .optional(),
+        authServerBase: z.string(),
         realm: z.string(),
-        credentials: z.object({
-            secret: z.string(),
-        })
-            .optional(),
-        'public-client': z.boolean()
-            .optional(),
+        clientID: z.string(),
+        secret: z.string(),
+        confidentialPort: z.string()
+            .or(z.number()),
+        sslRequired: z.string(),
     })
         .nonstrict(),
 });
@@ -71,7 +67,7 @@ export const ExpressConfiguration = z.object({
 export type ExpressConfigurationType = z.infer<typeof ExpressConfiguration>;
 
 export class ExpressApplication {
-    private static readonly DISABLE_PROTECTIONS = true;
+    private static readonly DISABLE_PROTECTIONS = false;
 
     private _app: Application;
 
@@ -79,9 +75,7 @@ export class ExpressApplication {
 
     private _apiRouter: Router;
 
-    private _keycloak: Keycloak;
-
-    private _protector: () => RequestHandler;
+    private _protector: (...x: any[]) => RequestHandler;
 
     /**
      * Contains the last set of requests that were successful (anything except internal errors) and failed (internal
@@ -105,7 +99,7 @@ export class ExpressApplication {
                     'manifest-src': ["'self'", ...configuration.auth.manifestSrc],
                     'script-src': ["'self'", ...configuration.uems.hashes.map((e) => `'${e}'`)],
                     'connect-src': ["'self'"],
-                    'img-src': ['*']
+                    'img-src': ['*'],
                 },
             },
         }));
@@ -127,14 +121,6 @@ export class ExpressApplication {
             ttl: configuration.session.sessionTimeToLive,
         });
 
-        this._keycloak = new KeycloakConnect({
-            store,
-        }, configuration.keycloak);
-
-        this._protector = ExpressApplication.DISABLE_PROTECTIONS
-            ? () => ((req, res, next) => next())
-            : this._keycloak.protect;
-
         // Configure sessions for users that need to be backed by the database using connect-mongo.
         this._app.use(session({
             saveUninitialized: true,
@@ -150,11 +136,25 @@ export class ExpressApplication {
             store,
         }));
 
-        // Then register the Auth0 Authentication manager using all the config options
-        this._app.use(this._keycloak.middleware());
-        // this._app.use(auth({
-        //     ...configuration.auth0,
-        // }));
+        const keycloak = new KeycloakConnect({
+            store,
+        }, {
+            'auth-server-url': configuration.keycloak.authServerBase,
+            realm: configuration.keycloak.realm,
+            resource: configuration.keycloak.clientID,
+            'confidential-port': configuration.keycloak.confidentialPort,
+            'ssl-required': configuration.keycloak.sslRequired,
+            // @ts-ignore - see https://github.com/keycloak/keycloak-nodejs-connect/pull/289
+            secret: configuration.keycloak.secret,
+        });
+        this._app.use(keycloak.middleware({
+            logout: '/logout',
+            admin: '/',
+        }));
+
+        this._protector = ExpressApplication.DISABLE_PROTECTIONS
+            ? () => ((req, res, next) => next())
+            : keycloak.protect.bind(keycloak);
 
         this._app.use((req, res, next) => {
             res.on('finish', () => {
@@ -215,13 +215,13 @@ export class ExpressApplication {
 
         for (const attachment of resolvedAttachments) {
             attachment.forEach((value) => {
-                const secure = value.secure ?? true;
+                const secure = value.secure ?? [];
                 const handle = (req: Request, res: Response) => value.handle(req, res, () => false);
 
-                if (secure) {
+                if (typeof (secure) !== 'boolean') {
                     this._apiRouter[value.action].bind(this._apiRouter)(
                         value.path,
-                        this._protector(),
+                        this._protector(orProtect(...secure)),
                         (req, res) => {
                             if (req.uemsUser === undefined) {
                                 res.sendStatus(constants.HTTP_STATUS_UNAUTHORIZED);

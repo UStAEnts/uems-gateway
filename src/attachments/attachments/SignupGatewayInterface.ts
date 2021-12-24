@@ -2,22 +2,23 @@ import { GatewayMk2 } from '../../Gateway';
 import { Request, Response } from 'express';
 import { MessageUtilities } from '../../utilities/MessageUtilities';
 import { constants } from 'http2';
-import { MsgStatus, SignupMessage, SignupResponseValidator } from '@uems/uemscommlib';
+import { SignupMessage, SignupResponseValidator } from '@uems/uemscommlib';
 import { GenericHandlerFunctions } from '../GenericHandlerFunctions';
 import { EntityResolver } from '../../resolver/EntityResolver';
 import { Resolver } from '../Resolvers';
+import { Constants } from '../../utilities/Constants';
+import { removeAndReply } from '../DeletePipelines';
+import { ErrorCodes } from '../../constants/ErrorCodes';
 import GatewayAttachmentInterface = GatewayMk2.GatewayAttachmentInterface;
 import SendRequestFunction = GatewayMk2.SendRequestFunction;
 import ReadSignupMessage = SignupMessage.ReadSignupMessage;
 import SignupReadSchema = SignupMessage.ReadSignupMessage;
 import CreateSignupMessage = SignupMessage.CreateSignupMessage;
-import DeleteSignupMessage = SignupMessage.DeleteSignupMessage;
 import UpdateSignupMessage = SignupMessage.UpdateSignupMessage;
-import { Constants } from "../../utilities/Constants";
 import ROUTING_KEY = Constants.ROUTING_KEY;
 import GatewayMessageHandler = GatewayMk2.GatewayMessageHandler;
-import { removeAndReply, removeEntity } from "../DeletePipelines";
-import { ErrorCodes } from "../../constants/ErrorCodes";
+import { AuthUtilities } from "../../utilities/AuthUtilities";
+import orProtect = AuthUtilities.orProtect;
 
 export class SignupGatewayInterface implements GatewayAttachmentInterface {
 
@@ -40,6 +41,7 @@ export class SignupGatewayInterface implements GatewayAttachmentInterface {
                 path: '/events/:eventID/signups',
                 handle: this.querySignupsHandler(send),
                 additionalValidator: validator,
+                secure: ['ents'],
             },
             {
                 action: 'post',
@@ -52,12 +54,16 @@ export class SignupGatewayInterface implements GatewayAttachmentInterface {
                 path: '/events/:eventID/signups/:id',
                 handle: this.deleteSignupHandler(send),
                 additionalValidator: validator,
+                // TODO: [https://app.asana.com/0/0/1201549453029903/f] add verification on the microservice side
             },
             {
                 action: 'get',
                 path: '/events/:eventID/signups/:id',
                 handle: this.getSignupHandler(send),
                 additionalValidator: validator,
+                secure: ['ents', 'admin'],
+                // TODO: [https://app.asana.com/0/0/1201549453029903/f] should event owners be able to see the
+                //       techs assigned?
             },
             {
                 action: 'patch',
@@ -192,6 +198,7 @@ export class SignupGatewayInterface implements GatewayAttachmentInterface {
                 return;
             }
 
+            // TODO: this is not verifying the right hting?
             const validate = MessageUtilities.verifyBody(
                 req,
                 res,
@@ -203,6 +210,26 @@ export class SignupGatewayInterface implements GatewayAttachmentInterface {
             );
 
             if (!validate) {
+                return;
+            }
+
+            if (req.kauth && req.kauth.grant && req.kauth.grant.access_token) {
+                if (req.params.signupUser && req.params.signupUser !== req.uemsUser.userID) {
+                    // Signing up another user, mu for now
+                    if (!orProtect('admin')(req.kauth.grant.access_token)) {
+                        res.status(constants.HTTP_STATUS_UNAUTHORIZED)
+                            .json(MessageUtilities.wrapInFailure(ErrorCodes.PERMISSION));
+                        return;
+                    }
+                    // Signing up themselves, must be an ent or an admin
+                } else if (!orProtect('ents', 'admin')(req.kauth.grant.access_token)) {
+                    res.status(constants.HTTP_STATUS_UNAUTHORIZED)
+                        .json(MessageUtilities.wrapInFailure(ErrorCodes.PERMISSION));
+                    return;
+                }
+            } else {
+                res.status(constants.HTTP_STATUS_UNAUTHORIZED)
+                    .json(MessageUtilities.wrapInFailure(ErrorCodes.PERMISSION));
                 return;
             }
 
@@ -246,7 +273,6 @@ export class SignupGatewayInterface implements GatewayAttachmentInterface {
                     }));
                 return;
             }
-
 
             if (this._resolver && this.handler) {
                 await removeAndReply({
@@ -296,12 +322,20 @@ export class SignupGatewayInterface implements GatewayAttachmentInterface {
                 return;
             }
 
+            let localOnly = true;
+            if (req.kauth && req.kauth.grant && req.kauth.grant.access_token) {
+                if (orProtect('admin')(req.kauth.grant.access_token)) {
+                    localOnly = false;
+                }
+            }
+
             const outgoing: UpdateSignupMessage = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 msg_intention: 'UPDATE',
                 status: 0,
                 userID: req.uemsUser.userID,
                 id: req.params.id,
+                localOnly,
             };
 
             const parameters = req.body;

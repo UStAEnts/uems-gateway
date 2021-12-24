@@ -7,22 +7,23 @@ import { GenericHandlerFunctions } from '../GenericHandlerFunctions';
 import { ErrorCodes } from '../../constants/ErrorCodes';
 import { EntityResolver } from '../../resolver/EntityResolver';
 import { Resolver } from '../Resolvers';
+import { Constants } from '../../utilities/Constants';
+import { removeAndReply } from '../DeletePipelines';
 import GatewayAttachmentInterface = GatewayMk2.GatewayAttachmentInterface;
 import SendRequestFunction = GatewayMk2.SendRequestFunction;
 import FileReadSchema = FileMessage.ReadFileMessage;
 import ReadFileMessage = FileMessage.ReadFileMessage;
 import CreateFileMessage = FileMessage.CreateFileMessage;
-import DeleteFileMessage = FileMessage.DeleteFileMessage;
 import UpdateFileMessage = FileMessage.UpdateFileMessage;
 import QueryByEventMessage = FileBindingMessage.QueryByEventMessage;
 import QueryByFileMessage = FileBindingMessage.QueryByFileMessage;
 import BindFilesToEventMessage = FileBindingMessage.BindFilesToEventMessage;
 import UnbindFilesFromEventMessage = FileBindingMessage.UnbindFilesFromEventMessage;
 import FileResponseMessage = FileResponse.FileResponseMessage;
-import { Constants } from "../../utilities/Constants";
 import ROUTING_KEY = Constants.ROUTING_KEY;
 import GatewayMessageHandler = GatewayMk2.GatewayMessageHandler;
-import { removeAndReply, removeEntity } from "../DeletePipelines";
+import { AuthUtilities } from "../../utilities/AuthUtilities";
+import orProtect = AuthUtilities.orProtect;
 
 export class FileGatewayInterface implements GatewayAttachmentInterface {
 
@@ -57,6 +58,7 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
                 path: '/files/:id',
                 handle: this.deleteFileHandler(send),
                 additionalValidator: validator,
+                secure: ['ops', 'admin'],
             },
             {
                 action: 'get',
@@ -69,6 +71,7 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
                 path: '/files/:id',
                 handle: this.updateFileHandler(send),
                 additionalValidator: validator,
+                secure: ['ops', 'admin'],
             },
             {
                 action: 'get',
@@ -91,17 +94,25 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
                 action: 'delete',
                 path: '/events/:eventID/files/:fileID',
                 handle: this.deleteFileFromEventHandler(send),
+                secure: ['ops', 'admin'],
             },
         ];
     }
 
     private queryFilesHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
+            let localOnly = true;
+            if (req.kauth && req.kauth.grant && req.kauth.grant.access_token) {
+                // req.kauth.grant.kauth
+                if (orProtect('ops', 'ents', 'admin')(req.kauth.grant.access_token)) localOnly = false;
+            }
+
             const outgoing: ReadFileMessage = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 msg_intention: 'READ',
                 status: 0,
                 userID: req.uemsUser.userID,
+                localOnly,
             };
 
             const validate = MessageUtilities.coerceAndVerifyQuery(
@@ -155,11 +166,18 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
 
     private getFileHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
+            let localOnly = true;
+            if (req.kauth && req.kauth.grant && req.kauth.grant.access_token) {
+                // req.kauth.grant.kauth
+                if (orProtect('ops', 'ents', 'admin')(req.kauth.grant.access_token)) localOnly = false;
+            }
+
             const outgoingMessage: ReadFileMessage = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 msg_intention: 'READ',
                 status: 0,
                 userID: req.uemsUser.userID,
+                localOnly,
             };
 
             if (!MessageUtilities.has(req.params, 'id')) {
@@ -252,7 +270,6 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
                 return;
             }
 
-
             if (this._resolver && this.handler) {
                 await removeAndReply({
                     assetID: req.params.id,
@@ -332,6 +349,11 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
                     }));
                 return;
             }
+            let localOnly = true;
+            if (req.kauth && req.kauth.grant && req.kauth.grant.access_token) {
+                // req.kauth.grant.kauth
+                if (orProtect('ops', 'ents', 'admin')(req.kauth.grant.access_token)) localOnly = false;
+            }
 
             const outgoingMessage: QueryByFileMessage = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
@@ -339,6 +361,7 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
                 status: 0,
                 userID: req.uemsUser.userID,
                 fileID: req.params.id,
+                localOnly,
             };
 
             await send(
@@ -364,6 +387,11 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
                     }));
                 return;
             }
+            let localOnly = true;
+            if (req.kauth && req.kauth.grant && req.kauth.grant.access_token) {
+                // req.kauth.grant.kauth
+                if (orProtect('ops', 'ents', 'admin')(req.kauth.grant.access_token)) localOnly = false;
+            }
 
             const outgoingMessage: QueryByEventMessage = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
@@ -371,6 +399,7 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
                 status: 0,
                 userID: req.uemsUser.userID,
                 eventID: req.params.id,
+                localOnly,
             };
 
             await send(
@@ -396,6 +425,11 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
                     }));
                 return;
             }
+            let localOnly = true;
+            if (req.kauth && req.kauth.grant && req.kauth.grant.access_token) {
+                // req.kauth.grant.kauth
+                if (orProtect('ops', 'ents', 'admin')(req.kauth.grant.access_token)) localOnly = false;
+            }
 
             const validate = MessageUtilities.verifyBody(
                 req,
@@ -417,6 +451,7 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
                 userID: req.uemsUser.userID,
                 eventID: req.params.id,
                 fileIDs: [req.body.fileID],
+                localOnly,
             };
 
             await send(

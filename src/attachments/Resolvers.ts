@@ -97,6 +97,7 @@ export namespace Resolver {
 
             return {
                 ...data,
+                author: await resolver.resolveUser(data.author, userID),
                 state: data.state === undefined ? undefined : await resolver.resolveState(data.state, userID),
                 ents: data.ents === undefined ? undefined : await resolver.resolveEntState(data.ents, userID),
                 venues: await Promise.all(data.venues.map((e) => resolver.resolveVenue(e, userID))),

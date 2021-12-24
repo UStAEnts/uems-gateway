@@ -2,20 +2,20 @@ import { GatewayMk2 } from '../../Gateway';
 import { Request, Response } from 'express';
 import { MessageUtilities } from '../../utilities/MessageUtilities';
 import { constants } from 'http2';
-import { EntStateMessage, EntStateResponseValidator, MsgStatus } from '@uems/uemscommlib';
+import { EntStateMessage, EntStateResponseValidator } from '@uems/uemscommlib';
 import { GenericHandlerFunctions } from '../GenericHandlerFunctions';
+import { Constants } from '../../utilities/Constants';
+import { removeAndReply } from '../DeletePipelines';
+import { EntityResolver } from '../../resolver/EntityResolver';
+import { ErrorCodes } from '../../constants/ErrorCodes';
 import GatewayAttachmentInterface = GatewayMk2.GatewayAttachmentInterface;
 import SendRequestFunction = GatewayMk2.SendRequestFunction;
 import EntStateReadSchema = EntStateMessage.ReadEntStateMessage;
 import ReadEntStateMessage = EntStateMessage.ReadEntStateMessage;
 import CreateEntStateMessage = EntStateMessage.CreateEntStateMessage;
 import UpdateEntStateMessage = EntStateMessage.UpdateEntStateMessage;
-import { Constants } from "../../utilities/Constants";
 import ROUTING_KEY = Constants.ROUTING_KEY;
-import { removeAndReply, removeEntity } from "../DeletePipelines";
-import { EntityResolver } from "../../resolver/EntityResolver";
 import GatewayMessageHandler = GatewayMk2.GatewayMessageHandler;
-import { ErrorCodes } from "../../constants/ErrorCodes";
 
 export class EntStateGatewayInterface implements GatewayAttachmentInterface {
 
@@ -45,12 +45,14 @@ export class EntStateGatewayInterface implements GatewayAttachmentInterface {
                 path: '/ents',
                 handle: this.createEntStateHandler(send),
                 additionalValidator: validator,
+                secure: ['ents', 'admin', 'ops'],
             },
             {
                 action: 'delete',
                 path: '/ents/:id',
                 handle: this.deleteEntStateHandler(send, resolver, handler),
                 additionalValidator: validator,
+                secure: ['ents', 'admin', 'ops'],
             },
             {
                 action: 'get',
@@ -63,6 +65,7 @@ export class EntStateGatewayInterface implements GatewayAttachmentInterface {
                 path: '/ents/:id',
                 handle: this.updateEntStateHandler(send),
                 additionalValidator: validator,
+                secure: ['ents', 'admin', 'ops'],
             },
         ];
     }
@@ -195,7 +198,6 @@ export class EntStateGatewayInterface implements GatewayAttachmentInterface {
                     }));
                 return;
             }
-
 
             if (this.resolver && this.handler) {
                 await removeAndReply({

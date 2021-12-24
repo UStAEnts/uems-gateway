@@ -2,21 +2,20 @@ import { GatewayMk2 } from '../../Gateway';
 import { Request, Response } from 'express';
 import { MessageUtilities } from '../../utilities/MessageUtilities';
 import { constants } from 'http2';
-import { EntStateMessage, MessageIntention, MsgStatus, StateMessage, StateResponseValidator } from '@uems/uemscommlib';
+import { EntStateMessage, StateMessage, StateResponseValidator } from '@uems/uemscommlib';
 import { GenericHandlerFunctions } from '../GenericHandlerFunctions';
+import { Constants } from '../../utilities/Constants';
+import { EntityResolver } from '../../resolver/EntityResolver';
+import { removeAndReply } from '../DeletePipelines';
+import { ErrorCodes } from '../../constants/ErrorCodes';
 import GatewayAttachmentInterface = GatewayMk2.GatewayAttachmentInterface;
 import SendRequestFunction = GatewayMk2.SendRequestFunction;
 import ReadEntStateMessage = EntStateMessage.ReadEntStateMessage;
 import ReadStateMessage = StateMessage.ReadStateMessage;
 import CreateStateMessage = StateMessage.CreateStateMessage;
-import DeleteStateMessage = StateMessage.DeleteStateMessage;
 import UpdateStateMessage = StateMessage.UpdateStateMessage;
-import { Constants } from "../../utilities/Constants";
 import ROUTING_KEY = Constants.ROUTING_KEY;
-import { EntityResolver } from "../../resolver/EntityResolver";
 import GatewayMessageHandler = GatewayMk2.GatewayMessageHandler;
-import { removeAndReply, removeEntity } from "../DeletePipelines";
-import { ErrorCodes } from "../../constants/ErrorCodes";
 
 export class StateGatewayInterface implements GatewayAttachmentInterface {
 
@@ -45,12 +44,14 @@ export class StateGatewayInterface implements GatewayAttachmentInterface {
                 path: '/states',
                 handle: this.createStateHandler(send),
                 additionalValidator: validator,
+                secure: ['ops', 'admin'],
             },
             {
                 action: 'delete',
                 path: '/states/:id',
                 handle: this.deleteStateHandler(send),
                 additionalValidator: validator,
+                secure: ['ops', 'admin'],
             },
             {
                 action: 'get',
@@ -63,6 +64,7 @@ export class StateGatewayInterface implements GatewayAttachmentInterface {
                 path: '/states/:id',
                 handle: this.updateStateHandler(send),
                 additionalValidator: validator,
+                secure: ['ops', 'admin'],
             },
         ];
     }
@@ -83,7 +85,10 @@ export class StateGatewayInterface implements GatewayAttachmentInterface {
                 {
                     name: { primitive: 'string' },
                     icon: { primitive: 'string' },
-                    color: { primitive: 'string', validator: (x) => this.COLOR_REGEX.test(x) },
+                    color: {
+                        primitive: 'string',
+                        validator: (x) => this.COLOR_REGEX.test(x)
+                    },
                     id: { primitive: 'string' },
                 },
             );
@@ -192,7 +197,6 @@ export class StateGatewayInterface implements GatewayAttachmentInterface {
                     }));
                 return;
             }
-
 
             if (this.resolver && this.handler) {
                 await removeAndReply({

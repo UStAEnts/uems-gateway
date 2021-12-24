@@ -126,6 +126,7 @@ export class EntityResolver {
             ...shallowEvent,
             ents: shallowEvent.ents === undefined ? undefined : await this.resolveEntState(shallowEvent.ents, userID),
             state: shallowEvent.state === undefined ? undefined : await this.resolveState(shallowEvent.state, userID),
+            author: await this.resolveUser(shallowEvent.author, userID),
             venues: await Promise.all(shallowEvent.venues.map((e) => this.resolveVenue(e, userID))),
         };
     };

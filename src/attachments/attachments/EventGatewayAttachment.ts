@@ -1,26 +1,27 @@
 import { Request, Response } from 'express';
-import { CommentMessage, CommentResponse, EventMessage, EventResponse, EventResponseValidator, MsgStatus, VenueResponse } from '@uems/uemscommlib';
+import { CommentMessage, EventMessage, EventResponse, EventResponseValidator } from '@uems/uemscommlib';
 import { MessageUtilities } from '../../utilities/MessageUtilities';
 import { GatewayMk2 } from '../../Gateway';
 import { EntityResolver } from '../../resolver/EntityResolver';
 import { constants } from 'http2';
 import { GenericHandlerFunctions } from '../GenericHandlerFunctions';
-import { Resolver } from "../Resolvers";
+import { Resolver } from '../Resolvers';
+import { Constants } from '../../utilities/Constants';
+import { removeAndReply } from '../DeletePipelines';
+import { ErrorCodes } from '../../constants/ErrorCodes';
 import GatewayAttachmentInterface = GatewayMk2.GatewayAttachmentInterface;
 import SendRequestFunction = GatewayMk2.SendRequestFunction;
 import GatewayInterfaceActionType = GatewayMk2.GatewayInterfaceActionType;
-import DeleteEventMessage = EventMessage.DeleteEventMessage;
 import UpdateEventMessage = EventMessage.UpdateEventMessage;
 import ReadEventMessage = EventMessage.ReadEventMessage;
 import CreateEventMessage = EventMessage.CreateEventMessage;
 import ShallowInternalEvent = EventResponse.ShallowInternalEvent;
 import ReadCommentMessage = CommentMessage.ReadCommentMessage;
 import CreateCommentMessage = CommentMessage.CreateCommentMessage;
-import { Constants } from "../../utilities/Constants";
 import ROUTING_KEY = Constants.ROUTING_KEY;
 import GatewayMessageHandler = GatewayMk2.GatewayMessageHandler;
-import { removeAndReply, removeEntity } from "../DeletePipelines";
-import { ErrorCodes } from "../../constants/ErrorCodes";
+import { AuthUtilities } from "../../utilities/AuthUtilities";
+import orProtect = AuthUtilities.orProtect;
 
 export class EventGatewayAttachment implements GatewayAttachmentInterface {
     // TODO: bit dangerous using ! - maybe add null checks?
@@ -68,6 +69,7 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
                 path: '/events/:id',
                 handle: EventGatewayAttachment.deleteEventHandler(send, handler, resolver),
                 additionalValidator: validator,
+                secure: ['ops', 'admin'], // events shouldn't be deleted, just cancelled
             },
             // EVENT <--> STATE LINK
             {
@@ -131,12 +133,19 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
         return async (req: Request, res: Response) => {
             const eventId = req.params.id;
 
+            let localOnly = true;
+            if (req.kauth && req.kauth.grant && req.kauth.grant.access_token) {
+                // req.kauth.grant.kauth
+                if (orProtect('ops', 'ents', 'admin')(req.kauth.grant.access_token)) localOnly = false;
+            }
+
             const msg: UpdateEventMessage = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 status: 0,
                 msg_intention: 'UPDATE',
                 id: eventId,
                 userID: req.uemsUser.userID,
+                localOnly,
             };
 
             const validate = MessageUtilities.verifyBody(
@@ -214,6 +223,12 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
     private getEventsHandler = (send: SendRequestFunction) => async (req: Request, res: Response) => {
         // TODO add failures
 
+        let localOnly = true;
+        if (req.kauth && req.kauth.grant && req.kauth.grant.access_token) {
+            // req.kauth.grant.kauth
+            if (orProtect('ops', 'ents', 'admin')(req.kauth.grant.access_token)) localOnly = false;
+        }
+
         const validate = MessageUtilities.coerceAndVerifyQuery(
             req,
             res,
@@ -245,6 +260,7 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
             status: 0,
             msg_intention: 'READ',
             userID: req.uemsUser.userID,
+            localOnly,
         };
 
         if (req.query.name !== undefined) {
@@ -320,11 +336,18 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
 
     private getEventHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
+            let localOnly = true;
+            if (req.kauth && req.kauth.grant && req.kauth.grant.access_token) {
+                // req.kauth.grant.kauth
+                if (orProtect('ops', 'ents', 'admin')(req.kauth.grant.access_token)) localOnly = false;
+            }
+
             const outgoingMessage: ReadEventMessage = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 msg_intention: 'READ',
                 status: 0,
                 userID: req.uemsUser.userID,
+                localOnly,
             };
 
             if (!MessageUtilities.has(req.params, 'id')) {
@@ -413,12 +436,18 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
 
     private getEventsByState = (send: SendRequestFunction) => async (req: Request, res: Response) => {
         // TODO add failures
+        let localOnly = true;
+        if (req.kauth && req.kauth.grant && req.kauth.grant.access_token) {
+            // req.kauth.grant.kauth
+            if (orProtect('ops', 'ents', 'admin')(req.kauth.grant.access_token)) localOnly = false;
+        }
 
         const msg: ReadEventMessage = {
             msg_id: MessageUtilities.generateMessageIdentifier(),
             status: 0,
             msg_intention: 'READ',
             userID: req.uemsUser.userID,
+            localOnly,
         };
 
         if (!MessageUtilities.has(req.params, 'id')) {
@@ -446,12 +475,18 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
 
     private getEventsByVenue = (send: SendRequestFunction) => async (req: Request, res: Response) => {
         // TODO add failures
+        let localOnly = true;
+        if (req.kauth && req.kauth.grant && req.kauth.grant.access_token) {
+            // req.kauth.grant.kauth
+            if (orProtect('ops', 'ents', 'admin')(req.kauth.grant.access_token)) localOnly = false;
+        }
 
         const msg: ReadEventMessage = {
             msg_id: MessageUtilities.generateMessageIdentifier(),
             status: 0,
             msg_intention: 'READ',
             userID: req.uemsUser.userID,
+            localOnly,
         };
 
         if (!MessageUtilities.has(req.params, 'id')) {
@@ -479,12 +514,18 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
 
     private getCommentsForEvent = (send: SendRequestFunction) => async (req: Request, res: Response) => {
         // TODO add failures
+        let localOnly = true;
+        if (req.kauth && req.kauth.grant && req.kauth.grant.access_token) {
+            // req.kauth.grant.kauth
+            if (orProtect('ops', 'ents', 'admin')(req.kauth.grant.access_token)) localOnly = false;
+        }
 
         const msg: ReadCommentMessage = {
             msg_id: MessageUtilities.generateMessageIdentifier(),
             status: 0,
             msg_intention: 'READ',
             userID: req.uemsUser.userID,
+            localAssetOnly: localOnly,
         };
 
         if (!MessageUtilities.has(req.params, 'id')) {
@@ -535,6 +576,12 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
                 body,
             } = request.body;
 
+            let localOnly = true;
+            if (request.kauth && request.kauth.grant && request.kauth.grant.access_token) {
+                // req.kauth.grant.kauth
+                if (orProtect('ops', 'ents', 'admin')(request.kauth.grant.access_token)) localOnly = false;
+            }
+
             const msg: CreateCommentMessage = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 status: 0, // 0 Code used when the status is still to be decided.
@@ -544,10 +591,11 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
                 topic,
                 requiresAttention,
                 body,
+                localAssetOnly: localOnly,
 
                 assetID: request.params.id,
                 assetType: 'event',
-                posterID: '5febba29be771bff36e059dd', // TODO needs swapping for actual info
+                posterID: request.uemsUser.userID,
             };
 
             await send(
