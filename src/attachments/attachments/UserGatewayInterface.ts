@@ -57,6 +57,7 @@ export class UserGatewayInterface implements GatewayAttachmentInterface {
                 handle: this.getUserHandler(send),
                 additionalValidator: validator,
                 // TODO: [https://app.asana.com/0/0/1201549453029903/f] requires specific secure rules
+                //       what data should normal users be able to get?
             },
             {
                 action: 'patch',

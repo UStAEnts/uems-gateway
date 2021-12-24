@@ -17,6 +17,8 @@ import CreateSignupMessage = SignupMessage.CreateSignupMessage;
 import UpdateSignupMessage = SignupMessage.UpdateSignupMessage;
 import ROUTING_KEY = Constants.ROUTING_KEY;
 import GatewayMessageHandler = GatewayMk2.GatewayMessageHandler;
+import { AuthUtilities } from "../../utilities/AuthUtilities";
+import orProtect = AuthUtilities.orProtect;
 
 export class SignupGatewayInterface implements GatewayAttachmentInterface {
 
@@ -46,23 +48,21 @@ export class SignupGatewayInterface implements GatewayAttachmentInterface {
                 path: '/events/:eventID/signups',
                 handle: this.createSignupHandler(send),
                 additionalValidator: validator,
-                // TODO: [https://app.asana.com/0/0/1201549453029903/f] requires specific secure rules
-                //       Adding on behalf means extra permissions, adding themselves does not
             },
             {
                 action: 'delete',
                 path: '/events/:eventID/signups/:id',
                 handle: this.deleteSignupHandler(send),
                 additionalValidator: validator,
-                // TODO: [https://app.asana.com/0/0/1201549453029903/f] requires specific secure rules
-                //       Removing self none, removing others extra
             },
             {
                 action: 'get',
                 path: '/events/:eventID/signups/:id',
                 handle: this.getSignupHandler(send),
                 additionalValidator: validator,
-                // TODO: [https://app.asana.com/0/0/1201549453029903/f] requires specific secure rules
+                secure: ['ents', 'admin'],
+                // TODO: [https://app.asana.com/0/0/1201549453029903/f] should event owners be able to see the
+                //       techs assigned?
             },
             {
                 action: 'patch',
@@ -70,6 +70,8 @@ export class SignupGatewayInterface implements GatewayAttachmentInterface {
                 handle: this.updateSignupHandler(send),
                 additionalValidator: validator,
                 // TODO: [https://app.asana.com/0/0/1201549453029903/f] requires specific secure rules
+                //       need to figure out how to implement this one, will have to be done on the service via comms
+                //       as we just pass an ID on thisrather than identities.
             },
         ];
     }
@@ -198,6 +200,7 @@ export class SignupGatewayInterface implements GatewayAttachmentInterface {
                 return;
             }
 
+            // TODO: this is not verifying the right hting?
             const validate = MessageUtilities.verifyBody(
                 req,
                 res,
@@ -209,6 +212,23 @@ export class SignupGatewayInterface implements GatewayAttachmentInterface {
             );
 
             if (!validate) {
+                return;
+            }
+
+            if (req.kauth && req.kauth.grant && req.kauth.grant.access_token) {
+                if (req.params.signupUser !== req.uemsUser.userID) {
+                    // Signing up another user, mu for now
+                    if (!orProtect('admin')(req.kauth.grant.access_token)) {
+                        res.sendStatus(constants.HTTP_STATUS_UNAUTHORIZED);
+                        return;
+                    }
+                    // Signing up themselves, must be an ent or an admin
+                } else if (!orProtect('ents', 'admin')(req.kauth.grant.access_token)) {
+                    res.sendStatus(constants.HTTP_STATUS_UNAUTHORIZED);
+                    return;
+                }
+            } else {
+                res.sendStatus(constants.HTTP_STATUS_UNAUTHORIZED);
                 return;
             }
 
@@ -250,6 +270,23 @@ export class SignupGatewayInterface implements GatewayAttachmentInterface {
                         message: 'missing parameter id',
                         code: 'BAD_REQUEST_MISSING_PARAM',
                     }));
+                return;
+            }
+
+            if (req.kauth && req.kauth.grant && req.kauth.grant.access_token) {
+                if (req.params.signupUser !== req.uemsUser.userID) {
+                    // Removing another user, must be an admin for now
+                    if (!orProtect('admin')(req.kauth.grant.access_token)) {
+                        res.sendStatus(constants.HTTP_STATUS_UNAUTHORIZED);
+                        return;
+                    }
+                    // Removing themselves, must be an ent or an admin
+                } else if (!orProtect('ents', 'admin')(req.kauth.grant.access_token)) {
+                    res.sendStatus(constants.HTTP_STATUS_UNAUTHORIZED);
+                    return;
+                }
+            } else {
+                res.sendStatus(constants.HTTP_STATUS_UNAUTHORIZED);
                 return;
             }
 

@@ -20,6 +20,8 @@ import ReadCommentMessage = CommentMessage.ReadCommentMessage;
 import CreateCommentMessage = CommentMessage.CreateCommentMessage;
 import ROUTING_KEY = Constants.ROUTING_KEY;
 import GatewayMessageHandler = GatewayMk2.GatewayMessageHandler;
+import { AuthUtilities } from "../../utilities/AuthUtilities";
+import orProtect = AuthUtilities.orProtect;
 
 export class EventGatewayAttachment implements GatewayAttachmentInterface {
     // TODO: bit dangerous using ! - maybe add null checks?
@@ -49,21 +51,18 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
                 path: '/events',
                 handle: this.getEventsHandler(send),
                 additionalValidator: validator,
-                // TODO: [https://app.asana.com/0/0/1201549453029903/f] requires specific secure rules
             },
             {
                 action: 'get',
                 path: '/events/:id',
                 handle: this.getEventHandler(send),
                 additionalValidator: validator,
-                // TODO: [https://app.asana.com/0/0/1201549453029903/f] requires specific secure rules
             },
             {
                 action: 'patch',
                 path: '/events/:id',
                 handle: EventGatewayAttachment.updateEventHandler(send),
                 additionalValidator: validator,
-                // TODO: [https://app.asana.com/0/0/1201549453029903/f] requires specific secure rules
             },
             {
                 action: 'delete',
@@ -78,7 +77,6 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
                 path: '/states/:id/events',
                 handle: this.getEventsByState(send),
                 additionalValidator: validator,
-                // TODO: [https://app.asana.com/0/0/1201549453029903/f] requires specific secure rules
             },
             // EVENT <--> VENUE LINK
             {
@@ -86,7 +84,6 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
                 path: '/venues/:id/events',
                 handle: this.getEventsByVenue(send),
                 additionalValidator: validator,
-                // TODO: [https://app.asana.com/0/0/1201549453029903/f] requires specific secure rules
             },
             // EVENT COMMENTS
             {
@@ -94,7 +91,6 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
                 path: '/events/:id/comments',
                 handle: this.getCommentsForEvent(send),
                 additionalValidator: validator,
-                // TODO: [https://app.asana.com/0/0/1201549453029903/f] requires specific secure rules
             },
             {
                 action: 'post',
@@ -138,12 +134,19 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
         return async (req: Request, res: Response) => {
             const eventId = req.params.id;
 
+            let localOnly = true;
+            if (req.kauth && req.kauth.grant && req.kauth.grant.access_token) {
+                // req.kauth.grant.kauth
+                if (orProtect('ops', 'ents', 'admin')(req.kauth.grant.access_token)) localOnly = false;
+            }
+
             const msg: UpdateEventMessage = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 status: 0,
                 msg_intention: 'UPDATE',
                 id: eventId,
                 userID: req.uemsUser.userID,
+                localOnly,
             };
 
             const validate = MessageUtilities.verifyBody(
@@ -221,6 +224,12 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
     private getEventsHandler = (send: SendRequestFunction) => async (req: Request, res: Response) => {
         // TODO add failures
 
+        let localOnly = true;
+        if (req.kauth && req.kauth.grant && req.kauth.grant.access_token) {
+            // req.kauth.grant.kauth
+            if (orProtect('ops', 'ents', 'admin')(req.kauth.grant.access_token)) localOnly = false;
+        }
+
         const validate = MessageUtilities.coerceAndVerifyQuery(
             req,
             res,
@@ -252,6 +261,7 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
             status: 0,
             msg_intention: 'READ',
             userID: req.uemsUser.userID,
+            localOnly,
         };
 
         if (req.query.name !== undefined) {
@@ -327,11 +337,18 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
 
     private getEventHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
+            let localOnly = true;
+            if (req.kauth && req.kauth.grant && req.kauth.grant.access_token) {
+                // req.kauth.grant.kauth
+                if (orProtect('ops', 'ents', 'admin')(req.kauth.grant.access_token)) localOnly = false;
+            }
+
             const outgoingMessage: ReadEventMessage = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 msg_intention: 'READ',
                 status: 0,
                 userID: req.uemsUser.userID,
+                localOnly,
             };
 
             if (!MessageUtilities.has(req.params, 'id')) {
@@ -420,12 +437,18 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
 
     private getEventsByState = (send: SendRequestFunction) => async (req: Request, res: Response) => {
         // TODO add failures
+        let localOnly = true;
+        if (req.kauth && req.kauth.grant && req.kauth.grant.access_token) {
+            // req.kauth.grant.kauth
+            if (orProtect('ops', 'ents', 'admin')(req.kauth.grant.access_token)) localOnly = false;
+        }
 
         const msg: ReadEventMessage = {
             msg_id: MessageUtilities.generateMessageIdentifier(),
             status: 0,
             msg_intention: 'READ',
             userID: req.uemsUser.userID,
+            localOnly,
         };
 
         if (!MessageUtilities.has(req.params, 'id')) {
@@ -453,12 +476,18 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
 
     private getEventsByVenue = (send: SendRequestFunction) => async (req: Request, res: Response) => {
         // TODO add failures
+        let localOnly = true;
+        if (req.kauth && req.kauth.grant && req.kauth.grant.access_token) {
+            // req.kauth.grant.kauth
+            if (orProtect('ops', 'ents', 'admin')(req.kauth.grant.access_token)) localOnly = false;
+        }
 
         const msg: ReadEventMessage = {
             msg_id: MessageUtilities.generateMessageIdentifier(),
             status: 0,
             msg_intention: 'READ',
             userID: req.uemsUser.userID,
+            localOnly,
         };
 
         if (!MessageUtilities.has(req.params, 'id')) {
@@ -486,12 +515,18 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
 
     private getCommentsForEvent = (send: SendRequestFunction) => async (req: Request, res: Response) => {
         // TODO add failures
+        let localOnly = true;
+        if (req.kauth && req.kauth.grant && req.kauth.grant.access_token) {
+            // req.kauth.grant.kauth
+            if (orProtect('ops', 'ents', 'admin')(req.kauth.grant.access_token)) localOnly = false;
+        }
 
         const msg: ReadCommentMessage = {
             msg_id: MessageUtilities.generateMessageIdentifier(),
             status: 0,
             msg_intention: 'READ',
             userID: req.uemsUser.userID,
+            localAssetOnly: localOnly,
         };
 
         if (!MessageUtilities.has(req.params, 'id')) {
