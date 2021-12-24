@@ -54,6 +54,7 @@ export class SignupGatewayInterface implements GatewayAttachmentInterface {
                 path: '/events/:eventID/signups/:id',
                 handle: this.deleteSignupHandler(send),
                 additionalValidator: validator,
+                // TODO: [https://app.asana.com/0/0/1201549453029903/f] add verification on the microservice side
             },
             {
                 action: 'get',
@@ -213,19 +214,22 @@ export class SignupGatewayInterface implements GatewayAttachmentInterface {
             }
 
             if (req.kauth && req.kauth.grant && req.kauth.grant.access_token) {
-                if (req.params.signupUser !== req.uemsUser.userID) {
+                if (req.params.signupUser && req.params.signupUser !== req.uemsUser.userID) {
                     // Signing up another user, mu for now
                     if (!orProtect('admin')(req.kauth.grant.access_token)) {
-                        res.sendStatus(constants.HTTP_STATUS_UNAUTHORIZED);
+                        res.status(constants.HTTP_STATUS_UNAUTHORIZED)
+                            .json(MessageUtilities.wrapInFailure(ErrorCodes.PERMISSION));
                         return;
                     }
                     // Signing up themselves, must be an ent or an admin
                 } else if (!orProtect('ents', 'admin')(req.kauth.grant.access_token)) {
-                    res.sendStatus(constants.HTTP_STATUS_UNAUTHORIZED);
+                    res.status(constants.HTTP_STATUS_UNAUTHORIZED)
+                        .json(MessageUtilities.wrapInFailure(ErrorCodes.PERMISSION));
                     return;
                 }
             } else {
-                res.sendStatus(constants.HTTP_STATUS_UNAUTHORIZED);
+                res.status(constants.HTTP_STATUS_UNAUTHORIZED)
+                    .json(MessageUtilities.wrapInFailure(ErrorCodes.PERMISSION));
                 return;
             }
 
@@ -267,23 +271,6 @@ export class SignupGatewayInterface implements GatewayAttachmentInterface {
                         message: 'missing parameter id',
                         code: 'BAD_REQUEST_MISSING_PARAM',
                     }));
-                return;
-            }
-
-            if (req.kauth && req.kauth.grant && req.kauth.grant.access_token) {
-                if (req.params.signupUser !== req.uemsUser.userID) {
-                    // Removing another user, must be an admin for now
-                    if (!orProtect('admin')(req.kauth.grant.access_token)) {
-                        res.sendStatus(constants.HTTP_STATUS_UNAUTHORIZED);
-                        return;
-                    }
-                    // Removing themselves, must be an ent or an admin
-                } else if (!orProtect('ents', 'admin')(req.kauth.grant.access_token)) {
-                    res.sendStatus(constants.HTTP_STATUS_UNAUTHORIZED);
-                    return;
-                }
-            } else {
-                res.sendStatus(constants.HTTP_STATUS_UNAUTHORIZED);
                 return;
             }
 
