@@ -62,6 +62,26 @@ export async function testMissingParameters(
         .toContain('missing');
 }
 
+export async function testRouteWithoutSend(
+    route: GatewayInterfaceActionType,
+    data: any,
+    location: 'query' | 'body',
+    send: jest.Mock,
+    params?: any,
+    roles?: string[],
+) {
+    const response = new Response();
+    const fake = response as unknown as express.Response;
+    const req = request(
+        location === 'query' ? data : undefined,
+        location === 'body' ? data : undefined,
+        params,
+        roles,
+    );
+    await route.handle(req, fake, () => false);
+    return response;
+}
+
 export async function testValidRoute(
     route: GatewayInterfaceActionType,
     data: any,
@@ -91,4 +111,5 @@ export async function testValidRoute(
         expect(send.mock.calls[0][1])
             .toEqual(expect.objectContaining(data));
     }
+    return response;
 }
