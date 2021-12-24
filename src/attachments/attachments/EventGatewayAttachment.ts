@@ -596,7 +596,7 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
 
                 assetID: request.params.id,
                 assetType: 'event',
-                posterID: '5febba29be771bff36e059dd', // TODO needs swapping for actual info
+                posterID: request.uemsUser.userID,
             };
 
             await send(
