@@ -3,7 +3,8 @@ import { EntityResolver } from '../../../src/resolver/EntityResolver';
 import { GatewayMk2 } from '../../../src/Gateway';
 import GatewayInterfaceActionType = GatewayMk2.GatewayInterfaceActionType;
 import { GET_EVENTS_EVENTID_SIGNUPS_INVALID, GET_EVENTS_EVENTID_SIGNUPS_VALID, PATCH_EVENTS_EVENTID_SIGNUPS_SIGNUPID_VALID, POST_EVENTS_EVENTID_SIGNUPS_MISSING, POST_EVENTS_EVENTID_SIGNUPS_VALID } from '../../test-api-data';
-import { testMissingParameters, testParameterTypes, testValidRoute } from '../../utils';
+import { testMissingParameters, testParameterTypes, testRouteWithoutSend, testValidRoute } from '../../utils';
+import { constants } from "http2";
 
 describe('SignupGatewayInterface.ts', () => {
     const send = jest.fn();
@@ -84,22 +85,42 @@ describe('SignupGatewayInterface.ts', () => {
                 ['admin'],
             );
         });
-    });
 
-    // describe('DELETE /events/:id/signups/:id', () => {
-    //     it('sends on a valid message', async () => {
-    //         await testValidRoute(
-    //             routes['delete.events.id.signups.id'],
-    //             undefined,
-    //             'body',
-    //             send,
-    //             {
-    //                 eventID: 'abc',
-    //                 id: 'abc',
-    //             },
-    //         );
-    //     });
-    // });
+        it('rejects if creating for another user and not admin', async () => {
+            const r = await testRouteWithoutSend(
+                routes['post.events.id.signups'],
+                {
+                    ...POST_EVENTS_EVENTID_SIGNUPS_VALID,
+                },
+                'body',
+                send,
+                {
+                    eventID: 'abc',
+                    signupUser: 'another!',
+                },
+                ['extended'],
+            );
+
+            expect(r.statusCode)
+                .toEqual(constants.HTTP_STATUS_UNAUTHORIZED);
+        });
+
+        it('rejects if creating for self and is not a valid user', async () => {
+            const r = await testRouteWithoutSend(
+                routes['post.events.id.signups'],
+                {
+                    ...POST_EVENTS_EVENTID_SIGNUPS_VALID,
+                },
+                'body',
+                send,
+                { eventID: 'abc' },
+                ['extended'],
+            );
+
+            expect(r.statusCode)
+                .toEqual(constants.HTTP_STATUS_UNAUTHORIZED);
+        });
+    });
 
     describe('GET /events/:id/signups/:id', () => {
         it('sends on a valid message', async () => {
