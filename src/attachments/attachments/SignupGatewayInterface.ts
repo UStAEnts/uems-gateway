@@ -54,7 +54,6 @@ export class SignupGatewayInterface implements GatewayAttachmentInterface {
                 path: '/events/:eventID/signups/:id',
                 handle: this.deleteSignupHandler(send),
                 additionalValidator: validator,
-                // TODO: [https://app.asana.com/0/0/1201549453029903/f] add verification on the microservice side
             },
             {
                 action: 'get',
@@ -274,11 +273,17 @@ export class SignupGatewayInterface implements GatewayAttachmentInterface {
                 return;
             }
 
+            let localOnly = true;
+            if (req.kauth && req.kauth.grant && req.kauth.grant.access_token) {
+                // req.kauth.grant.kauth
+                if (orProtect('ops', 'ents', 'admin')(req.kauth.grant.access_token)) localOnly = false;
+            }
+
             if (this._resolver && this.handler) {
                 await removeAndReply({
                     assetID: req.params.id,
                     assetType: 'signup',
-                }, this._resolver, this.handler, res);
+                }, this._resolver, this.handler, res, localOnly);
             } else {
                 res.status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
                     .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
