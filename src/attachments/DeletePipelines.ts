@@ -139,12 +139,20 @@ export class DeleteAction {
 
     private _onDependents?: () => void;
 
-    constructor(entity: EntityIdentifier, resolver: EntityResolver, handler: GatewayMessageHandler) {
+    private _localOnly: boolean;
+
+    constructor(
+        entity: EntityIdentifier,
+        resolver: EntityResolver,
+        handler: GatewayMessageHandler,
+        localOnly: boolean,
+    ) {
         this._entity = entity;
         this._resolver = resolver;
         this._handler = handler;
         this._identifier = Math.floor(10000 * Math.random());
         this._state = DeleteState.AWAIT_START;
+        this._localOnly = localOnly;
 
         _l.debug('Request to delete entity', { entity });
     }
@@ -183,6 +191,7 @@ export class DeleteAction {
             userID: 'anonymous',
             msg_intention: 'READ',
             msg_id: MessageUtilities.generateMessageIdentifier(),
+            localAssetOnly: this._localOnly,
         });
 
         this._state = DeleteState.AWAIT_REPLY;
@@ -249,6 +258,7 @@ export class DeleteAction {
             msg_intention: 'READ',
             msg_id: MessageUtilities.generateMessageIdentifier(),
             execute: true,
+            localAssetOnly: this._localOnly,
         });
 
         const validator = new DiscoveryResponseValidator();
@@ -340,9 +350,14 @@ export class DeleteAction {
     }
 }
 
-export function removeEntity(entity: EntityIdentifier, resolver: EntityResolver, handler: GatewayMessageHandler) {
+export function removeEntity(
+    entity: EntityIdentifier,
+    resolver: EntityResolver,
+    handler: GatewayMessageHandler,
+    localOnly: boolean = true,
+) {
     return new Promise((res, rej) => {
-        const action = new DeleteAction(entity, resolver, handler);
+        const action = new DeleteAction(entity, resolver, handler, localOnly);
         action.onFailure = rej;
         action.onSuccess = res;
         action.execute();
@@ -354,10 +369,11 @@ export function removeAndReply(
     resolver: EntityResolver,
     handler: GatewayMessageHandler,
     response: Response,
+    localOnly: boolean = true,
 ) {
     return new Promise<boolean>((resolve, reject) => {
 
-        const pipeline = new DeleteAction(entity, resolver, handler);
+        const pipeline = new DeleteAction(entity, resolver, handler, localOnly);
 
         pipeline.onSuccess = () => {
             response.status(constants.HTTP_STATUS_OK)
