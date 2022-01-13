@@ -177,20 +177,10 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
                 msg_intention: 'READ',
                 status: 0,
                 userID: req.uemsUser.userID,
+                id: req.params.id,
                 localOnly,
             };
 
-            if (!MessageUtilities.has(req.params, 'id')) {
-                res
-                    .status(constants.HTTP_STATUS_BAD_REQUEST)
-                    .json(MessageUtilities.wrapInFailure({
-                        message: 'missing parameter id',
-                        code: 'BAD_REQUEST_MISSING_PARAM',
-                    }));
-                return;
-            }
-
-            outgoingMessage.id = req.params.id;
             await send(
                 ROUTING_KEY.file.read,
                 outgoingMessage,
@@ -260,16 +250,6 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
 
     private deleteFileHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
-            if (!MessageUtilities.has(req.params, 'id')) {
-                res
-                    .status(constants.HTTP_STATUS_BAD_REQUEST)
-                    .json(MessageUtilities.wrapInFailure({
-                        message: 'missing parameter id',
-                        code: 'BAD_REQUEST_MISSING_PARAM',
-                    }));
-                return;
-            }
-
             if (this._resolver && this.handler) {
                 await removeAndReply({
                     assetID: req.params.id,
@@ -279,35 +259,11 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
                 res.status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
                     .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
             }
-            // const outgoingMessage: DeleteFileMessage = {
-            //     msg_id: MessageUtilities.generateMessageIdentifier(),
-            //     msg_intention: 'DELETE',
-            //     status: 0,
-            //     userID: req.uemsUser.userID,
-            //     id: req.params.id,
-            // };
-            //
-            // await send(
-            //     ROUTING_KEY.file.delete,
-            //     outgoingMessage,
-            //     res,
-            //     GenericHandlerFunctions.handleReadSingleResponseFactory(),
-            // );
         };
     }
 
     private updateFileHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
-            if (!MessageUtilities.has(req.params, 'id')) {
-                res
-                    .status(constants.HTTP_STATUS_BAD_REQUEST)
-                    .json(MessageUtilities.wrapInFailure({
-                        message: 'missing parameter id',
-                        code: 'BAD_REQUEST_MISSING_PARAM',
-                    }));
-                return;
-            }
-
             const outgoing: UpdateFileMessage = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 msg_intention: 'UPDATE',
@@ -341,15 +297,6 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
 
     private getEventsByFileHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
-            if (!MessageUtilities.has(req.params, 'id')) {
-                res
-                    .status(constants.HTTP_STATUS_BAD_REQUEST)
-                    .json(MessageUtilities.wrapInFailure({
-                        message: 'missing parameter id',
-                        code: 'BAD_REQUEST_MISSING_PARAM',
-                    }));
-                return;
-            }
             let localOnly = true;
             if (req.kauth && req.kauth.grant && req.kauth.grant.access_token) {
                 // req.kauth.grant.kauth
@@ -379,15 +326,6 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
 
     private getFilesByEventsHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
-            if (!MessageUtilities.has(req.params, 'id')) {
-                res
-                    .status(constants.HTTP_STATUS_BAD_REQUEST)
-                    .json(MessageUtilities.wrapInFailure({
-                        message: 'missing parameter id',
-                        code: 'BAD_REQUEST_MISSING_PARAM',
-                    }));
-                return;
-            }
             let localOnly = true;
             if (req.kauth && req.kauth.grant && req.kauth.grant.access_token) {
                 // req.kauth.grant.kauth
@@ -417,15 +355,6 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
 
     private postFileToEventHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
-            if (!MessageUtilities.has(req.params, 'id')) {
-                res
-                    .status(constants.HTTP_STATUS_BAD_REQUEST)
-                    .json(MessageUtilities.wrapInFailure({
-                        message: 'missing parameter id',
-                        code: 'BAD_REQUEST_MISSING_PARAM',
-                    }));
-                return;
-            }
             let localOnly = true;
             if (req.kauth && req.kauth.grant && req.kauth.grant.access_token) {
                 // req.kauth.grant.kauth
@@ -467,25 +396,6 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
     // TODO: document on stoplight
     private deleteFileFromEventHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
-            if (!MessageUtilities.has(req.params, 'eventID')) {
-                res
-                    .status(constants.HTTP_STATUS_BAD_REQUEST)
-                    .json(MessageUtilities.wrapInFailure({
-                        message: 'missing parameter eventID',
-                        code: 'BAD_REQUEST_MISSING_PARAM',
-                    }));
-                return;
-            }
-            if (!MessageUtilities.has(req.params, 'fileID')) {
-                res
-                    .status(constants.HTTP_STATUS_BAD_REQUEST)
-                    .json(MessageUtilities.wrapInFailure({
-                        message: 'missing parameter fileID',
-                        code: 'BAD_REQUEST_MISSING_PARAM',
-                    }));
-                return;
-            }
-
             const outgoingMessage: UnbindFilesFromEventMessage = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 msg_intention: 'DELETE',

@@ -136,19 +136,9 @@ export class EquipmentGatewayInterface implements GatewayAttachmentInterface {
                 msg_intention: 'READ',
                 status: 0,
                 userID: req.uemsUser.userID,
+                id: req.params.id,
             };
 
-            if (!MessageUtilities.has(req.params, 'id')) {
-                res
-                    .status(constants.HTTP_STATUS_BAD_REQUEST)
-                    .json(MessageUtilities.wrapInFailure({
-                        message: 'missing parameter id',
-                        code: 'BAD_REQUEST_MISSING_PARAM',
-                    }));
-                return;
-            }
-
-            outgoingMessage.id = req.params.id;
             await send(
                 ROUTING_KEY.equipment.read,
                 outgoingMessage,
@@ -224,17 +214,6 @@ export class EquipmentGatewayInterface implements GatewayAttachmentInterface {
 
     private deleteEquipmentHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
-
-            if (!MessageUtilities.has(req.params, 'id')) {
-                res
-                    .status(constants.HTTP_STATUS_BAD_REQUEST)
-                    .json(MessageUtilities.wrapInFailure({
-                        message: 'missing parameter id',
-                        code: 'BAD_REQUEST_MISSING_PARAM',
-                    }));
-                return;
-            }
-
             if (this.resolver && this.handler) {
                 await removeAndReply({
                     assetID: req.params.id,
@@ -244,37 +223,11 @@ export class EquipmentGatewayInterface implements GatewayAttachmentInterface {
                 res.status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
                     .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
             }
-            //
-            // const outgoingMessage: DeleteEquipmentMessage = {
-            //     msg_id: MessageUtilities.generateMessageIdentifier(),
-            //     msg_intention: 'DELETE',
-            //     status: 0,
-            //     userID: req.uemsUser.userID,
-            //     id: req.params.id,
-            // };
-            //
-            // await send(
-            //     ROUTING_KEY.equipment.delete,
-            //     outgoingMessage,
-            //     res,
-            //     GenericHandlerFunctions.handleReadSingleResponseFactory(),
-            // );
         };
     }
 
     private updateEquipmentHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
-            // ID is carried in the parameter not the body so have to do it this way
-            if (!MessageUtilities.has(req.params, 'id')) {
-                res
-                    .status(constants.HTTP_STATUS_BAD_REQUEST)
-                    .json(MessageUtilities.wrapInFailure({
-                        message: 'missing parameter id',
-                        code: 'BAD_REQUEST_MISSING_PARAM',
-                    }));
-                return;
-            }
-
             const outgoing: UpdateEquipmentMessage = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 msg_intention: 'UPDATE',

@@ -129,19 +129,9 @@ export class EntStateGatewayInterface implements GatewayAttachmentInterface {
                 msg_intention: 'READ',
                 status: 0,
                 userID: req.uemsUser.userID,
+                id: req.params.id,
             };
 
-            if (!MessageUtilities.has(req.params, 'id')) {
-                res
-                    .status(constants.HTTP_STATUS_BAD_REQUEST)
-                    .json(MessageUtilities.wrapInFailure({
-                        message: 'missing parameter id',
-                        code: 'BAD_REQUEST_MISSING_PARAM',
-                    }));
-                return;
-            }
-
-            outgoingMessage.id = req.params.id;
             await send(
                 ROUTING_KEY.ent.read,
                 outgoingMessage,
@@ -189,16 +179,6 @@ export class EntStateGatewayInterface implements GatewayAttachmentInterface {
 
     private deleteEntStateHandler(send: GatewayMk2.SendRequestFunction, resolver: EntityResolver, handler: GatewayMessageHandler) {
         return async (req: Request, res: Response) => {
-            if (!MessageUtilities.has(req.params, 'id')) {
-                res
-                    .status(constants.HTTP_STATUS_BAD_REQUEST)
-                    .json(MessageUtilities.wrapInFailure({
-                        message: 'missing parameter id',
-                        code: 'BAD_REQUEST_MISSING_PARAM',
-                    }));
-                return;
-            }
-
             if (this.resolver && this.handler) {
                 await removeAndReply({
                     assetID: req.params.id,
@@ -208,35 +188,11 @@ export class EntStateGatewayInterface implements GatewayAttachmentInterface {
                 res.status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
                     .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
             }
-            //
-            // const outgoingMessage: any = {
-            //     msg_id: MessageUtilities.generateMessageIdentifier(),
-            //     msg_intention: 'DELETE',
-            //     status: 0,
-            //     id: req.params.id,
-            // };
-            //
-            // await send(
-            //     ROUTING_KEY.ent.delete,
-            //     outgoingMessage,
-            //     res,
-            //     GenericHandlerFunctions.handleReadSingleResponseFactory(),
-            // );
         };
     }
 
     private updateEntStateHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
-            if (!MessageUtilities.has(req.params, 'id')) {
-                res
-                    .status(constants.HTTP_STATUS_BAD_REQUEST)
-                    .json(MessageUtilities.wrapInFailure({
-                        message: 'missing parameter id',
-                        code: 'BAD_REQUEST_MISSING_PARAM',
-                    }));
-                return;
-            }
-
             const validate = MessageUtilities.verifyBody(
                 req,
                 res,

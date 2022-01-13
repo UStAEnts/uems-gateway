@@ -125,16 +125,6 @@ export class UserGatewayInterface implements GatewayAttachmentInterface {
 
     private getUserHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
-            if (!MessageUtilities.has(req.params, 'id')) {
-                res
-                    .status(constants.HTTP_STATUS_BAD_REQUEST)
-                    .json(MessageUtilities.wrapInFailure({
-                        message: 'missing parameter id',
-                        code: 'BAD_REQUEST_MISSING_PARAM',
-                    }));
-                return;
-            }
-
             const outgoingMessage: ReadUserMessage = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 msg_intention: 'READ',
@@ -195,16 +185,6 @@ export class UserGatewayInterface implements GatewayAttachmentInterface {
 
     private deleteUserHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
-            if (!MessageUtilities.has(req.params, 'id')) {
-                res
-                    .status(constants.HTTP_STATUS_BAD_REQUEST)
-                    .json(MessageUtilities.wrapInFailure({
-                        message: 'missing parameter id',
-                        code: 'BAD_REQUEST_MISSING_PARAM',
-                    }));
-                return;
-            }
-
             if (this.resolver && this.handler) {
                 await removeAndReply({
                     assetID: req.params.id,
@@ -214,35 +194,11 @@ export class UserGatewayInterface implements GatewayAttachmentInterface {
                 res.status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
                     .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
             }
-            // const outgoingMessage: DeleteUserMessage = {
-            //     msg_id: MessageUtilities.generateMessageIdentifier(),
-            //     msg_intention: 'DELETE',
-            //     status: 0,
-            //     userID: req.uemsUser.userID,
-            //     id: req.params.id,
-            // };
-            //
-            // await send(
-            //     ROUTING_KEY.user.delete,
-            //     outgoingMessage,
-            //     res,
-            //     GenericHandlerFunctions.handleReadSingleResponseFactory(),
-            // );
         };
     }
 
     private updateUserHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
-            if (!MessageUtilities.has(req.params, 'id')) {
-                res
-                    .status(constants.HTTP_STATUS_BAD_REQUEST)
-                    .json(MessageUtilities.wrapInFailure({
-                        message: 'missing parameter id',
-                        code: 'BAD_REQUEST_MISSING_PARAM',
-                    }));
-                return;
-            }
-
             const validate = MessageUtilities.verifyBody(
                 req,
                 res,

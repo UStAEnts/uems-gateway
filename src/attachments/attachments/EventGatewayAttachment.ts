@@ -112,20 +112,6 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
                 res.status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
                     .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
             }
-            // const msg: DeleteEventMessage = {
-            //     msg_id: MessageUtilities.generateMessageIdentifier(),
-            //     status: 0,
-            //     msg_intention: 'DELETE',
-            //     id: eventId,
-            //     userID: req.uemsUser.userID,
-            // };
-            //
-            // await send(
-            //     ROUTING_KEY.event.delete,
-            //     msg,
-            //     res,
-            //     GenericHandlerFunctions.handleReadSingleResponseFactory(),
-            // );
         };
     }
 
@@ -351,20 +337,9 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
                 msg_intention: 'READ',
                 status: 0,
                 userID: req.uemsUser.userID,
+                id: req.params.id,
                 localOnly,
             };
-
-            if (!MessageUtilities.has(req.params, 'id')) {
-                res
-                    .status(constants.HTTP_STATUS_BAD_REQUEST)
-                    .json(MessageUtilities.wrapInFailure({
-                        message: 'missing parameter id',
-                        code: 'BAD_REQUEST_MISSING_PARAM',
-                    }));
-                return;
-            }
-
-            outgoingMessage.id = req.params.id;
 
             await send(
                 ROUTING_KEY.event.read,
@@ -451,20 +426,9 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
             status: 0,
             msg_intention: 'READ',
             userID: req.uemsUser.userID,
+            stateID: req.params.id,
             localOnly,
         };
-
-        if (!MessageUtilities.has(req.params, 'id')) {
-            res
-                .status(constants.HTTP_STATUS_BAD_REQUEST)
-                .json(MessageUtilities.wrapInFailure({
-                    message: 'missing parameter id',
-                    code: 'BAD_REQUEST_MISSING_PARAM',
-                }));
-            return;
-        }
-
-        msg.stateID = req.params.id;
 
         await send(
             ROUTING_KEY.event.read,
@@ -490,20 +454,9 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
             status: 0,
             msg_intention: 'READ',
             userID: req.uemsUser.userID,
+            anyVenues: [req.params.id],
             localOnly,
         };
-
-        if (!MessageUtilities.has(req.params, 'id')) {
-            res
-                .status(constants.HTTP_STATUS_BAD_REQUEST)
-                .json(MessageUtilities.wrapInFailure({
-                    message: 'missing parameter id',
-                    code: 'BAD_REQUEST_MISSING_PARAM',
-                }));
-            return;
-        }
-
-        msg.anyVenues = [req.params.id];
 
         await send(
             ROUTING_KEY.event.read,
@@ -530,20 +483,9 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
             msg_intention: 'READ',
             userID: req.uemsUser.userID,
             localAssetOnly: localOnly,
+            assetType: 'event',
+            assetID: req.params.id,
         };
-
-        if (!MessageUtilities.has(req.params, 'id')) {
-            res
-                .status(constants.HTTP_STATUS_BAD_REQUEST)
-                .json(MessageUtilities.wrapInFailure({
-                    message: 'missing parameter id',
-                    code: 'BAD_REQUEST_MISSING_PARAM',
-                }));
-            return;
-        }
-
-        msg.assetType = 'event';
-        msg.assetID = req.params.id;
 
         await send(
             'events.comment.get',

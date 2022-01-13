@@ -123,16 +123,6 @@ export class StateGatewayInterface implements GatewayAttachmentInterface {
 
     private getStateHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
-
-            if (!MessageUtilities.has(req.params, 'id')) {
-                res
-                    .status(constants.HTTP_STATUS_BAD_REQUEST)
-                    .json(MessageUtilities.wrapInFailure({
-                        message: 'missing parameter id',
-                        code: 'BAD_REQUEST_MISSING_PARAM',
-                    }));
-                return;
-            }
             const outgoingMessage: ReadStateMessage = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 msg_intention: 'READ',
@@ -188,16 +178,6 @@ export class StateGatewayInterface implements GatewayAttachmentInterface {
 
     private deleteStateHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
-            if (!MessageUtilities.has(req.params, 'id')) {
-                res
-                    .status(constants.HTTP_STATUS_BAD_REQUEST)
-                    .json(MessageUtilities.wrapInFailure({
-                        message: 'missing parameter id',
-                        code: 'BAD_REQUEST_MISSING_PARAM',
-                    }));
-                return;
-            }
-
             if (this.resolver && this.handler) {
                 await removeAndReply({
                     assetID: req.params.id,
@@ -207,35 +187,11 @@ export class StateGatewayInterface implements GatewayAttachmentInterface {
                 res.status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
                     .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
             }
-            // const outgoingMessage: DeleteStateMessage = {
-            //     msg_id: MessageUtilities.generateMessageIdentifier(),
-            //     msg_intention: 'DELETE',
-            //     status: 0,
-            //     userID: req.uemsUser.userID,
-            //     id: req.params.id,
-            // };
-            //
-            // await send(
-            //     ROUTING_KEY.states.delete,
-            //     outgoingMessage,
-            //     res,
-            //     GenericHandlerFunctions.handleReadSingleResponseFactory(),
-            // );
         };
     }
 
     private updateStateHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
-            if (!MessageUtilities.has(req.params, 'id')) {
-                res
-                    .status(constants.HTTP_STATUS_BAD_REQUEST)
-                    .json(MessageUtilities.wrapInFailure({
-                        message: 'missing parameter id',
-                        code: 'BAD_REQUEST_MISSING_PARAM',
-                    }));
-                return;
-            }
-
             const outgoing: UpdateStateMessage = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 msg_intention: 'UPDATE',
@@ -272,8 +228,6 @@ export class StateGatewayInterface implements GatewayAttachmentInterface {
                     outgoing[key] = parameters[key];
                 }
             });
-
-            console.log('sending?');
 
             await send(
                 ROUTING_KEY.states.update,

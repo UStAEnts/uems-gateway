@@ -72,16 +72,6 @@ export class VenueGatewayInterface implements GatewayAttachmentInterface {
 
     private handleGetRequest(sendRequest: SendRequestFunction) {
         return (request: Request, response: Response) => {
-            if (!MessageUtilities.has(request.params, 'id')) {
-                response
-                    .status(constants.HTTP_STATUS_BAD_REQUEST)
-                    .json(MessageUtilities.wrapInFailure({
-                        message: 'missing parameter id',
-                        code: 'BAD_REQUEST_MISSING_PARAM',
-                    }));
-                return;
-            }
-
             const outgoingMessage: ReadVenueMessage = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 msg_intention: 'READ',
@@ -104,16 +94,6 @@ export class VenueGatewayInterface implements GatewayAttachmentInterface {
 
     private handleDeleteRequest(sendRequest: SendRequestFunction) {
         return async (request: Request, response: Response) => {
-            if (!MessageUtilities.has(request.params, 'id')) {
-                response
-                    .status(constants.HTTP_STATUS_BAD_REQUEST)
-                    .json(MessageUtilities.wrapInFailure({
-                        message: 'missing parameter id',
-                        code: 'BAD_REQUEST_MISSING_PARAM',
-                    }));
-                return;
-            }
-
             if (this.resolver && this.handler) {
                 await removeAndReply({
                     assetID: request.params.id,
@@ -225,16 +205,6 @@ export class VenueGatewayInterface implements GatewayAttachmentInterface {
 
     private handleUpdateRequest(sendRequest: SendRequestFunction) {
         return (request: Request, response: Response) => {
-            if (!MessageUtilities.has(request.params, 'id')) {
-                response
-                    .status(constants.HTTP_STATUS_BAD_REQUEST)
-                    .json(MessageUtilities.wrapInFailure({
-                        message: 'missing parameter id',
-                        code: 'BAD_REQUEST_MISSING_PARAM',
-                    }));
-                return;
-            }
-
             const validate = MessageUtilities.verifyBody(
                 request,
                 response,
