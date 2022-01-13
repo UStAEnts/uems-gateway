@@ -159,11 +159,13 @@ export namespace MessageUtilities {
         );
     }
 
+    export type CoercingValidator = Record<string, { primitive: 'string' | 'number' | 'boolean' | 'array', validator?: (x: any) => boolean, required?: boolean }>;
+
     export function coerceAndVerifyQuery<P extends string[]>(
         request: Request,
         response: Response,
         required: P,
-        types?: Record<string, { primitive: 'string' | 'number' | 'boolean' | 'array', validator?: (x: any) => boolean, required?: boolean }>,
+        types?: CoercingValidator,
     ) {
         // First step, validate missing keys
         if (!verifyData(request.query, response, required)) return false;
@@ -267,5 +269,10 @@ export namespace MessageUtilities {
 
         return true;
     }
+
+    // Rule of Thumb:
+    //  * Params - coerceAndVerify
+    //  * Query - coerceAndVerify
+    //  * Body - zod
 
 }

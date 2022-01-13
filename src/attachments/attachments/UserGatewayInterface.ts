@@ -69,6 +69,7 @@ export class UserGatewayInterface implements GatewayAttachmentInterface {
         ];
     }
 
+    // TODO: permission management on query
     private queryUsersHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
             const outgoing: ReadUserMessage = {
@@ -83,12 +84,12 @@ export class UserGatewayInterface implements GatewayAttachmentInterface {
                 res,
                 [],
                 {
+                    email: { primitive: 'string' },
                     id: { primitive: 'string' },
+                    includeEmail: { primitive: 'boolean' },
+                    includeHash: { primitive: 'boolean' },
                     name: { primitive: 'string' },
                     username: { primitive: 'string' },
-                    email: { primitive: 'string' },
-                    includeHash: { primitive: 'boolean' },
-                    includeEmail: { primitive: 'boolean' },
                 },
             );
 

@@ -120,12 +120,12 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
                 res,
                 [],
                 {
+                    date: { primitive: 'number' },
+                    filename: { primitive: 'string' },
                     id: { primitive: 'string' },
                     name: { primitive: 'string' },
-                    filename: { primitive: 'string' },
                     size: { primitive: 'number' },
                     type: { primitive: 'string' },
-                    date: { primitive: 'number' },
                     userid: { primitive: 'string' },
                 },
             );
@@ -316,6 +316,7 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
                 id: req.params.id,
             };
 
+            // TODO: no type validation here
             const parameters = req.body;
             const validProperties: (keyof FileReadSchema)[] = [
                 'name',
@@ -463,6 +464,7 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
         };
     }
 
+    // TODO: document on stoplight
     private deleteFileFromEventHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
             if (!MessageUtilities.has(req.params, 'eventID')) {

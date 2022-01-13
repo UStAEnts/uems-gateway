@@ -16,6 +16,7 @@ import CreateEquipmentMessage = EquipmentMessage.CreateEquipmentMessage;
 import UpdateEquipmentMessage = EquipmentMessage.UpdateEquipmentMessage;
 import ROUTING_KEY = Constants.ROUTING_KEY;
 import GatewayMessageHandler = GatewayMk2.GatewayMessageHandler;
+import CoercingValidator = MessageUtilities.CoercingValidator;
 
 export class EquipmentGatewayInterface implements GatewayAttachmentInterface {
 
@@ -80,24 +81,26 @@ export class EquipmentGatewayInterface implements GatewayAttachmentInterface {
                 userID: req.uemsUser.userID,
             };
 
+            const types: CoercingValidator = {
+                amount: { primitive: 'number' },
+                assetID: { primitive: 'string' },
+                category: { primitive: 'string' },
+                date: { primitive: 'number' },
+                id: { primitive: 'string' },
+                locationID: { primitive: 'string' },
+                locationSpecifier: { primitive: 'string' },
+                managerID: { primitive: 'string' },
+                manufacturer: { primitive: 'string' },
+                miscIdentifier: { primitive: 'string' },
+                model: { primitive: 'string' },
+                name: { primitive: 'string' },
+            };
+
             const validate = MessageUtilities.coerceAndVerifyQuery(
                 req,
                 res,
                 [],
-                {
-                    id: { primitive: 'string' },
-                    assetID: { primitive: 'string' },
-                    name: { primitive: 'string' },
-                    manufacturer: { primitive: 'string' },
-                    model: { primitive: 'string' },
-                    miscIdentifier: { primitive: 'string' },
-                    amount: { primitive: 'number' },
-                    locationID: { primitive: 'string' },
-                    locationSpecifier: { primitive: 'string' },
-                    managerID: { primitive: 'string' },
-                    date: { primitive: 'number' },
-                    category: { primitive: 'string' },
-                },
+                types,
             );
 
             if (!validate) {
@@ -105,20 +108,7 @@ export class EquipmentGatewayInterface implements GatewayAttachmentInterface {
             }
 
             const parameters = req.query;
-            const validProperties: string[] = [
-                'id',
-                'assetID',
-                'name',
-                'manufacturer',
-                'model',
-                'miscIdentifier',
-                'amount',
-                'locationID',
-                'locationSpecifier',
-                'managerID',
-                'date',
-                'category',
-            ];
+            const validProperties: string[] = Object.keys(types);
 
             validProperties.forEach((key) => {
                 if (MessageUtilities.has(parameters, key)) {

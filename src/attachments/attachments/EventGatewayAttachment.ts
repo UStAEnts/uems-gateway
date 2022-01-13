@@ -148,6 +148,7 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
                 localOnly,
             };
 
+            // TODO: migrate to zod
             const validate = MessageUtilities.verifyBody(
                 req,
                 res,
@@ -157,7 +158,9 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
                     start: (x) => typeof (x) === 'number' || typeof (x) === 'undefined',
                     end: (x) => typeof (x) === 'number' || typeof (x) === 'undefined',
                     attendance: (x) => typeof (x) === 'number' || typeof (x) === 'undefined',
+                    // TODO: typing of array elements?
                     addVenues: (x) => Array.isArray(x) || typeof (x) === 'undefined',
+                    // TODO: typing of array elements
                     removeVenues: (x) => Array.isArray(x) || typeof (x) === 'undefined',
                     ents: (x) => typeof (x) === 'string' || typeof (x) === 'undefined',
                     state: (x) => typeof (x) === 'string' || typeof (x) === 'undefined',
@@ -234,20 +237,20 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
             res,
             [],
             {
-                name: { primitive: 'string' },
-                start: { primitive: 'number' },
-                end: { primitive: 'number' },
                 attendance: { primitive: 'number' },
-                venueIDs: { primitive: 'array' },
-                venueCriteria: { primitive: 'string' },
-                entsID: { primitive: 'string' },
-                stateID: { primitive: 'string' },
-                startafter: { primitive: 'number' },
-                startbefore: { primitive: 'number' },
-                endafter: { primitive: 'number' },
-                endbefore: { primitive: 'number' },
                 attendanceGreater: { primitive: 'number' },
                 attendanceLess: { primitive: 'number' },
+                end: { primitive: 'number' },
+                endafter: { primitive: 'number' },
+                endbefore: { primitive: 'number' },
+                entsID: { primitive: 'string' },
+                name: { primitive: 'string' },
+                start: { primitive: 'number' },
+                startafter: { primitive: 'number' },
+                startbefore: { primitive: 'number' },
+                stateID: { primitive: 'string' },
+                venueCriteria: { primitive: 'string' },
+                venueIDs: { primitive: 'array' },
             },
         );
 
@@ -279,6 +282,7 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
             msg.attendance = parseInt(req.query.attendance.toString(), 10);
         }
 
+        // TODO: what to do if its not valid, verify it above?
         if (req.query.venueIDs !== undefined && typeof (req.query.venueIDs) === 'string') {
             if (req.query.venueCriteria !== undefined) {
                 if (req.query.venueCriteria === 'all') {

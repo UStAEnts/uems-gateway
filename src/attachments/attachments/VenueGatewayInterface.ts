@@ -180,12 +180,12 @@ export class VenueGatewayInterface implements GatewayAttachmentInterface {
                 response,
                 [],
                 {
-                    name: { primitive: 'string' },
-                    capacity: { primitive: 'number' },
                     approximate_capacity: { primitive: 'number' },
                     approximate_fuzziness: { primitive: 'number' },
-                    minimum_capacity: { primitive: 'number' },
+                    capacity: { primitive: 'number' },
                     maximum_capacity: { primitive: 'number' },
+                    minimum_capacity: { primitive: 'number' },
+                    name: { primitive: 'string' },
                 },
             );
 
