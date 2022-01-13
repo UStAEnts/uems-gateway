@@ -16,6 +16,7 @@ import CreateTopicMessage = TopicMessage.CreateTopicMessage;
 import UpdateTopicMessage = TopicMessage.UpdateTopicMessage;
 import ROUTING_KEY = Constants.ROUTING_KEY;
 import GatewayMessageHandler = GatewayMk2.GatewayMessageHandler;
+import * as zod from 'zod';
 
 export class TopicGatewayInterface implements GatewayAttachmentInterface {
 
@@ -78,17 +79,20 @@ export class TopicGatewayInterface implements GatewayAttachmentInterface {
                 userID: req.uemsUser.userID,
             };
 
-            const validate = MessageUtilities.verifyQuery(
+            const validate = MessageUtilities.coerceAndVerifyQuery(
                 req,
                 res,
                 [],
                 {
-                    name: (x) => typeof (x) === 'string',
-                    icon: (x) => typeof (x) === 'string',
-                    color: (x) => typeof (x) === 'string' && this.COLOR_REGEX.test(x),
-                    description: (x) => typeof (x) === 'string',
-                    id: (x) => typeof (x) === 'string',
-                },
+                    name: { primitive: 'string' },
+                    icon: { primitive: 'string' },
+                    color: {
+                        primitive: 'string',
+                        validator: this.COLOR_REGEX.test
+                    },
+                    description: { primitive: 'string' },
+                    id: { primitive: 'string' },
+                }
             );
 
             if (!validate) {
@@ -140,31 +144,30 @@ export class TopicGatewayInterface implements GatewayAttachmentInterface {
 
     private createTopicHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
-            const validate = MessageUtilities.verifyBody(
-                req,
-                res,
-                ['name', 'icon', 'color', 'description'],
-                {
-                    name: (x) => typeof (x) === 'string',
-                    icon: (x) => typeof (x) === 'string',
-                    color: (x) => typeof (x) === 'string' && this.COLOR_REGEX.test(x),
-                    description: (x) => typeof (x) === 'string',
-                },
-            );
+            const validate = zod.object({
+                name: zod.string(),
+                icon: zod.string(),
+                color: zod.string()
+                    .regex(this.COLOR_REGEX),
+                description: zod.string(),
+            })
+                .safeParse(req.body);
 
-            if (!validate) {
+            if (!validate.success) {
                 return;
             }
+
+            const body = validate.data;
 
             const outgoingMessage: CreateTopicMessage = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 msg_intention: 'CREATE',
                 status: 0,
                 userID: req.uemsUser.userID,
-                name: req.body.name,
-                color: req.body.color,
-                icon: req.body.icon,
-                description: req.body.description,
+                name: body.name,
+                color: body.color,
+                icon: body.icon,
+                description: body.description,
             };
 
             await send(
@@ -192,29 +195,20 @@ export class TopicGatewayInterface implements GatewayAttachmentInterface {
 
     private updateTopicHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
-            if (!MessageUtilities.has(req.params, 'id')) {
-                res
-                    .status(constants.HTTP_STATUS_BAD_REQUEST)
-                    .json(MessageUtilities.wrapInFailure({
-                        message: 'missing parameter id',
-                        code: 'BAD_REQUEST_MISSING_PARAM',
-                    }));
-                return;
-            }
+            const validate = zod.object({
+                name: zod.string()
+                    .optional(),
+                icon: zod.string()
+                    .optional(),
+                color: zod.string()
+                    .regex(this.COLOR_REGEX)
+                    .optional(),
+                description: zod.string()
+                    .optional(),
+            })
+                .safeParse(req.body);
 
-            const validate = MessageUtilities.verifyBody(
-                req,
-                res,
-                [],
-                {
-                    name: (x) => typeof (x) === 'string',
-                    icon: (x) => typeof (x) === 'string',
-                    color: (x) => typeof (x) === 'string' && this.COLOR_REGEX.test(x),
-                    description: (x) => typeof (x) === 'string',
-                },
-            );
-
-            if (!validate) {
+            if (!validate.success) {
                 return;
             }
 

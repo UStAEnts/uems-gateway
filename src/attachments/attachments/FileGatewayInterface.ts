@@ -24,6 +24,12 @@ import ROUTING_KEY = Constants.ROUTING_KEY;
 import GatewayMessageHandler = GatewayMk2.GatewayMessageHandler;
 import { AuthUtilities } from "../../utilities/AuthUtilities";
 import orProtect = AuthUtilities.orProtect;
+import * as zod from 'zod';
+import sendZodError = MessageUtilities.sendZodError;
+import { FileBindingValidators } from "@uems/uemscommlib/build/filebinding/FileBindingValidators";
+import FileBindingResponseValidator = FileBindingValidators.FileBindingResponseValidator;
+import { EventValidators } from "@uems/uemscommlib/build/event/EventValidators";
+import EventResponseValidator = EventValidators.EventResponseValidator;
 
 export class FileGatewayInterface implements GatewayAttachmentInterface {
 
@@ -39,6 +45,7 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
         this.handler = handler;
 
         const validator = new FileResponseValidator();
+        const eventValidator = new EventResponseValidator();
 
         return [
             {
@@ -77,13 +84,13 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
                 action: 'get',
                 path: '/files/:id/events',
                 handle: this.getEventsByFileHandler(send),
-                // TODO: add validator
+                additionalValidator: eventValidator,
             },
             {
                 action: 'get',
                 path: '/events/:id/files',
                 handle: this.getFilesByEventsHandler(send),
-                // TODO: add validator
+                additionalValidator: validator,
             },
             {
                 action: 'post',
@@ -195,19 +202,15 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
 
     private createFileHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
-            const validate = MessageUtilities.verifyBody(
-                req,
-                res,
-                ['name', 'filename', 'size', 'type'],
-                {
-                    name: (x) => typeof (x) === 'string',
-                    filename: (x) => typeof (x) === 'string',
-                    size: (x) => typeof (x) === 'number',
-                    type: (x) => typeof (x) === 'string',
-                },
-            );
+            const validate = zod.object({
+                name: zod.string(),
+                filename: zod.string(),
+                size: zod.number(),
+                type: zod.string(),
+            })
+                .safeParse(req.body);
 
-            if (!validate) {
+            if (!validate.success) {
                 return;
             }
 
@@ -272,7 +275,17 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
                 id: req.params.id,
             };
 
-            // TODO: no type validation here
+            const validate = zod.object({
+                name: zod.string(),
+                type: zod.string(),
+            })
+                .safeParse(req.body);
+
+            if (!validate.success) {
+                sendZodError(res, validate.error);
+                return;
+            }
+
             const parameters = req.body;
             const validProperties: (keyof FileReadSchema)[] = [
                 'name',
@@ -361,16 +374,12 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
                 if (orProtect('ops', 'ents', 'admin')(req.kauth.grant.access_token)) localOnly = false;
             }
 
-            const validate = MessageUtilities.verifyBody(
-                req,
-                res,
-                ['fileID'],
-                {
-                    fileID: (x) => typeof (x) === 'string',
-                },
-            );
+            const validate = zod.object({
+                fileID: zod.string(),
+            })
+                .safeParse(req.body);
 
-            if (!validate) {
+            if (!validate.success) {
                 return;
             }
 

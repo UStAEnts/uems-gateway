@@ -17,6 +17,7 @@ import UpdateEquipmentMessage = EquipmentMessage.UpdateEquipmentMessage;
 import ROUTING_KEY = Constants.ROUTING_KEY;
 import GatewayMessageHandler = GatewayMk2.GatewayMessageHandler;
 import CoercingValidator = MessageUtilities.CoercingValidator;
+import * as zod from 'zod';
 
 export class EquipmentGatewayInterface implements GatewayAttachmentInterface {
 
@@ -153,55 +154,45 @@ export class EquipmentGatewayInterface implements GatewayAttachmentInterface {
 
     private createEquipmentHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
-            const validate = MessageUtilities.verifyBody(
-                req,
-                res,
-                ['name', 'manufacturer', 'model', 'amount', 'locationID', 'category'],
-                {
-                    // Required
-                    name: (x) => typeof (x) === 'string',
-                    manufacturer: (x) => typeof (x) === 'string',
-                    model: (x) => typeof (x) === 'string',
-                    amount: (x) => typeof (x) === 'number',
-                    locationID: (x) => typeof (x) === 'string',
-                    category: (x) => typeof (x) === 'string',
+            const validate = zod.object({
+                name: zod.string(),
+                manufacturer: zod.string(),
+                model: zod.string(),
+                amount: zod.number(),
+                locationID: zod.string(),
+                category: zod.string(),
 
-                    // Optional
-                    assetID: (x) => typeof (x) === 'string',
-                    miscIdentifier: (x) => typeof (x) === 'string',
-                    locationSpecifier: (x) => typeof (x) === 'string',
-                },
-            );
+                assetID: zod.string()
+                    .optional(),
+                miscIdentifier: zod.string()
+                    .optional(),
+                locationSpecifier: zod.string()
+                    .optional(),
+            })
+                .safeParse(req.body);
 
-            if (!validate) {
+            if (!validate.success) {
+                // TODO: error responses
                 return;
             }
-
-            const copy = [
-                'assetID',
-                'miscIdentifier',
-                'locationSpecifier',
-            ];
+            const body = validate.data;
 
             const outgoingMessage: CreateEquipmentMessage = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 msg_intention: 'CREATE',
                 status: 0,
                 userID: req.uemsUser.userID,
-                name: req.body.name,
-                manufacturer: req.body.manufacturer,
-                model: req.body.model,
-                amount: req.body.amount,
-                locationID: req.body.locationID,
-                category: req.body.category,
+                name: body.name,
+                manufacturer: body.manufacturer,
+                model: body.model,
+                amount: body.amount,
+                locationID: body.locationID,
+                category: body.category,
             };
 
-            for (const key of copy) {
-                if (req.body[key]) {
-                    // @ts-ignore
-                    outgoingMessage[key] = req.body[key];
-                }
-            }
+            if (body.assetID) outgoingMessage.assetID = body.assetID;
+            if (body.miscIdentifier) outgoingMessage.miscIdentifier = body.miscIdentifier;
+            if (body.locationSpecifier) outgoingMessage.locationSpecifier = body.locationSpecifier;
 
             await send(
                 ROUTING_KEY.equipment.create,
@@ -237,47 +228,30 @@ export class EquipmentGatewayInterface implements GatewayAttachmentInterface {
             };
 
             // Then validate the body parameters and copy them over
-            const validate = MessageUtilities.verifyBody(
-                req,
-                res,
-                [],
-                {
-                    // Optional
-                    assetID: (x) => typeof (x) === 'string',
-                    name: (x) => typeof (x) === 'string',
-                    manufacturer: (x) => typeof (x) === 'string',
-                    model: (x) => typeof (x) === 'string',
-                    miscIdentifier: (x) => typeof (x) === 'string',
-                    amount: (x) => typeof (x) === 'number',
-                    locationID: (x) => typeof (x) === 'string',
-                    locationSpecifier: (x) => typeof (x) === 'string',
-                    managerID: (x) => typeof (x) === 'string',
-                    category: (x) => typeof (x) === 'string',
-                },
-            );
+            const validate = zod.object({
+                assetID: zod.string(),
+                name: zod.string(),
+                manufacturer: zod.string(),
+                model: zod.string(),
+                miscIdentifier: zod.string(),
+                amount: zod.number(),
+                locationID: zod.string(),
+                locationSpecifier: zod.string(),
+                managerID: zod.string(),
+                category: zod.string(),
+            })
+                .partial()
+                .safeParse(req.body);
 
-            if (!validate) {
+            if (!validate.success) {
+                // TODO: error response
                 return;
             }
 
-            const copy = [
-                'assetID',
-                'name',
-                'manufacturer',
-                'model',
-                'miscIdentifier',
-                'amount',
-                'locationID',
-                'locationSpecifier',
-                'managerID',
-                'category',
-            ];
-
-            for (const key of copy) {
-                if (req.body[key]) {
-                    // @ts-ignore
-                    outgoing[key] = req.body[key];
-                }
+            const body = validate.data;
+            for (const [k, v] of Object.entries(body)) {
+                // @ts-ignore
+                outgoing[k] = v;
             }
 
             await send(

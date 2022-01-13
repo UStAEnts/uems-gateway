@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { constants } from "http2";
+import { ZodError } from "zod";
 
 export namespace MessageUtilities {
 
@@ -131,34 +132,6 @@ export namespace MessageUtilities {
         return true;
     }
 
-    export function verifyBody<P extends string[]>(
-        request: Request,
-        response: Response,
-        required: P,
-        types?: Record<string, (x: any) => boolean>,
-    ) {
-        return verifyData(
-            request.body,
-            response,
-            required,
-            types,
-        );
-    }
-
-    export function verifyQuery<P extends string[]>(
-        request: Request,
-        response: Response,
-        required: P,
-        types?: Record<string, (x: any) => boolean>,
-    ) {
-        return verifyData(
-            request.query,
-            response,
-            required,
-            types,
-        );
-    }
-
     export type CoercingValidator = Record<string, { primitive: 'string' | 'number' | 'boolean' | 'array', validator?: (x: any) => boolean, required?: boolean }>;
 
     export function coerceAndVerifyQuery<P extends string[]>(
@@ -268,6 +241,15 @@ export namespace MessageUtilities {
         }
 
         return true;
+    }
+
+    export function sendZodError(res: Response, err: ZodError) {
+        res
+            .status(constants.HTTP_STATUS_BAD_REQUEST)
+            .json(wrapInFailure({
+                code: 'INVALID_REQUEST',
+                message: err.message,
+            }));
     }
 
     // Rule of Thumb:

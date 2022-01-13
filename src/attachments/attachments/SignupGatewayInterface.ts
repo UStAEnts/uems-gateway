@@ -19,6 +19,8 @@ import ROUTING_KEY = Constants.ROUTING_KEY;
 import GatewayMessageHandler = GatewayMk2.GatewayMessageHandler;
 import { AuthUtilities } from "../../utilities/AuthUtilities";
 import orProtect = AuthUtilities.orProtect;
+import * as zod from 'zod';
+import sendZodError = MessageUtilities.sendZodError;
 
 export class SignupGatewayInterface implements GatewayAttachmentInterface {
 
@@ -157,21 +159,6 @@ export class SignupGatewayInterface implements GatewayAttachmentInterface {
 
     private createSignupHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
-            // TODO: this is not verifying the right hting?
-            const validate = MessageUtilities.verifyBody(
-                req,
-                res,
-                ['role'],
-                {
-                    role: (x) => typeof (x) === 'string',
-                    signupUser: (x) => typeof (x) === 'string' || typeof (x) === 'undefined',
-                },
-            );
-
-            if (!validate) {
-                return;
-            }
-
             if (req.kauth && req.kauth.grant && req.kauth.grant.access_token) {
                 if (req.params.signupUser && req.params.signupUser !== req.uemsUser.userID) {
                     // Signing up another user, mu for now
@@ -192,14 +179,25 @@ export class SignupGatewayInterface implements GatewayAttachmentInterface {
                 return;
             }
 
+            const validate = zod.object({
+                role: zod.string(),
+                signupUser: zod.string().optional(),
+            }).safeParse(req.body);
+
+            if (!validate.success) {
+                sendZodError(res, validate.error);
+                return;
+            }
+            const body = validate.data;
+
             const outgoingMessage: CreateSignupMessage = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 msg_intention: 'CREATE',
                 status: 0,
                 userID: req.uemsUser.userID,
                 eventID: req.params.eventID,
-                signupUser: req.params.signupUser,
-                role: req.body.role,
+                signupUser: body.signupUser,
+                role: body.role,
             };
 
             await send(
