@@ -17,6 +17,7 @@ import CreateEntStateMessage = EntStateMessage.CreateEntStateMessage;
 import UpdateEntStateMessage = EntStateMessage.UpdateEntStateMessage;
 import ROUTING_KEY = Constants.ROUTING_KEY;
 import GatewayMessageHandler = GatewayMk2.GatewayMessageHandler;
+import sendZodError = MessageUtilities.sendZodError;
 
 export class EntStateGatewayInterface implements GatewayAttachmentInterface {
     private readonly COLOR_REGEX = /^#?([0-9A-Fa-f]{3}([0-9A-Fa-f]{3})?)$/;
@@ -153,7 +154,7 @@ export class EntStateGatewayInterface implements GatewayAttachmentInterface {
                 .safeParse(req.body);
 
             if (!bodyValidate.success) {
-                // TODO: error handling?
+                sendZodError(res, bodyValidate.error);
                 return;
             }
 
@@ -206,7 +207,7 @@ export class EntStateGatewayInterface implements GatewayAttachmentInterface {
                 .safeParse(req.body);
 
             if (!validate.success) {
-                // TODO: error handling
+                sendZodError(res, validate.error);
                 return;
             }
 

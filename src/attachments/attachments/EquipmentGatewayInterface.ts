@@ -18,6 +18,7 @@ import ROUTING_KEY = Constants.ROUTING_KEY;
 import GatewayMessageHandler = GatewayMk2.GatewayMessageHandler;
 import CoercingValidator = MessageUtilities.CoercingValidator;
 import * as zod from 'zod';
+import sendZodError = MessageUtilities.sendZodError;
 
 export class EquipmentGatewayInterface implements GatewayAttachmentInterface {
 
@@ -172,7 +173,7 @@ export class EquipmentGatewayInterface implements GatewayAttachmentInterface {
                 .safeParse(req.body);
 
             if (!validate.success) {
-                // TODO: error responses
+                sendZodError(res, validate.error);
                 return;
             }
             const body = validate.data;
@@ -244,7 +245,7 @@ export class EquipmentGatewayInterface implements GatewayAttachmentInterface {
                 .safeParse(req.body);
 
             if (!validate.success) {
-                // TODO: error response
+                sendZodError(res, validate.error);
                 return;
             }
 

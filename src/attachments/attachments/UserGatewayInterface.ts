@@ -16,6 +16,7 @@ import UpdateUserMessage = UserMessage.UpdateUserMessage;
 import ROUTING_KEY = Constants.ROUTING_KEY;
 import GatewayMessageHandler = GatewayMk2.GatewayMessageHandler;
 import * as zod from 'zod';
+import sendZodError = MessageUtilities.sendZodError;
 
 export class UserGatewayInterface implements GatewayAttachmentInterface {
 
@@ -214,7 +215,7 @@ export class UserGatewayInterface implements GatewayAttachmentInterface {
             }).safeParse(req.body);
 
             if (!validate.success) {
-                // TODO: error handling
+                sendZodError(res, validate.error);
                 return;
             }
 
