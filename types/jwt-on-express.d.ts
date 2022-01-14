@@ -1,4 +1,6 @@
+
 declare namespace Express {
+import type { LogIdentifier } from "../src/log/RequestLogger";
     import type Grant from 'keycloak-connect';
 
     interface Request {
@@ -17,5 +19,7 @@ declare namespace Express {
         kauth?: {
             grant: Grant,
         }
+
+        requestID: LogIdentifier,
     }
 }
