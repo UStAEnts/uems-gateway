@@ -17,6 +17,8 @@ import ROUTING_KEY = Constants.ROUTING_KEY;
 import GatewayMessageHandler = GatewayMk2.GatewayMessageHandler;
 import * as zod from 'zod';
 import sendZodError = MessageUtilities.sendZodError;
+import { AuthUtilities } from "../../utilities/AuthUtilities";
+import orProtect = AuthUtilities.orProtect;
 
 export class UserGatewayInterface implements GatewayAttachmentInterface {
 
@@ -88,8 +90,6 @@ export class UserGatewayInterface implements GatewayAttachmentInterface {
                 {
                     email: { primitive: 'string' },
                     id: { primitive: 'string' },
-                    includeEmail: { primitive: 'boolean' },
-                    includeHash: { primitive: 'boolean' },
                     name: { primitive: 'string' },
                     username: { primitive: 'string' },
                 },
@@ -105,8 +105,6 @@ export class UserGatewayInterface implements GatewayAttachmentInterface {
                 'name',
                 'username',
                 'email',
-                'includeEmail',
-                'includeHash',
             ];
 
             validProperties.forEach((key) => {
@@ -116,11 +114,27 @@ export class UserGatewayInterface implements GatewayAttachmentInterface {
                 }
             });
 
+            if (orProtect('ops', 'ents', 'admin')(req.kauth?.grant?.access_token)) outgoing.includeEmail = true;
+
+            const permittedKeys = [
+                'name',
+                'id',
+                'username',
+                'email',
+            ];
+
             await send(
                 ROUTING_KEY.user.read,
                 outgoing,
                 res,
-                GenericHandlerFunctions.handleDefaultResponseFactory(),
+                GenericHandlerFunctions.handleDefaultResponseFactory((from: any[]) => {
+                    return from.map((e) => {
+                        Object.keys(e)
+                            .filter((k) => !permittedKeys.includes(k))
+                            .forEach((k) => delete e[k]);
+                        return e;
+                    });
+                }),
             );
         };
     }
@@ -212,7 +226,8 @@ export class UserGatewayInterface implements GatewayAttachmentInterface {
                     .optional(),
                 hash: zod.string()
                     .optional(),
-            }).safeParse(req.body);
+            })
+                .safeParse(req.body);
 
             if (!validate.success) {
                 sendZodError(res, validate.error);
