@@ -20,6 +20,8 @@ import * as util from 'util';
 import KeycloakConnect from 'keycloak-connect';
 import { AuthUtilities } from "../utilities/AuthUtilities";
 import orProtect = AuthUtilities.orProtect;
+import { v4 } from 'uuid';
+import { logInfo } from "../log/RequestLogger";
 
 const MongoStore = connectMongo(session);
 
@@ -67,7 +69,7 @@ export const ExpressConfiguration = z.object({
 export type ExpressConfigurationType = z.infer<typeof ExpressConfiguration>;
 
 export class ExpressApplication {
-    private static readonly DISABLE_PROTECTIONS = false;
+    private static readonly DISABLE_PROTECTIONS = true;
 
     private _app: Application;
 
@@ -87,6 +89,13 @@ export class ExpressApplication {
     constructor(configuration: ExpressConfigurationType) {
         this._configuration = configuration;
         this._app = express();
+
+        // Assign the request identifier for logging
+        this._app.use((req, res, next) => {
+            req.requestID = v4();
+            logInfo(req.requestID, `Request received for ${req.path} at ${Date.now()} assigned ID ${req.requestID}`);
+            next();
+        });
 
         // Bind helmet
         //   Overriding content security policies to try and keep them tight
@@ -186,8 +195,19 @@ export class ExpressApplication {
                     username: 'debug',
                     email: 'debug@debuggy.com',
                     fullName: 'Debug Davids',
-                    profile: 'https://placehold.it/200x200',
+                    profile: '/default-icon.png',
                 };
+
+                // Grant all permissions
+                req.kauth = {
+                    grant: {
+                        access_token: {
+                            isExpired: () => false,
+                            hasRole: () => true,
+                        }
+                    }
+                }
+
                 next();
             });
         }
