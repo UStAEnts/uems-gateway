@@ -57,7 +57,10 @@ describe('GenericHandlerFunctions.ts', () => {
             const fake = response as unknown as express.Response;
 
             await handleDefaultResponseFactory(
-                (data) => data.map((e) => (e as any).subObject),
+                (data) => ({
+                    data: data.map((e) => (e as any).subObject),
+                    status: 'success',
+                }),
             )(
                 fake,
                 0,
