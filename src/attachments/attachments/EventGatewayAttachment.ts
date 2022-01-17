@@ -24,6 +24,7 @@ import { AuthUtilities } from "../../utilities/AuthUtilities";
 import orProtect = AuthUtilities.orProtect;
 import * as zod from 'zod';
 import sendZodError = MessageUtilities.sendZodError;
+import UpdateCommentMessage = CommentMessage.UpdateCommentMessage;
 
 export class EventGatewayAttachment implements GatewayAttachmentInterface {
     // TODO: bit dangerous using ! - maybe add null checks?
@@ -99,6 +100,18 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
                 path: '/events/:id/comments',
                 handle: this.postCommentsForEvent(send),
             },
+            {
+                action: 'post',
+                path: '/events/:id/comments/:commentID/attention',
+                handle: this.markCommentAsRequiringAttention(send),
+                secure: ['ops', 'ents', 'admin'],
+            },
+            {
+                action: 'post',
+                path: '/events/:id/comments/:commentID/resolve',
+                handle: this.markCommentAsResolved(send),
+                secure: ['ops', 'ents', 'admin'],
+            }
         ];
     }
 
@@ -498,11 +511,88 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
             };
 
             await send(
-                'events.comment.create',
+                ROUTING_KEY.event.comments.create,
                 msg,
                 res,
                 GenericHandlerFunctions.handleDefaultResponseFactory(),
             );
         };
     }
+
+    private markCommentAsRequiringAttention(send: SendRequestFunction) {
+        /**
+         * = Mark a comment as requiring attention =
+         *
+         * [POST] /events/:id/comments/:commentID/attention
+         *                ^            ^
+         *                Event ID     ^
+         *                             Comment ID on this event
+         *
+         * Body:
+         *     N/A
+         */
+        return async (req: Request, res: Response) => {
+            const {
+                id: eventID,
+                commentID
+            } = req.params;
+
+            const msg: UpdateCommentMessage = {
+                msg_id: MessageUtilities.generateMessageIdentifier(),
+                status: 0,
+                msg_intention: 'UPDATE',
+                id: commentID,
+                userID: req.uemsUser.userID,
+                requiresAttention: true,
+                localOnly: false,
+                attendedBy: undefined,
+            };
+
+            await send(
+                ROUTING_KEY.event.comments.update,
+                msg,
+                res,
+                GenericHandlerFunctions.handleDefaultResponseFactory(),
+            );
+        }
+    }
+
+    private markCommentAsResolved(send: SendRequestFunction) {
+        /**
+         * = Mark a comment as attended to, using the person who issues the request as the resolver =
+         *
+         * [POST] /events/:id/comments/:commentID/resolve
+         *                ^            ^
+         *                Event ID     ^
+         *                             Comment ID on this event
+         *
+         * Body:
+         *     N/A
+         */
+        return async (req: Request, res: Response) => {
+            const {
+                id: eventID,
+                commentID
+            } = req.params;
+
+            const msg: UpdateCommentMessage = {
+                msg_id: MessageUtilities.generateMessageIdentifier(),
+                status: 0,
+                msg_intention: 'UPDATE',
+                id: commentID,
+                userID: req.uemsUser.userID,
+                requiresAttention: false,
+                localOnly: false,
+                attendedBy: req.uemsUser.userID,
+            };
+
+            await send(
+                ROUTING_KEY.event.comments.update,
+                msg,
+                res,
+                GenericHandlerFunctions.handleDefaultResponseFactory(),
+            );
+        }
+    }
+
 }

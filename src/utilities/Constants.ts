@@ -21,6 +21,12 @@ export namespace Constants {
             update: 'events.details.update',
             read: 'events.details.get',
             discover: 'events.details.discover',
+            comments: {
+                create: 'events.comment.create',
+                update: 'events.comment.update',
+                delete: 'events.comment.delete',
+                read: 'events.comment.get',
+            }
         },
         file: {
             create: 'file.details.create',
