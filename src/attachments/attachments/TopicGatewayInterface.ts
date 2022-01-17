@@ -89,7 +89,7 @@ export class TopicGatewayInterface implements GatewayAttachmentInterface {
                     icon: { primitive: 'string' },
                     color: {
                         primitive: 'string',
-                        validator: this.COLOR_REGEX.test
+                        validator: (x) => this.COLOR_REGEX.test(x)
                     },
                     description: { primitive: 'string' },
                     id: { primitive: 'string' },
