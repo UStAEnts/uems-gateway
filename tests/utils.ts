@@ -29,8 +29,11 @@ export async function testParameterTypes(
         .toHaveBeenCalled();
     expect(response.statusCode)
         .toEqual(constants.HTTP_STATUS_BAD_REQUEST);
-    expect(JSON.stringify(response.body))
-        .toContain('type');
+    console.log(response.body);
+    expect(JSON.stringify(response.body)
+        .includes('type') || JSON.stringify(response.body)
+        .includes('format'))
+        .toBeTruthy();
 }
 
 export async function testMissingParameters(

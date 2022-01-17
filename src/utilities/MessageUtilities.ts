@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { constants } from "http2";
-import { ZodError } from "zod";
+import { ZodError, ZodSuberror } from "zod";
 
 export namespace MessageUtilities {
 
@@ -90,6 +90,7 @@ export namespace MessageUtilities {
                 return false;
             }
         } catch (e) {
+            console.error(e);
             response
                 .status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
                 .json(MessageUtilities.wrapInFailure({
@@ -243,12 +244,42 @@ export namespace MessageUtilities {
         return true;
     }
 
+    function zodErrorToString(error: ZodSuberror) {
+        console.warn(error.message, error.code, error);
+        switch (error.code) {
+        case "custom_error":
+            return `Unknown error at ${error.path.join('.')}: ${error.message}`;
+        case "invalid_union":
+            return `No possible value matched for ${error.path.join('.')}: ${error.unionErrors.map((e) => e.message).join(';  ')}`
+        case "invalid_type":
+            if (error.received === 'undefined') {
+                return `Value missing, ${error.path.join('.')} was required but not provided`;
+            }
+            return `Invalid type, ${error.path.join('.')} was expected to be ${error.expected} but you sent ${error.received}`;
+        case "unrecognized_keys":
+            return `Unrecognised keys at ${error.path.join('.')}, the keys ${error.keys.join(', ')} were not permitted`;
+        case "invalid_enum_value":
+            return `Invalid value provided at ${error.path.join('.')}, the acceptable values are ${error.options.join(', ')}`;
+        case "invalid_date":
+            return `Date at ${error.path.join('.')} was not of a valid format`;
+        case "invalid_string":
+            return `String provided at ${error.path.join('.')} did not match the required format for a ${error.validation}`;
+        case "too_small":
+            return `The provided value at ${error.path.join('.')} was not large enough: must be ${error.inclusive ? '>=' : '>'}${error.minimum}`;
+        case "too_big":
+            return `The provided value at ${error.path.join('.')} was too large: must be ${error.inclusive ? '<=' : '<'}${error.maximum}`;
+        default:
+            return `Error: ${error.message} at ${error.path.join('.')}`;
+        }
+    }
+
     export function sendZodError(res: Response, err: ZodError) {
         res
             .status(constants.HTTP_STATUS_BAD_REQUEST)
             .json(wrapInFailure({
                 code: 'INVALID_REQUEST',
-                message: err.message,
+                message: err.errors.map(zodErrorToString)
+                    .join(';  '),
             }));
     }
 
