@@ -157,7 +157,7 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
             const body = validate.data;
             for (const [k, v] of Object.entries(body)) {
                 // @ts-ignore
-                outgoing[k] = v;
+                msg[k] = v;
             }
 
             await send(
