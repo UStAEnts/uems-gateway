@@ -39,6 +39,7 @@ export async function testMissingParameters(
     location: 'query' | 'body',
     send: jest.Mock,
     params?: any,
+    roles?: string[],
 ) {
     const response = new Response();
     const fake = response as unknown as express.Response;
@@ -46,6 +47,7 @@ export async function testMissingParameters(
         location === 'query' ? data : undefined,
         location === 'body' ? data : undefined,
         params,
+        roles,
     );
     await route.handle(req, fake, () => false);
 
