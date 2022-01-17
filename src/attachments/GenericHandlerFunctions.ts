@@ -5,14 +5,14 @@ import { constants } from 'http2';
 import { ErrorCodes } from '../constants/ErrorCodes';
 import { GatewayMk2 } from '../Gateway';
 import MinimalMessageType = GatewayMk2.MinimalMessageType;
-import { logInfo, logResolve } from "../log/RequestLogger";
+import { LogIdentifier, logInfo, logResolve } from "../log/RequestLogger";
 
 function handleDefaultResponse<SHALLOW, DEEP, RESULT extends { result: SHALLOW[] }>(
     http: Response,
     timestamp: number,
     raw: MinimalMessageType,
     status: number,
-    transformer?: (data: SHALLOW[]) => DEEP[] | Promise<DEEP[]>,
+    transformer?: (data: SHALLOW[], requestID: LogIdentifier) => DEEP[] | Promise<DEEP[]>,
 ) {
     MessageUtilities.identifierConsumed(raw.msg_id);
     const response = raw as RESULT;
@@ -20,7 +20,7 @@ function handleDefaultResponse<SHALLOW, DEEP, RESULT extends { result: SHALLOW[]
     if (status === MsgStatus.SUCCESS) {
         if (transformer) {
             try {
-                return Promise.resolve(transformer(response.result))
+                return Promise.resolve(transformer(response.result, http.req.requestID))
                     .then((data) => {
                         logResolve(http.req.requestID, constants.HTTP_STATUS_OK, MessageUtilities.wrapInSuccess(data));
 
@@ -70,7 +70,7 @@ function handleReadSingleResponse<SHALLOW, DEEP, RESULT extends { result: SHALLO
     time: number,
     raw: MinimalMessageType,
     status: number,
-    transformer?: (data: SHALLOW) => DEEP | Promise<DEEP>,
+    transformer?: (data: SHALLOW, requestID: LogIdentifier) => DEEP | Promise<DEEP>,
 ) {
     MessageUtilities.identifierConsumed(raw.msg_id);
     const response = raw as RESULT;
@@ -91,7 +91,7 @@ function handleReadSingleResponse<SHALLOW, DEEP, RESULT extends { result: SHALLO
 
         if (transformer) {
             try {
-                return Promise.resolve(transformer(response.result[0]))
+                return Promise.resolve(transformer(response.result[0], http.req.requestID))
                     .then((data) => {
                         logResolve(http.req.requestID, constants.HTTP_STATUS_OK, MessageUtilities.wrapInSuccess(response.result[0]));
 
@@ -142,8 +142,8 @@ function handleReadSingleResponse<SHALLOW, DEEP, RESULT extends { result: SHALLO
 
 export namespace GenericHandlerFunctions {
 
-    export type Transformer<SHALLOW, DEEP, RESULT extends { result: SHALLOW[] }> = (data: SHALLOW[]) => DEEP[] | Promise<DEEP[]>;
-    export type SingleTransformer<SHALLOW, DEEP, RESULT extends { result: SHALLOW[] }> = (data: SHALLOW) => DEEP | Promise<DEEP>;
+    export type Transformer<SHALLOW, DEEP, RESULT extends { result: SHALLOW[] }> = (data: SHALLOW[], requestID: LogIdentifier) => DEEP[] | Promise<DEEP[]>;
+    export type SingleTransformer<SHALLOW, DEEP, RESULT extends { result: SHALLOW[] }> = (data: SHALLOW, requestID: LogIdentifier) => DEEP | Promise<DEEP>;
 
     export function handleDefaultResponseFactory<S, D, T extends { result: any[] }>(
         transformer?: Transformer<S, D, T>,

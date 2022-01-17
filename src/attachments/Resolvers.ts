@@ -4,12 +4,13 @@ import { EntityResolver } from '../resolver/EntityResolver';
 import { __ } from '../log/Log';
 import SingleTransformer = GenericHandlerFunctions.SingleTransformer;
 import Transformer = GenericHandlerFunctions.Transformer;
+import { logInfo } from "../log/RequestLogger";
 
 function singleToDouble<S, D, R extends { result: S[] }>(x: SingleTransformer<S, D, R>): Transformer<S, D, R> {
     // TODO: log errors and maybe provide some indication of partial responses. Do this in a later feature phase
 
-    return (async (data) => {
-        const promises = data.map((e) => x(e));
+    return (async (data, requestID) => {
+        const promises = data.map((e) => x(e, requestID));
         const resolution = await Promise.allSettled(promises);
         const fulfilled = resolution.filter((e) => e.status === 'fulfilled') as { value: D }[];
         if (fulfilled.length !== resolution.length) {
@@ -90,10 +91,10 @@ export namespace Resolver {
         Transformer<string, InternalFile, ShallowQueryByEventResponse>;
 
     export function resolveSingleEvent(resolver: EntityResolver | undefined, userID: string): EventTransformer {
-        return async (data) => {
+        return async (data, requestID) => {
             if (resolver === undefined) throw new Error('Resolver is not defined');
 
-            console.log(data);
+            logInfo(requestID, `Request has been made to resolve event ${data.id}, resolving author, state, ents, and venues`);
 
             return {
                 ...data,
@@ -110,8 +111,10 @@ export namespace Resolver {
     }
 
     export function resolveSingleComment(resolver: EntityResolver | undefined, userID: string): CommentTransformer {
-        return async (data) => {
+        return async (data, requestID) => {
             if (resolver === undefined) throw new Error('Resolver not defined');
+
+            logInfo(requestID, `Request has been made to resolve comment ${data.id} on asset ${data.assetType}:${data.assetID}, resolving attendedBy and poster`);
 
             return {
                 ...data,
@@ -129,8 +132,10 @@ export namespace Resolver {
     }
 
     export function resolveSingleVenue(resolver: EntityResolver | undefined, userID: string): VenueTransformer {
-        return async (data) => {
+        return async (data, requestID) => {
             if (resolver === undefined) throw new Error('Resolver not defined');
+
+            logInfo(requestID, `Request has been made to resolve venue ${data.id}, resolving user`);
 
             return {
                 ...data,
@@ -144,8 +149,10 @@ export namespace Resolver {
     }
 
     export function resolveSingleEquipment(resolver: EntityResolver | undefined, userID: string): EquipmentTransformer {
-        return async (data) => {
+        return async (data, requestID) => {
             if (resolver === undefined) throw new Error('Resolver not defined');
+
+            logInfo(requestID, `Request has been made to resolve equipment ${data.id}, resolving location and manager`);
 
             return {
                 ...data,
@@ -160,8 +167,10 @@ export namespace Resolver {
     }
 
     export function resolveSingleFile(resolver: EntityResolver | undefined, userID: string): FileTransformer {
-        return async (data) => {
+        return async (data, requestID) => {
             if (resolver === undefined) throw new Error('Resolver not defined');
+
+            logInfo(requestID, `Request has been made to resolve file ${data.id}, resolving owner`);
 
             return {
                 ...data,
@@ -179,8 +188,10 @@ export namespace Resolver {
         userID: string,
         includeEvent: boolean,
     ): SignupTransformer {
-        return async (data) => {
+        return async (data, requestID) => {
             if (resolver === undefined) throw new Error('Resolver not defined');
+
+            logInfo(requestID, `Request has been made to resolve signup ${data.id}, resolving user, event`);
 
             return {
                 ...data,
@@ -204,8 +215,10 @@ export namespace Resolver {
         resolver: EntityResolver | undefined,
         userID: string,
     ): EventsFileBindingTransformer {
-        return async (data) => {
+        return async (data, requestID) => {
             if (resolver === undefined) throw new Error('Resolver not defined');
+
+            logInfo(requestID, `Request has been made to resolve events for file bindings ${data.join(',')}`);
 
             return Promise.all(data.map((e) => resolver.resolveEvent(e, userID)));
         };
@@ -215,8 +228,10 @@ export namespace Resolver {
         resolver: EntityResolver | undefined,
         userID: string,
     ): FilesFileBindingTransformer {
-        return async (data) => {
+        return async (data, requestID) => {
             if (resolver === undefined) throw new Error('Resolver not defined');
+
+            logInfo(requestID, `Request has been made to resolve files for file bindings ${data.join(',')}`);
 
             return Promise.all(data.map((e) => resolver.resolveFile(e, userID)));
         };
