@@ -26,9 +26,15 @@ function handleDefaultResponse<SHALLOW, DEEP, RESULT extends { result: SHALLOW[]
                     .then((data) => {
                         logResolve(http.req.requestID, constants.HTTP_STATUS_OK, MessageUtilities.wrapInSuccess(data));
 
-                        http
-                            .status(constants.HTTP_STATUS_OK)
-                            .json(MessageUtilities.wrapInSuccess(data));
+                        if (data.status === 'success') {
+                            http
+                                .status(constants.HTTP_STATUS_OK)
+                                .json(MessageUtilities.wrapInSuccess(data.data));
+                        } else {
+                            http
+                                .status(constants.HTTP_STATUS_OK)
+                                .json(MessageUtilities.wrapInPartial(data.data));
+                        }
                     })
                     .catch((err) => {
                         console.error('Transformer failed when handling default response', err);

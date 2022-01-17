@@ -59,6 +59,13 @@ export namespace MessageUtilities {
         }
     }
 
+    export function wrapInPartial(result: any) {
+        return {
+            status: 'PARTIAL',
+            result,
+        };
+    }
+
     export function wrapInSuccess(result: any) {
         return {
             status: 'OK',
