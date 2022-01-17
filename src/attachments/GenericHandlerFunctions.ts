@@ -6,13 +6,15 @@ import { ErrorCodes } from '../constants/ErrorCodes';
 import { GatewayMk2 } from '../Gateway';
 import MinimalMessageType = GatewayMk2.MinimalMessageType;
 import { LogIdentifier, logInfo, logResolve } from "../log/RequestLogger";
+import Transformer = GenericHandlerFunctions.Transformer;
+import SingleTransformer = GenericHandlerFunctions.SingleTransformer;
 
 function handleDefaultResponse<SHALLOW, DEEP, RESULT extends { result: SHALLOW[] }>(
     http: Response,
     timestamp: number,
     raw: MinimalMessageType,
     status: number,
-    transformer?: (data: SHALLOW[], requestID: LogIdentifier) => DEEP[] | Promise<DEEP[]>,
+    transformer?: Transformer<SHALLOW, DEEP, RESULT>,
 ) {
     MessageUtilities.identifierConsumed(raw.msg_id);
     const response = raw as RESULT;
@@ -70,7 +72,7 @@ function handleReadSingleResponse<SHALLOW, DEEP, RESULT extends { result: SHALLO
     time: number,
     raw: MinimalMessageType,
     status: number,
-    transformer?: (data: SHALLOW, requestID: LogIdentifier) => DEEP | Promise<DEEP>,
+    transformer?: SingleTransformer<SHALLOW, DEEP, RESULT>,
 ) {
     MessageUtilities.identifierConsumed(raw.msg_id);
     const response = raw as RESULT;
@@ -142,7 +144,7 @@ function handleReadSingleResponse<SHALLOW, DEEP, RESULT extends { result: SHALLO
 
 export namespace GenericHandlerFunctions {
 
-    export type Transformer<SHALLOW, DEEP, RESULT extends { result: SHALLOW[] }> = (data: SHALLOW[], requestID: LogIdentifier) => DEEP[] | Promise<DEEP[]>;
+    export type Transformer<SHALLOW, DEEP, RESULT extends { result: SHALLOW[] }> = (data: SHALLOW[], requestID: LogIdentifier) => { status: 'success' | 'partial', data: DEEP[] } | Promise<{ status: 'success' | 'partial', data: DEEP[] }>;
     export type SingleTransformer<SHALLOW, DEEP, RESULT extends { result: SHALLOW[] }> = (data: SHALLOW, requestID: LogIdentifier) => DEEP | Promise<DEEP>;
 
     export function handleDefaultResponseFactory<S, D, T extends { result: any[] }>(
