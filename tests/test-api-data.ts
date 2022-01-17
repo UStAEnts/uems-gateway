@@ -427,16 +427,12 @@ export const GET_USER_VALID = {
     name: '+tZHXC7NLo73jY0sP7sCgw==',
     username: 'FNc/CrHaxFxwfSB8kfAm2g==',
     email: 'SVkEA29g6WqBFAjO9282SA==',
-    includeEmail: 'true',
-    includeHash: 'true'
 }
 export const GET_USER_INVALID = {
     id: 'VsVU9T1Gppfy/sICOoluuw==',
     name: 'XZ6R+H0AOFLBcpEMWZQ+WQ==',
     username: 'vgaOoQvq/4nsYIAqY9VMAg==',
-    email: 'dV6BV88mzBZG5PX3QfWoNA==',
-    includeEmail: '980',
-    includeHash: 'false'
+    email: 10,
 }
 
 // POST /user post-user
