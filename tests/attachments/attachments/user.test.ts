@@ -40,40 +40,12 @@ describe('UserGatewayInterface.ts', () => {
         };
     });
     describe('GET /user', () => {
-        it('rejects on wrong parameter types', async () => {
-            await testParameterTypes(
-                routes['get.user'],
-                GET_USER_INVALID,
-                'query',
-                send,
-            );
-        });
 
         it('sends on a valid message', async () => {
             await testValidRoute(
                 routes['get.user'],
                 GET_USER_VALID,
                 'query',
-                send,
-            );
-        });
-    });
-
-    describe('POST /user', () => {
-        it('rejects on missing parameters', async () => {
-            await testMissingParameters(
-                routes['post.user'],
-                POST_USER_MISSING,
-                'body',
-                send,
-            );
-        });
-
-        it('sends on a valid message', async () => {
-            await testValidRoute(
-                routes['post.user'],
-                POST_USER_VALID,
-                'body',
                 send,
             );
         });
