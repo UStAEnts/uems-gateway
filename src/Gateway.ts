@@ -11,6 +11,8 @@ import { EntityResolver } from './resolver/EntityResolver';
 import { has, MessageValidator, MsgStatus } from '@uems/uemscommlib';
 import * as util from 'util';
 import { _byFile, _byFileWithTag } from './log/Log';
+import { LogIdentifier, logIncoming, logOutgoing } from "./log/RequestLogger";
+import { inspect } from "util";
 
 const _l = _byFile(__filename);
 const _t = _byFileWithTag(__filename, 'terminator');
@@ -407,6 +409,7 @@ export namespace GatewayMk2 {
                 return;
             }
 
+            logIncoming(request.response.req.requestID, message.properties.userId, json, message.fields.routingKey);
             this.outstandingRequests.delete(json.msg_id);
 
             if (request.additionalValidator !== undefined) {
@@ -448,6 +451,7 @@ export namespace GatewayMk2 {
             callback: RequestCallback,
             validator?: MessageValidator,
         ) => {
+            logOutgoing(response.req.requestID, 'unknown', key, message);
             this.outstandingRequests.set(message.msg_id, {
                 response,
                 callback,
