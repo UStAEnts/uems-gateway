@@ -282,7 +282,7 @@ export function formatAndPrintLog(id: LogIdentifier) {
         .join('\n');
     const infoToMessage = (info: RequestLog['info'][number]) => `${rd}[${time(info.timestamp)}]: ${info.source}\n${rd}\t${info.message}`;
     const unknownMessageToMessage = (message: Message) => `${rd}[${time(message.timestamp)}] ${message.origin} ---| ${message.routingKey} |---> ${message.destination}\n${rd}${formatAndIndent(message.content)}`;
-    const groupedMessageToMessage = (messages: (typeof groupedMessages)[number]) => `${rd}[${time(messages.timestamp)}]\n${rd}\t${messages.outgoing.origin} ---| ${messages.outgoing.routingKey} |---> ${messages.outgoing.destination}\n${formatAndIndent(messages.outgoing.content, 2)}\n${rd}\t\t${time(messages.outgoing.timestamp)}\n${rd}\t${messages.incoming.origin} ---| ${messages.incoming.routingKey} |---> ${messages.incoming.destination}\n${formatAndIndent(messages.incoming.content, 2)}\n${rd}\t\t${time(messages.outgoing.timestamp)}`
+    const groupedMessageToMessage = (messages: (typeof groupedMessages)[number]) => `${rd}[${time(messages.timestamp)}]\n${rd}\t${messages.outgoing.origin} ---| ${messages.outgoing.routingKey} |---> ${messages.outgoing.destination}\n${formatAndIndent(messages.outgoing.content, 2)}\n${rd}\t\t@ ${time(messages.outgoing.timestamp)}\n${rd}\t${messages.incoming.origin} ---| ${messages.incoming.routingKey} |---> ${messages.incoming.destination}\n${formatAndIndent(messages.incoming.content, 2)}\n${rd}\t\t@ ${time(messages.outgoing.timestamp)}`
 
     sortable.forEach((e) => {
         if (e.source) {
