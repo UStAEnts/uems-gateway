@@ -309,7 +309,7 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
                 res,
                 GenericHandlerFunctions.handleReadSingleResponseFactory(
                     async (data: ShallowInternalEvent) => ({
-                        event: await Resolver.resolveSingleEvent(this._resolver, req.uemsUser.userID)(data),
+                        event: await Resolver.resolveSingleEvent(this._resolver, req.uemsUser.userID)(data, req.requestID),
                         changelog: [],
                     }),
                 ),
