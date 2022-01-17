@@ -467,6 +467,7 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
                 .safeParse(request.body);
 
             if (!validate.success) {
+                sendZodError(res, validate.error);
                 return;
             }
 
