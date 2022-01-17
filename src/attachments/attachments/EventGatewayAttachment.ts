@@ -170,7 +170,7 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
             const body = validate.data;
             for (const [k, v] of Object.entries(body)) {
                 // @ts-ignore
-                outgoing[k] = v;
+                msg[k] = v;
             }
 
             await send(
@@ -480,6 +480,7 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
                 .safeParse(request.body);
 
             if (!validate.success) {
+                sendZodError(res, validate.error);
                 return;
             }
 

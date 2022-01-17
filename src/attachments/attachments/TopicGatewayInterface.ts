@@ -17,6 +17,7 @@ import UpdateTopicMessage = TopicMessage.UpdateTopicMessage;
 import ROUTING_KEY = Constants.ROUTING_KEY;
 import GatewayMessageHandler = GatewayMk2.GatewayMessageHandler;
 import * as zod from 'zod';
+import sendZodError = MessageUtilities.sendZodError;
 
 export class TopicGatewayInterface implements GatewayAttachmentInterface {
 
@@ -88,7 +89,7 @@ export class TopicGatewayInterface implements GatewayAttachmentInterface {
                     icon: { primitive: 'string' },
                     color: {
                         primitive: 'string',
-                        validator: this.COLOR_REGEX.test
+                        validator: (x) => this.COLOR_REGEX.test(x)
                     },
                     description: { primitive: 'string' },
                     id: { primitive: 'string' },
@@ -155,6 +156,7 @@ export class TopicGatewayInterface implements GatewayAttachmentInterface {
                 .safeParse(req.body);
 
             if (!validate.success) {
+                sendZodError(res, validate.error);
                 return;
             }
 
@@ -210,6 +212,7 @@ export class TopicGatewayInterface implements GatewayAttachmentInterface {
                 .safeParse(req.body);
 
             if (!validate.success) {
+                sendZodError(res, validate.error);
                 return;
             }
 

@@ -29,8 +29,11 @@ export async function testParameterTypes(
         .toHaveBeenCalled();
     expect(response.statusCode)
         .toEqual(constants.HTTP_STATUS_BAD_REQUEST);
-    expect(JSON.stringify(response.body))
-        .toContain('type');
+    console.log(response.body);
+    expect(JSON.stringify(response.body)
+        .includes('type') || JSON.stringify(response.body)
+        .includes('format'))
+        .toBeTruthy();
 }
 
 export async function testMissingParameters(
@@ -39,6 +42,7 @@ export async function testMissingParameters(
     location: 'query' | 'body',
     send: jest.Mock,
     params?: any,
+    roles?: string[],
 ) {
     const response = new Response();
     const fake = response as unknown as express.Response;
@@ -46,6 +50,7 @@ export async function testMissingParameters(
         location === 'query' ? data : undefined,
         location === 'body' ? data : undefined,
         params,
+        roles,
     );
     await route.handle(req, fake, () => false);
 

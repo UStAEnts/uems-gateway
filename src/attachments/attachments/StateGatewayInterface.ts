@@ -213,6 +213,7 @@ export class StateGatewayInterface implements GatewayAttachmentInterface {
                 .safeParse(req.body);
 
             if (!validate.success) {
+                sendZodError(res, validate.error);
                 return;
             }
 

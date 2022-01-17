@@ -18,6 +18,7 @@ import UpdateVenueMessage = VenueMessage.UpdateVenueMessage;
 import ROUTING_KEY = Constants.ROUTING_KEY;
 import GatewayMessageHandler = GatewayMk2.GatewayMessageHandler;
 import * as zod from 'zod';
+import sendZodError = MessageUtilities.sendZodError;
 
 export class VenueGatewayInterface implements GatewayAttachmentInterface {
 
@@ -118,6 +119,7 @@ export class VenueGatewayInterface implements GatewayAttachmentInterface {
                 .safeParse(request.body);
 
             if (!validate.success) {
+                sendZodError(response, validate.error);
                 return;
             }
 
@@ -217,6 +219,7 @@ export class VenueGatewayInterface implements GatewayAttachmentInterface {
                 .safeParse(request.body);
 
             if (!validate.success) {
+                sendZodError(response, validate.error);
                 return;
             }
 
