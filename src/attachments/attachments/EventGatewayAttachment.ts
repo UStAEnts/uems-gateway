@@ -22,6 +22,8 @@ import ROUTING_KEY = Constants.ROUTING_KEY;
 import GatewayMessageHandler = GatewayMk2.GatewayMessageHandler;
 import { AuthUtilities } from "../../utilities/AuthUtilities";
 import orProtect = AuthUtilities.orProtect;
+import * as zod from 'zod';
+import sendZodError = MessageUtilities.sendZodError;
 
 export class EventGatewayAttachment implements GatewayAttachmentInterface {
     // TODO: bit dangerous using ! - maybe add null checks?
@@ -112,20 +114,6 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
                 res.status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
                     .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
             }
-            // const msg: DeleteEventMessage = {
-            //     msg_id: MessageUtilities.generateMessageIdentifier(),
-            //     status: 0,
-            //     msg_intention: 'DELETE',
-            //     id: eventId,
-            //     userID: req.uemsUser.userID,
-            // };
-            //
-            // await send(
-            //     ROUTING_KEY.event.delete,
-            //     msg,
-            //     res,
-            //     GenericHandlerFunctions.handleReadSingleResponseFactory(),
-            // );
         };
     }
 
@@ -148,67 +136,28 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
                 localOnly,
             };
 
-            const validate = MessageUtilities.verifyBody(
-                req,
-                res,
-                [],
-                {
-                    name: (x) => typeof (x) === 'string' || typeof (x) === 'undefined',
-                    start: (x) => typeof (x) === 'number' || typeof (x) === 'undefined',
-                    end: (x) => typeof (x) === 'number' || typeof (x) === 'undefined',
-                    attendance: (x) => typeof (x) === 'number' || typeof (x) === 'undefined',
-                    addVenues: (x) => Array.isArray(x) || typeof (x) === 'undefined',
-                    removeVenues: (x) => Array.isArray(x) || typeof (x) === 'undefined',
-                    ents: (x) => typeof (x) === 'string' || typeof (x) === 'undefined',
-                    state: (x) => typeof (x) === 'string' || typeof (x) === 'undefined',
-                },
-            );
+            const validate = zod.object({
+                name: zod.string(),
+                start: zod.number(),
+                end: zod.number(),
+                attendance: zod.number(),
+                addVenues: zod.array(zod.string()),
+                removeVenues: zod.array(zod.string()),
+                ents: zod.string(),
+                state: zod.string(),
+            })
+                .partial()
+                .safeParse(req.body);
 
-            if (!validate) {
+            if (!validate.success) {
+                sendZodError(res, validate.error);
                 return;
             }
 
-            const {
-                name,
-                start,
-                end,
-                attendance,
-                addVenues,
-                removeVenues,
-                ents,
-                state,
-            } = req.body;
-
-            if (name !== undefined) {
-                msg.name = name.toString();
-            }
-
-            if (start !== undefined) {
-                msg.start = start;
-            }
-
-            if (end !== undefined) {
-                msg.end = end;
-            }
-
-            if (attendance !== undefined) {
-                msg.attendance = attendance;
-            }
-
-            if (addVenues !== undefined) {
-                msg.addVenues = addVenues;
-            }
-
-            if (removeVenues !== undefined) {
-                msg.removeVenues = removeVenues;
-            }
-
-            if (ents !== undefined) {
-                msg.entsID = ents;
-            }
-
-            if (state !== undefined) {
-                msg.stateID = state;
+            const body = validate.data;
+            for (const [k, v] of Object.entries(body)) {
+                // @ts-ignore
+                msg[k] = v;
             }
 
             await send(
@@ -234,20 +183,23 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
             res,
             [],
             {
-                name: { primitive: 'string' },
-                start: { primitive: 'number' },
-                end: { primitive: 'number' },
                 attendance: { primitive: 'number' },
-                venueIDs: { primitive: 'array' },
-                venueCriteria: { primitive: 'string' },
-                entsID: { primitive: 'string' },
-                stateID: { primitive: 'string' },
-                startafter: { primitive: 'number' },
-                startbefore: { primitive: 'number' },
-                endafter: { primitive: 'number' },
-                endbefore: { primitive: 'number' },
                 attendanceGreater: { primitive: 'number' },
                 attendanceLess: { primitive: 'number' },
+                end: { primitive: 'number' },
+                endafter: { primitive: 'number' },
+                endbefore: { primitive: 'number' },
+                entsID: { primitive: 'string' },
+                name: { primitive: 'string' },
+                start: { primitive: 'number' },
+                startafter: { primitive: 'number' },
+                startbefore: { primitive: 'number' },
+                stateID: { primitive: 'string' },
+                venueCriteria: { primitive: 'string' },
+                venueIDs: {
+                    primitive: 'array',
+                    validator: (x) => Array.isArray(x) && x.every((e) => typeof (e) === 'string')
+                },
             },
         );
 
@@ -347,20 +299,9 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
                 msg_intention: 'READ',
                 status: 0,
                 userID: req.uemsUser.userID,
+                id: req.params.id,
                 localOnly,
             };
-
-            if (!MessageUtilities.has(req.params, 'id')) {
-                res
-                    .status(constants.HTTP_STATUS_BAD_REQUEST)
-                    .json(MessageUtilities.wrapInFailure({
-                        message: 'missing parameter id',
-                        code: 'BAD_REQUEST_MISSING_PARAM',
-                    }));
-                return;
-            }
-
-            outgoingMessage.id = req.params.id;
 
             await send(
                 ROUTING_KEY.event.read,
@@ -378,25 +319,21 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
 
     private static createEventHandler(send: SendRequestFunction) {
         return async (request: Request, res: Response) => {
-            const validate = MessageUtilities.verifyBody(
-                request,
-                res,
-                ['name', 'attendance', 'start', 'end', 'venue'],
-                {
-                    // Required
-                    name: (x) => typeof (x) === 'string',
-                    venue: (x) => typeof (x) === 'string',
-                    start: (x) => typeof (x) === 'number',
-                    end: (x) => typeof (x) === 'number',
-                    attendance: (x) => typeof (x) === 'number',
+            const validate = zod.object({
+                name: zod.string(),
+                venue: zod.string(),
+                start: zod.number(),
+                end: zod.number(),
+                attendance: zod.number(),
+                state: zod.string()
+                    .optional(),
+                ents: zod.string()
+                    .optional(),
+            })
+                .safeParse(request.body);
 
-                    // Optional
-                    state: (x) => typeof (x) === 'string',
-                    ents: (x) => typeof (x) === 'string',
-                },
-            );
-
-            if (!validate) {
+            if (!validate.success) {
+                sendZodError(res, validate.error);
                 return;
             }
 
@@ -438,7 +375,6 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
         // TODO add failures
         let localOnly = true;
         if (req.kauth && req.kauth.grant && req.kauth.grant.access_token) {
-            // req.kauth.grant.kauth
             if (orProtect('ops', 'ents', 'admin')(req.kauth.grant.access_token)) localOnly = false;
         }
 
@@ -447,20 +383,9 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
             status: 0,
             msg_intention: 'READ',
             userID: req.uemsUser.userID,
+            stateID: req.params.id,
             localOnly,
         };
-
-        if (!MessageUtilities.has(req.params, 'id')) {
-            res
-                .status(constants.HTTP_STATUS_BAD_REQUEST)
-                .json(MessageUtilities.wrapInFailure({
-                    message: 'missing parameter id',
-                    code: 'BAD_REQUEST_MISSING_PARAM',
-                }));
-            return;
-        }
-
-        msg.stateID = req.params.id;
 
         await send(
             ROUTING_KEY.event.read,
@@ -486,20 +411,9 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
             status: 0,
             msg_intention: 'READ',
             userID: req.uemsUser.userID,
+            anyVenues: [req.params.id],
             localOnly,
         };
-
-        if (!MessageUtilities.has(req.params, 'id')) {
-            res
-                .status(constants.HTTP_STATUS_BAD_REQUEST)
-                .json(MessageUtilities.wrapInFailure({
-                    message: 'missing parameter id',
-                    code: 'BAD_REQUEST_MISSING_PARAM',
-                }));
-            return;
-        }
-
-        msg.anyVenues = [req.params.id];
 
         await send(
             ROUTING_KEY.event.read,
@@ -526,20 +440,9 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
             msg_intention: 'READ',
             userID: req.uemsUser.userID,
             localAssetOnly: localOnly,
+            assetType: 'event',
+            assetID: req.params.id,
         };
-
-        if (!MessageUtilities.has(req.params, 'id')) {
-            res
-                .status(constants.HTTP_STATUS_BAD_REQUEST)
-                .json(MessageUtilities.wrapInFailure({
-                    message: 'missing parameter id',
-                    code: 'BAD_REQUEST_MISSING_PARAM',
-                }));
-            return;
-        }
-
-        msg.assetType = 'event';
-        msg.assetID = req.params.id;
 
         await send(
             'events.comment.get',
@@ -554,19 +457,17 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
 
     private postCommentsForEvent(send: SendRequestFunction) {
         return async (request: Request, res: Response) => {
-            const validate = MessageUtilities.verifyBody(
-                request,
-                res,
-                ['body'],
-                {
-                    // Required
-                    topic: (x) => typeof (x) === 'string',
-                    requiresAttention: (x) => typeof (x) === 'boolean',
-                    body: (x) => typeof (x) === 'string',
-                },
-            );
+            const validate = zod.object({
+                topic: zod.string()
+                    .optional(),
+                requiresAttention: zod.boolean()
+                    .optional(),
+                body: zod.string()
+            })
+                .safeParse(request.body);
 
-            if (!validate) {
+            if (!validate.success) {
+                sendZodError(res, validate.error);
                 return;
             }
 
@@ -578,7 +479,6 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
 
             let localOnly = true;
             if (request.kauth && request.kauth.grant && request.kauth.grant.access_token) {
-                // req.kauth.grant.kauth
                 if (orProtect('ops', 'ents', 'admin')(request.kauth.grant.access_token)) localOnly = false;
             }
 

@@ -71,6 +71,7 @@ describe('SignupGatewayInterface.ts', () => {
                 'body',
                 send,
                 { eventID: 'abc' },
+                ['admin']
             );
         });
 

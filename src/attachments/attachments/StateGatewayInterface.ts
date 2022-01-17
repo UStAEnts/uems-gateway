@@ -16,6 +16,8 @@ import CreateStateMessage = StateMessage.CreateStateMessage;
 import UpdateStateMessage = StateMessage.UpdateStateMessage;
 import ROUTING_KEY = Constants.ROUTING_KEY;
 import GatewayMessageHandler = GatewayMk2.GatewayMessageHandler;
+import * as zod from 'zod';
+import sendZodError = MessageUtilities.sendZodError;
 
 export class StateGatewayInterface implements GatewayAttachmentInterface {
 
@@ -123,16 +125,6 @@ export class StateGatewayInterface implements GatewayAttachmentInterface {
 
     private getStateHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
-
-            if (!MessageUtilities.has(req.params, 'id')) {
-                res
-                    .status(constants.HTTP_STATUS_BAD_REQUEST)
-                    .json(MessageUtilities.wrapInFailure({
-                        message: 'missing parameter id',
-                        code: 'BAD_REQUEST_MISSING_PARAM',
-                    }));
-                return;
-            }
             const outgoingMessage: ReadStateMessage = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 msg_intention: 'READ',
@@ -152,29 +144,28 @@ export class StateGatewayInterface implements GatewayAttachmentInterface {
 
     private createStateHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
-            const validate = MessageUtilities.verifyBody(
-                req,
-                res,
-                ['name', 'icon', 'color'],
-                {
-                    name: (x) => typeof (x) === 'string',
-                    icon: (x) => typeof (x) === 'string',
-                    color: (x) => typeof (x) === 'string' && this.COLOR_REGEX.test(x),
-                },
-            );
+            const validate = zod.object({
+                name: zod.string(),
+                icon: zod.string(),
+                color: zod.string()
+                    .regex(this.COLOR_REGEX),
+            })
+                .safeParse(req.body);
 
-            if (!validate) {
+            if (!validate.success) {
+                sendZodError(res, validate.error);
                 return;
             }
+            const body = req.body;
 
             const outgoingMessage: CreateStateMessage = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 msg_intention: 'CREATE',
                 status: 0,
                 userID: req.uemsUser.userID,
-                color: req.body.color,
-                icon: req.body.icon,
-                name: req.body.name,
+                color: body.color,
+                icon: body.icon,
+                name: body.name,
             };
 
             await send(
@@ -188,16 +179,6 @@ export class StateGatewayInterface implements GatewayAttachmentInterface {
 
     private deleteStateHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
-            if (!MessageUtilities.has(req.params, 'id')) {
-                res
-                    .status(constants.HTTP_STATUS_BAD_REQUEST)
-                    .json(MessageUtilities.wrapInFailure({
-                        message: 'missing parameter id',
-                        code: 'BAD_REQUEST_MISSING_PARAM',
-                    }));
-                return;
-            }
-
             if (this.resolver && this.handler) {
                 await removeAndReply({
                     assetID: req.params.id,
@@ -207,35 +188,11 @@ export class StateGatewayInterface implements GatewayAttachmentInterface {
                 res.status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
                     .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
             }
-            // const outgoingMessage: DeleteStateMessage = {
-            //     msg_id: MessageUtilities.generateMessageIdentifier(),
-            //     msg_intention: 'DELETE',
-            //     status: 0,
-            //     userID: req.uemsUser.userID,
-            //     id: req.params.id,
-            // };
-            //
-            // await send(
-            //     ROUTING_KEY.states.delete,
-            //     outgoingMessage,
-            //     res,
-            //     GenericHandlerFunctions.handleReadSingleResponseFactory(),
-            // );
         };
     }
 
     private updateStateHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
-            if (!MessageUtilities.has(req.params, 'id')) {
-                res
-                    .status(constants.HTTP_STATUS_BAD_REQUEST)
-                    .json(MessageUtilities.wrapInFailure({
-                        message: 'missing parameter id',
-                        code: 'BAD_REQUEST_MISSING_PARAM',
-                    }));
-                return;
-            }
-
             const outgoing: UpdateStateMessage = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 msg_intention: 'UPDATE',
@@ -244,18 +201,19 @@ export class StateGatewayInterface implements GatewayAttachmentInterface {
                 id: req.params.id,
             };
 
-            const validate = MessageUtilities.verifyBody(
-                req,
-                res,
-                [],
-                {
-                    name: (x) => typeof (x) === 'string',
-                    icon: (x) => typeof (x) === 'string',
-                    color: (x) => typeof (x) === 'string' && this.COLOR_REGEX.test(x),
-                },
-            );
+            const validate = zod.object({
+                name: zod.string()
+                    .optional(),
+                icon: zod.string()
+                    .optional(),
+                color: zod.string()
+                    .regex(this.COLOR_REGEX)
+                    .optional(),
+            })
+                .safeParse(req.body);
 
-            if (!validate) {
+            if (!validate.success) {
+                sendZodError(res, validate.error);
                 return;
             }
 
@@ -272,8 +230,6 @@ export class StateGatewayInterface implements GatewayAttachmentInterface {
                     outgoing[key] = parameters[key];
                 }
             });
-
-            console.log('sending?');
 
             await send(
                 ROUTING_KEY.states.update,

@@ -16,6 +16,9 @@ import CreateEquipmentMessage = EquipmentMessage.CreateEquipmentMessage;
 import UpdateEquipmentMessage = EquipmentMessage.UpdateEquipmentMessage;
 import ROUTING_KEY = Constants.ROUTING_KEY;
 import GatewayMessageHandler = GatewayMk2.GatewayMessageHandler;
+import CoercingValidator = MessageUtilities.CoercingValidator;
+import * as zod from 'zod';
+import sendZodError = MessageUtilities.sendZodError;
 
 export class EquipmentGatewayInterface implements GatewayAttachmentInterface {
 
@@ -80,24 +83,26 @@ export class EquipmentGatewayInterface implements GatewayAttachmentInterface {
                 userID: req.uemsUser.userID,
             };
 
+            const types: CoercingValidator = {
+                amount: { primitive: 'number' },
+                assetID: { primitive: 'string' },
+                category: { primitive: 'string' },
+                date: { primitive: 'number' },
+                id: { primitive: 'string' },
+                locationID: { primitive: 'string' },
+                locationSpecifier: { primitive: 'string' },
+                managerID: { primitive: 'string' },
+                manufacturer: { primitive: 'string' },
+                miscIdentifier: { primitive: 'string' },
+                model: { primitive: 'string' },
+                name: { primitive: 'string' },
+            };
+
             const validate = MessageUtilities.coerceAndVerifyQuery(
                 req,
                 res,
                 [],
-                {
-                    id: { primitive: 'string' },
-                    assetID: { primitive: 'string' },
-                    name: { primitive: 'string' },
-                    manufacturer: { primitive: 'string' },
-                    model: { primitive: 'string' },
-                    miscIdentifier: { primitive: 'string' },
-                    amount: { primitive: 'number' },
-                    locationID: { primitive: 'string' },
-                    locationSpecifier: { primitive: 'string' },
-                    managerID: { primitive: 'string' },
-                    date: { primitive: 'number' },
-                    category: { primitive: 'string' },
-                },
+                types,
             );
 
             if (!validate) {
@@ -105,20 +110,7 @@ export class EquipmentGatewayInterface implements GatewayAttachmentInterface {
             }
 
             const parameters = req.query;
-            const validProperties: string[] = [
-                'id',
-                'assetID',
-                'name',
-                'manufacturer',
-                'model',
-                'miscIdentifier',
-                'amount',
-                'locationID',
-                'locationSpecifier',
-                'managerID',
-                'date',
-                'category',
-            ];
+            const validProperties: string[] = Object.keys(types);
 
             validProperties.forEach((key) => {
                 if (MessageUtilities.has(parameters, key)) {
@@ -146,19 +138,9 @@ export class EquipmentGatewayInterface implements GatewayAttachmentInterface {
                 msg_intention: 'READ',
                 status: 0,
                 userID: req.uemsUser.userID,
+                id: req.params.id,
             };
 
-            if (!MessageUtilities.has(req.params, 'id')) {
-                res
-                    .status(constants.HTTP_STATUS_BAD_REQUEST)
-                    .json(MessageUtilities.wrapInFailure({
-                        message: 'missing parameter id',
-                        code: 'BAD_REQUEST_MISSING_PARAM',
-                    }));
-                return;
-            }
-
-            outgoingMessage.id = req.params.id;
             await send(
                 ROUTING_KEY.equipment.read,
                 outgoingMessage,
@@ -173,55 +155,45 @@ export class EquipmentGatewayInterface implements GatewayAttachmentInterface {
 
     private createEquipmentHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
-            const validate = MessageUtilities.verifyBody(
-                req,
-                res,
-                ['name', 'manufacturer', 'model', 'amount', 'locationID', 'category'],
-                {
-                    // Required
-                    name: (x) => typeof (x) === 'string',
-                    manufacturer: (x) => typeof (x) === 'string',
-                    model: (x) => typeof (x) === 'string',
-                    amount: (x) => typeof (x) === 'number',
-                    locationID: (x) => typeof (x) === 'string',
-                    category: (x) => typeof (x) === 'string',
+            const validate = zod.object({
+                name: zod.string(),
+                manufacturer: zod.string(),
+                model: zod.string(),
+                amount: zod.number(),
+                locationID: zod.string(),
+                category: zod.string(),
 
-                    // Optional
-                    assetID: (x) => typeof (x) === 'string',
-                    miscIdentifier: (x) => typeof (x) === 'string',
-                    locationSpecifier: (x) => typeof (x) === 'string',
-                },
-            );
+                assetID: zod.string()
+                    .optional(),
+                miscIdentifier: zod.string()
+                    .optional(),
+                locationSpecifier: zod.string()
+                    .optional(),
+            })
+                .safeParse(req.body);
 
-            if (!validate) {
+            if (!validate.success) {
+                sendZodError(res, validate.error);
                 return;
             }
-
-            const copy = [
-                'assetID',
-                'miscIdentifier',
-                'locationSpecifier',
-            ];
+            const body = validate.data;
 
             const outgoingMessage: CreateEquipmentMessage = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 msg_intention: 'CREATE',
                 status: 0,
                 userID: req.uemsUser.userID,
-                name: req.body.name,
-                manufacturer: req.body.manufacturer,
-                model: req.body.model,
-                amount: req.body.amount,
-                locationID: req.body.locationID,
-                category: req.body.category,
+                name: body.name,
+                manufacturer: body.manufacturer,
+                model: body.model,
+                amount: body.amount,
+                locationID: body.locationID,
+                category: body.category,
             };
 
-            for (const key of copy) {
-                if (req.body[key]) {
-                    // @ts-ignore
-                    outgoingMessage[key] = req.body[key];
-                }
-            }
+            if (body.assetID) outgoingMessage.assetID = body.assetID;
+            if (body.miscIdentifier) outgoingMessage.miscIdentifier = body.miscIdentifier;
+            if (body.locationSpecifier) outgoingMessage.locationSpecifier = body.locationSpecifier;
 
             await send(
                 ROUTING_KEY.equipment.create,
@@ -234,17 +206,6 @@ export class EquipmentGatewayInterface implements GatewayAttachmentInterface {
 
     private deleteEquipmentHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
-
-            if (!MessageUtilities.has(req.params, 'id')) {
-                res
-                    .status(constants.HTTP_STATUS_BAD_REQUEST)
-                    .json(MessageUtilities.wrapInFailure({
-                        message: 'missing parameter id',
-                        code: 'BAD_REQUEST_MISSING_PARAM',
-                    }));
-                return;
-            }
-
             if (this.resolver && this.handler) {
                 await removeAndReply({
                     assetID: req.params.id,
@@ -254,37 +215,11 @@ export class EquipmentGatewayInterface implements GatewayAttachmentInterface {
                 res.status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
                     .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
             }
-            //
-            // const outgoingMessage: DeleteEquipmentMessage = {
-            //     msg_id: MessageUtilities.generateMessageIdentifier(),
-            //     msg_intention: 'DELETE',
-            //     status: 0,
-            //     userID: req.uemsUser.userID,
-            //     id: req.params.id,
-            // };
-            //
-            // await send(
-            //     ROUTING_KEY.equipment.delete,
-            //     outgoingMessage,
-            //     res,
-            //     GenericHandlerFunctions.handleReadSingleResponseFactory(),
-            // );
         };
     }
 
     private updateEquipmentHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
-            // ID is carried in the parameter not the body so have to do it this way
-            if (!MessageUtilities.has(req.params, 'id')) {
-                res
-                    .status(constants.HTTP_STATUS_BAD_REQUEST)
-                    .json(MessageUtilities.wrapInFailure({
-                        message: 'missing parameter id',
-                        code: 'BAD_REQUEST_MISSING_PARAM',
-                    }));
-                return;
-            }
-
             const outgoing: UpdateEquipmentMessage = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 msg_intention: 'UPDATE',
@@ -294,47 +229,30 @@ export class EquipmentGatewayInterface implements GatewayAttachmentInterface {
             };
 
             // Then validate the body parameters and copy them over
-            const validate = MessageUtilities.verifyBody(
-                req,
-                res,
-                [],
-                {
-                    // Optional
-                    assetID: (x) => typeof (x) === 'string',
-                    name: (x) => typeof (x) === 'string',
-                    manufacturer: (x) => typeof (x) === 'string',
-                    model: (x) => typeof (x) === 'string',
-                    miscIdentifier: (x) => typeof (x) === 'string',
-                    amount: (x) => typeof (x) === 'number',
-                    locationID: (x) => typeof (x) === 'string',
-                    locationSpecifier: (x) => typeof (x) === 'string',
-                    managerID: (x) => typeof (x) === 'string',
-                    category: (x) => typeof (x) === 'string',
-                },
-            );
+            const validate = zod.object({
+                assetID: zod.string(),
+                name: zod.string(),
+                manufacturer: zod.string(),
+                model: zod.string(),
+                miscIdentifier: zod.string(),
+                amount: zod.number(),
+                locationID: zod.string(),
+                locationSpecifier: zod.string(),
+                managerID: zod.string(),
+                category: zod.string(),
+            })
+                .partial()
+                .safeParse(req.body);
 
-            if (!validate) {
+            if (!validate.success) {
+                sendZodError(res, validate.error);
                 return;
             }
 
-            const copy = [
-                'assetID',
-                'name',
-                'manufacturer',
-                'model',
-                'miscIdentifier',
-                'amount',
-                'locationID',
-                'locationSpecifier',
-                'managerID',
-                'category',
-            ];
-
-            for (const key of copy) {
-                if (req.body[key]) {
-                    // @ts-ignore
-                    outgoing[key] = req.body[key];
-                }
+            const body = validate.data;
+            for (const [k, v] of Object.entries(body)) {
+                // @ts-ignore
+                outgoing[k] = v;
             }
 
             await send(

@@ -19,6 +19,8 @@ import ROUTING_KEY = Constants.ROUTING_KEY;
 import GatewayMessageHandler = GatewayMk2.GatewayMessageHandler;
 import { AuthUtilities } from "../../utilities/AuthUtilities";
 import orProtect = AuthUtilities.orProtect;
+import * as zod from 'zod';
+import sendZodError = MessageUtilities.sendZodError;
 
 export class SignupGatewayInterface implements GatewayAttachmentInterface {
 
@@ -54,7 +56,6 @@ export class SignupGatewayInterface implements GatewayAttachmentInterface {
                 path: '/events/:eventID/signups/:id',
                 handle: this.deleteSignupHandler(send),
                 additionalValidator: validator,
-                // TODO: [https://app.asana.com/0/0/1201549453029903/f] add verification on the microservice side
             },
             {
                 action: 'get',
@@ -76,16 +77,6 @@ export class SignupGatewayInterface implements GatewayAttachmentInterface {
 
     private querySignupsHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
-            if (!MessageUtilities.has(req.params, 'eventID')) {
-                res
-                    .status(constants.HTTP_STATUS_BAD_REQUEST)
-                    .json(MessageUtilities.wrapInFailure({
-                        message: 'missing parameter eventID',
-                        code: 'BAD_REQUEST_MISSING_PARAM',
-                    }));
-                return;
-            }
-
             const outgoing: ReadSignupMessage = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 msg_intention: 'READ',
@@ -144,26 +135,6 @@ export class SignupGatewayInterface implements GatewayAttachmentInterface {
 
     private getSignupHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
-            if (!MessageUtilities.has(req.params, 'eventID')) {
-                res
-                    .status(constants.HTTP_STATUS_BAD_REQUEST)
-                    .json(MessageUtilities.wrapInFailure({
-                        message: 'missing parameter eventID',
-                        code: 'BAD_REQUEST_MISSING_PARAM',
-                    }));
-                return;
-            }
-
-            if (!MessageUtilities.has(req.params, 'id')) {
-                res
-                    .status(constants.HTTP_STATUS_BAD_REQUEST)
-                    .json(MessageUtilities.wrapInFailure({
-                        message: 'missing parameter id',
-                        code: 'BAD_REQUEST_MISSING_PARAM',
-                    }));
-                return;
-            }
-
             const outgoingMessage: ReadSignupMessage = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 msg_intention: 'READ',
@@ -188,31 +159,6 @@ export class SignupGatewayInterface implements GatewayAttachmentInterface {
 
     private createSignupHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
-            if (!MessageUtilities.has(req.params, 'eventID')) {
-                res
-                    .status(constants.HTTP_STATUS_BAD_REQUEST)
-                    .json(MessageUtilities.wrapInFailure({
-                        message: 'missing parameter eventID',
-                        code: 'BAD_REQUEST_MISSING_PARAM',
-                    }));
-                return;
-            }
-
-            // TODO: this is not verifying the right hting?
-            const validate = MessageUtilities.verifyBody(
-                req,
-                res,
-                ['role'],
-                {
-                    role: (x) => typeof (x) === 'string',
-                    signupUser: (x) => typeof (x) === 'string' || typeof (x) === 'undefined',
-                },
-            );
-
-            if (!validate) {
-                return;
-            }
-
             if (req.kauth && req.kauth.grant && req.kauth.grant.access_token) {
                 if (req.params.signupUser && req.params.signupUser !== req.uemsUser.userID) {
                     // Signing up another user, mu for now
@@ -233,14 +179,25 @@ export class SignupGatewayInterface implements GatewayAttachmentInterface {
                 return;
             }
 
+            const validate = zod.object({
+                role: zod.string(),
+                signupUser: zod.string().optional(),
+            }).safeParse(req.body);
+
+            if (!validate.success) {
+                sendZodError(res, validate.error);
+                return;
+            }
+            const body = validate.data;
+
             const outgoingMessage: CreateSignupMessage = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 msg_intention: 'CREATE',
                 status: 0,
                 userID: req.uemsUser.userID,
                 eventID: req.params.eventID,
-                signupUser: req.params.signupUser,
-                role: req.body.role,
+                signupUser: body.signupUser,
+                role: body.role,
             };
 
             await send(
@@ -254,74 +211,26 @@ export class SignupGatewayInterface implements GatewayAttachmentInterface {
 
     private deleteSignupHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
-            if (!MessageUtilities.has(req.params, 'eventID')) {
-                res
-                    .status(constants.HTTP_STATUS_BAD_REQUEST)
-                    .json(MessageUtilities.wrapInFailure({
-                        message: 'missing parameter eventID',
-                        code: 'BAD_REQUEST_MISSING_PARAM',
-                    }));
-                return;
-            }
-
-            if (!MessageUtilities.has(req.params, 'id')) {
-                res
-                    .status(constants.HTTP_STATUS_BAD_REQUEST)
-                    .json(MessageUtilities.wrapInFailure({
-                        message: 'missing parameter id',
-                        code: 'BAD_REQUEST_MISSING_PARAM',
-                    }));
-                return;
+            let localOnly = true;
+            if (req.kauth && req.kauth.grant && req.kauth.grant.access_token) {
+                // req.kauth.grant.kauth
+                if (orProtect('ops', 'ents', 'admin')(req.kauth.grant.access_token)) localOnly = false;
             }
 
             if (this._resolver && this.handler) {
                 await removeAndReply({
                     assetID: req.params.id,
                     assetType: 'signup',
-                }, this._resolver, this.handler, res);
+                }, this._resolver, this.handler, res, localOnly);
             } else {
                 res.status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
                     .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
             }
-            // const outgoingMessage: DeleteSignupMessage = {
-            //     msg_id: MessageUtilities.generateMessageIdentifier(),
-            //     msg_intention: 'DELETE',
-            //     status: 0,
-            //     userID: req.uemsUser.userID,
-            //     id: req.params.id,
-            // };
-            //
-            // await send(
-            //     ROUTING_KEY.signups.delete,
-            //     outgoingMessage,
-            //     res,
-            //     GenericHandlerFunctions.handleReadSingleResponseFactory(),
-            // );
         };
     }
 
     private updateSignupHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
-            if (!MessageUtilities.has(req.params, 'eventID')) {
-                res
-                    .status(constants.HTTP_STATUS_BAD_REQUEST)
-                    .json(MessageUtilities.wrapInFailure({
-                        message: 'missing parameter eventID',
-                        code: 'BAD_REQUEST_MISSING_PARAM',
-                    }));
-                return;
-            }
-
-            if (!MessageUtilities.has(req.params, 'id')) {
-                res
-                    .status(constants.HTTP_STATUS_BAD_REQUEST)
-                    .json(MessageUtilities.wrapInFailure({
-                        message: 'missing parameter id',
-                        code: 'BAD_REQUEST_MISSING_PARAM',
-                    }));
-                return;
-            }
-
             let localOnly = true;
             if (req.kauth && req.kauth.grant && req.kauth.grant.access_token) {
                 if (orProtect('admin')(req.kauth.grant.access_token)) {

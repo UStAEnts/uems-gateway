@@ -8,6 +8,7 @@ import { Constants } from '../../utilities/Constants';
 import { removeAndReply } from '../DeletePipelines';
 import { EntityResolver } from '../../resolver/EntityResolver';
 import { ErrorCodes } from '../../constants/ErrorCodes';
+import * as zod from 'zod';
 import GatewayAttachmentInterface = GatewayMk2.GatewayAttachmentInterface;
 import SendRequestFunction = GatewayMk2.SendRequestFunction;
 import EntStateReadSchema = EntStateMessage.ReadEntStateMessage;
@@ -16,12 +17,13 @@ import CreateEntStateMessage = EntStateMessage.CreateEntStateMessage;
 import UpdateEntStateMessage = EntStateMessage.UpdateEntStateMessage;
 import ROUTING_KEY = Constants.ROUTING_KEY;
 import GatewayMessageHandler = GatewayMk2.GatewayMessageHandler;
+import sendZodError = MessageUtilities.sendZodError;
 
 export class EntStateGatewayInterface implements GatewayAttachmentInterface {
-
     private readonly COLOR_REGEX = /^#?([0-9A-Fa-f]{3}([0-9A-Fa-f]{3})?)$/;
 
     private resolver?: EntityResolver;
+
     private handler?: GatewayMessageHandler;
 
     generateInterfaces(
@@ -50,7 +52,7 @@ export class EntStateGatewayInterface implements GatewayAttachmentInterface {
             {
                 action: 'delete',
                 path: '/ents/:id',
-                handle: this.deleteEntStateHandler(send, resolver, handler),
+                handle: this.deleteEntStateHandler(),
                 additionalValidator: validator,
                 secure: ['ents', 'admin', 'ops'],
             },
@@ -88,7 +90,7 @@ export class EntStateGatewayInterface implements GatewayAttachmentInterface {
                     name: { primitive: 'string' },
                     color: {
                         primitive: 'string',
-                        validator: (x) => this.COLOR_REGEX.test(x)
+                        validator: (x) => this.COLOR_REGEX.test(x),
                     },
                     icon: { primitive: 'string' },
                 },
@@ -129,19 +131,9 @@ export class EntStateGatewayInterface implements GatewayAttachmentInterface {
                 msg_intention: 'READ',
                 status: 0,
                 userID: req.uemsUser.userID,
+                id: req.params.id,
             };
 
-            if (!MessageUtilities.has(req.params, 'id')) {
-                res
-                    .status(constants.HTTP_STATUS_BAD_REQUEST)
-                    .json(MessageUtilities.wrapInFailure({
-                        message: 'missing parameter id',
-                        code: 'BAD_REQUEST_MISSING_PARAM',
-                    }));
-                return;
-            }
-
-            outgoingMessage.id = req.params.id;
             await send(
                 ROUTING_KEY.ent.read,
                 outgoingMessage,
@@ -153,29 +145,29 @@ export class EntStateGatewayInterface implements GatewayAttachmentInterface {
 
     private createEntStateHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
-            const validate = MessageUtilities.verifyBody(
-                req,
-                res,
-                ['name', 'icon', 'color'],
-                {
-                    name: (x) => typeof (x) === 'string',
-                    icon: (x) => typeof (x) === 'string',
-                    color: (x) => typeof (x) === 'string' && this.COLOR_REGEX.test(x),
-                },
-            );
+            const bodyValidate = zod.object({
+                name: zod.string(),
+                icon: zod.string(),
+                color: zod.string()
+                    .regex(this.COLOR_REGEX),
+            })
+                .safeParse(req.body);
 
-            if (!validate) {
+            if (!bodyValidate.success) {
+                sendZodError(res, bodyValidate.error);
                 return;
             }
+
+            const body = bodyValidate.data;
 
             const outgoingMessage: CreateEntStateMessage = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 msg_intention: 'CREATE',
                 status: 0,
                 userID: req.uemsUser.userID,
-                color: req.body.color,
-                icon: req.body.icon,
-                name: req.body.name,
+                color: body.color,
+                icon: body.icon,
+                name: body.name,
             };
 
             await send(
@@ -187,18 +179,8 @@ export class EntStateGatewayInterface implements GatewayAttachmentInterface {
         };
     }
 
-    private deleteEntStateHandler(send: GatewayMk2.SendRequestFunction, resolver: EntityResolver, handler: GatewayMessageHandler) {
+    private deleteEntStateHandler() {
         return async (req: Request, res: Response) => {
-            if (!MessageUtilities.has(req.params, 'id')) {
-                res
-                    .status(constants.HTTP_STATUS_BAD_REQUEST)
-                    .json(MessageUtilities.wrapInFailure({
-                        message: 'missing parameter id',
-                        code: 'BAD_REQUEST_MISSING_PARAM',
-                    }));
-                return;
-            }
-
             if (this.resolver && this.handler) {
                 await removeAndReply({
                     assetID: req.params.id,
@@ -208,51 +190,28 @@ export class EntStateGatewayInterface implements GatewayAttachmentInterface {
                 res.status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
                     .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
             }
-            //
-            // const outgoingMessage: any = {
-            //     msg_id: MessageUtilities.generateMessageIdentifier(),
-            //     msg_intention: 'DELETE',
-            //     status: 0,
-            //     id: req.params.id,
-            // };
-            //
-            // await send(
-            //     ROUTING_KEY.ent.delete,
-            //     outgoingMessage,
-            //     res,
-            //     GenericHandlerFunctions.handleReadSingleResponseFactory(),
-            // );
         };
     }
 
     private updateEntStateHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
-            if (!MessageUtilities.has(req.params, 'id')) {
-                res
-                    .status(constants.HTTP_STATUS_BAD_REQUEST)
-                    .json(MessageUtilities.wrapInFailure({
-                        message: 'missing parameter id',
-                        code: 'BAD_REQUEST_MISSING_PARAM',
-                    }));
+            const validate = zod.object({
+                name: zod.string()
+                    .optional(),
+                icon: zod.string()
+                    .optional(),
+                color: zod.string()
+                    .regex(this.COLOR_REGEX)
+                    .optional(),
+            })
+                .safeParse(req.body);
+
+            if (!validate.success) {
+                sendZodError(res, validate.error);
                 return;
             }
 
-            const validate = MessageUtilities.verifyBody(
-                req,
-                res,
-                [],
-                {
-                    name: (x) => typeof (x) === 'string',
-                    icon: (x) => typeof (x) === 'string',
-                    color: (x) => typeof (x) === 'string' && this.COLOR_REGEX.test(x),
-                },
-            );
-
-            if (!validate) {
-                return;
-            }
-
-            const parameters = req.body;
+            const parameters = validate.data;
             const validProperties: (keyof UpdateEntStateMessage)[] = [
                 'name',
                 'icon',

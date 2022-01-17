@@ -17,6 +17,8 @@ import CreateVenueMessage = VenueMessage.CreateVenueMessage;
 import UpdateVenueMessage = VenueMessage.UpdateVenueMessage;
 import ROUTING_KEY = Constants.ROUTING_KEY;
 import GatewayMessageHandler = GatewayMk2.GatewayMessageHandler;
+import * as zod from 'zod';
+import sendZodError = MessageUtilities.sendZodError;
 
 export class VenueGatewayInterface implements GatewayAttachmentInterface {
 
@@ -72,16 +74,6 @@ export class VenueGatewayInterface implements GatewayAttachmentInterface {
 
     private handleGetRequest(sendRequest: SendRequestFunction) {
         return (request: Request, response: Response) => {
-            if (!MessageUtilities.has(request.params, 'id')) {
-                response
-                    .status(constants.HTTP_STATUS_BAD_REQUEST)
-                    .json(MessageUtilities.wrapInFailure({
-                        message: 'missing parameter id',
-                        code: 'BAD_REQUEST_MISSING_PARAM',
-                    }));
-                return;
-            }
-
             const outgoingMessage: ReadVenueMessage = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 msg_intention: 'READ',
@@ -104,16 +96,6 @@ export class VenueGatewayInterface implements GatewayAttachmentInterface {
 
     private handleDeleteRequest(sendRequest: SendRequestFunction) {
         return async (request: Request, response: Response) => {
-            if (!MessageUtilities.has(request.params, 'id')) {
-                response
-                    .status(constants.HTTP_STATUS_BAD_REQUEST)
-                    .json(MessageUtilities.wrapInFailure({
-                        message: 'missing parameter id',
-                        code: 'BAD_REQUEST_MISSING_PARAM',
-                    }));
-                return;
-            }
-
             if (this.resolver && this.handler) {
                 await removeAndReply({
                     assetID: request.params.id,
@@ -128,20 +110,20 @@ export class VenueGatewayInterface implements GatewayAttachmentInterface {
 
     private handleCreateRequest(sendRequest: SendRequestFunction) {
         return (request: Request, response: Response) => {
-            const validate = MessageUtilities.verifyBody(
-                request,
-                response,
-                ['name', 'capacity', 'color'],
-                {
-                    name: (x) => typeof (x) === 'string',
-                    capacity: (x) => typeof (x) === 'number',
-                    color: (x) => typeof (x) === 'string' && this.COLOR_REGEX.test(x),
-                },
-            );
+            const validate = zod.object({
+                name: zod.string(),
+                capacity: zod.number(),
+                color: zod.string()
+                    .regex(this.COLOR_REGEX),
+            })
+                .safeParse(request.body);
 
-            if (!validate) {
+            if (!validate.success) {
+                sendZodError(response, validate.error);
                 return;
             }
+
+            const body = validate.data;
 
             // @ts-ignore
             const outgoingMessage: CreateVenueMessage = {
@@ -149,9 +131,9 @@ export class VenueGatewayInterface implements GatewayAttachmentInterface {
                 msg_intention: 'CREATE',
                 status: 0,
                 userID: request.uemsUser.userID,
-                name: request.body.name,
-                capacity: request.body.capacity,
-                color: request.body.color,
+                name: body.name,
+                capacity: body.capacity,
+                color: body.color,
             };
 
             sendRequest(
@@ -180,12 +162,12 @@ export class VenueGatewayInterface implements GatewayAttachmentInterface {
                 response,
                 [],
                 {
-                    name: { primitive: 'string' },
-                    capacity: { primitive: 'number' },
                     approximate_capacity: { primitive: 'number' },
                     approximate_fuzziness: { primitive: 'number' },
-                    minimum_capacity: { primitive: 'number' },
+                    capacity: { primitive: 'number' },
                     maximum_capacity: { primitive: 'number' },
+                    minimum_capacity: { primitive: 'number' },
+                    name: { primitive: 'string' },
                 },
             );
 
@@ -225,28 +207,19 @@ export class VenueGatewayInterface implements GatewayAttachmentInterface {
 
     private handleUpdateRequest(sendRequest: SendRequestFunction) {
         return (request: Request, response: Response) => {
-            if (!MessageUtilities.has(request.params, 'id')) {
-                response
-                    .status(constants.HTTP_STATUS_BAD_REQUEST)
-                    .json(MessageUtilities.wrapInFailure({
-                        message: 'missing parameter id',
-                        code: 'BAD_REQUEST_MISSING_PARAM',
-                    }));
-                return;
-            }
+            const validate = zod.object({
+                name: zod.string()
+                    .optional(),
+                capacity: zod.number()
+                    .optional(),
+                color: zod.string()
+                    .regex(this.COLOR_REGEX)
+                    .optional(),
+            })
+                .safeParse(request.body);
 
-            const validate = MessageUtilities.verifyBody(
-                request,
-                response,
-                [],
-                {
-                    name: (x) => typeof (x) === 'string',
-                    capacity: (x) => typeof (x) === 'number',
-                    color: (x) => typeof (x) === 'string' && this.COLOR_REGEX.test(x),
-                },
-            );
-
-            if (!validate) {
+            if (!validate.success) {
+                sendZodError(response, validate.error);
                 return;
             }
 

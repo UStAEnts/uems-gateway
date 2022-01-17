@@ -24,6 +24,12 @@ import ROUTING_KEY = Constants.ROUTING_KEY;
 import GatewayMessageHandler = GatewayMk2.GatewayMessageHandler;
 import { AuthUtilities } from "../../utilities/AuthUtilities";
 import orProtect = AuthUtilities.orProtect;
+import * as zod from 'zod';
+import sendZodError = MessageUtilities.sendZodError;
+import { FileBindingValidators } from "@uems/uemscommlib/build/filebinding/FileBindingValidators";
+import FileBindingResponseValidator = FileBindingValidators.FileBindingResponseValidator;
+import { EventValidators } from "@uems/uemscommlib/build/event/EventValidators";
+import EventResponseValidator = EventValidators.EventResponseValidator;
 
 export class FileGatewayInterface implements GatewayAttachmentInterface {
 
@@ -39,6 +45,7 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
         this.handler = handler;
 
         const validator = new FileResponseValidator();
+        const eventValidator = new EventResponseValidator();
 
         return [
             {
@@ -77,13 +84,13 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
                 action: 'get',
                 path: '/files/:id/events',
                 handle: this.getEventsByFileHandler(send),
-                // TODO: add validator
+                additionalValidator: eventValidator,
             },
             {
                 action: 'get',
                 path: '/events/:id/files',
                 handle: this.getFilesByEventsHandler(send),
-                // TODO: add validator
+                additionalValidator: validator,
             },
             {
                 action: 'post',
@@ -120,12 +127,12 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
                 res,
                 [],
                 {
+                    date: { primitive: 'number' },
+                    filename: { primitive: 'string' },
                     id: { primitive: 'string' },
                     name: { primitive: 'string' },
-                    filename: { primitive: 'string' },
                     size: { primitive: 'number' },
                     type: { primitive: 'string' },
-                    date: { primitive: 'number' },
                     userid: { primitive: 'string' },
                 },
             );
@@ -177,20 +184,10 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
                 msg_intention: 'READ',
                 status: 0,
                 userID: req.uemsUser.userID,
+                id: req.params.id,
                 localOnly,
             };
 
-            if (!MessageUtilities.has(req.params, 'id')) {
-                res
-                    .status(constants.HTTP_STATUS_BAD_REQUEST)
-                    .json(MessageUtilities.wrapInFailure({
-                        message: 'missing parameter id',
-                        code: 'BAD_REQUEST_MISSING_PARAM',
-                    }));
-                return;
-            }
-
-            outgoingMessage.id = req.params.id;
             await send(
                 ROUTING_KEY.file.read,
                 outgoingMessage,
@@ -205,19 +202,16 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
 
     private createFileHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
-            const validate = MessageUtilities.verifyBody(
-                req,
-                res,
-                ['name', 'filename', 'size', 'type'],
-                {
-                    name: (x) => typeof (x) === 'string',
-                    filename: (x) => typeof (x) === 'string',
-                    size: (x) => typeof (x) === 'number',
-                    type: (x) => typeof (x) === 'string',
-                },
-            );
+            const validate = zod.object({
+                name: zod.string(),
+                filename: zod.string(),
+                size: zod.number(),
+                type: zod.string(),
+            })
+                .safeParse(req.body);
 
-            if (!validate) {
+            if (!validate.success) {
+                sendZodError(res, validate.error);
                 return;
             }
 
@@ -260,16 +254,6 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
 
     private deleteFileHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
-            if (!MessageUtilities.has(req.params, 'id')) {
-                res
-                    .status(constants.HTTP_STATUS_BAD_REQUEST)
-                    .json(MessageUtilities.wrapInFailure({
-                        message: 'missing parameter id',
-                        code: 'BAD_REQUEST_MISSING_PARAM',
-                    }));
-                return;
-            }
-
             if (this._resolver && this.handler) {
                 await removeAndReply({
                     assetID: req.params.id,
@@ -279,35 +263,11 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
                 res.status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
                     .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
             }
-            // const outgoingMessage: DeleteFileMessage = {
-            //     msg_id: MessageUtilities.generateMessageIdentifier(),
-            //     msg_intention: 'DELETE',
-            //     status: 0,
-            //     userID: req.uemsUser.userID,
-            //     id: req.params.id,
-            // };
-            //
-            // await send(
-            //     ROUTING_KEY.file.delete,
-            //     outgoingMessage,
-            //     res,
-            //     GenericHandlerFunctions.handleReadSingleResponseFactory(),
-            // );
         };
     }
 
     private updateFileHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
-            if (!MessageUtilities.has(req.params, 'id')) {
-                res
-                    .status(constants.HTTP_STATUS_BAD_REQUEST)
-                    .json(MessageUtilities.wrapInFailure({
-                        message: 'missing parameter id',
-                        code: 'BAD_REQUEST_MISSING_PARAM',
-                    }));
-                return;
-            }
-
             const outgoing: UpdateFileMessage = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 msg_intention: 'UPDATE',
@@ -315,6 +275,17 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
                 userID: req.uemsUser.userID,
                 id: req.params.id,
             };
+
+            const validate = zod.object({
+                name: zod.string(),
+                type: zod.string(),
+            })
+                .safeParse(req.body);
+
+            if (!validate.success) {
+                sendZodError(res, validate.error);
+                return;
+            }
 
             const parameters = req.body;
             const validProperties: (keyof FileReadSchema)[] = [
@@ -340,15 +311,6 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
 
     private getEventsByFileHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
-            if (!MessageUtilities.has(req.params, 'id')) {
-                res
-                    .status(constants.HTTP_STATUS_BAD_REQUEST)
-                    .json(MessageUtilities.wrapInFailure({
-                        message: 'missing parameter id',
-                        code: 'BAD_REQUEST_MISSING_PARAM',
-                    }));
-                return;
-            }
             let localOnly = true;
             if (req.kauth && req.kauth.grant && req.kauth.grant.access_token) {
                 // req.kauth.grant.kauth
@@ -378,15 +340,6 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
 
     private getFilesByEventsHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
-            if (!MessageUtilities.has(req.params, 'id')) {
-                res
-                    .status(constants.HTTP_STATUS_BAD_REQUEST)
-                    .json(MessageUtilities.wrapInFailure({
-                        message: 'missing parameter id',
-                        code: 'BAD_REQUEST_MISSING_PARAM',
-                    }));
-                return;
-            }
             let localOnly = true;
             if (req.kauth && req.kauth.grant && req.kauth.grant.access_token) {
                 // req.kauth.grant.kauth
@@ -416,31 +369,19 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
 
     private postFileToEventHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
-            if (!MessageUtilities.has(req.params, 'id')) {
-                res
-                    .status(constants.HTTP_STATUS_BAD_REQUEST)
-                    .json(MessageUtilities.wrapInFailure({
-                        message: 'missing parameter id',
-                        code: 'BAD_REQUEST_MISSING_PARAM',
-                    }));
-                return;
-            }
             let localOnly = true;
             if (req.kauth && req.kauth.grant && req.kauth.grant.access_token) {
                 // req.kauth.grant.kauth
                 if (orProtect('ops', 'ents', 'admin')(req.kauth.grant.access_token)) localOnly = false;
             }
 
-            const validate = MessageUtilities.verifyBody(
-                req,
-                res,
-                ['fileID'],
-                {
-                    fileID: (x) => typeof (x) === 'string',
-                },
-            );
+            const validate = zod.object({
+                fileID: zod.string(),
+            })
+                .safeParse(req.body);
 
-            if (!validate) {
+            if (!validate.success) {
+                sendZodError(res, validate.error);
                 return;
             }
 
@@ -463,27 +404,9 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
         };
     }
 
+    // TODO: document on stoplight
     private deleteFileFromEventHandler(send: SendRequestFunction) {
         return async (req: Request, res: Response) => {
-            if (!MessageUtilities.has(req.params, 'eventID')) {
-                res
-                    .status(constants.HTTP_STATUS_BAD_REQUEST)
-                    .json(MessageUtilities.wrapInFailure({
-                        message: 'missing parameter eventID',
-                        code: 'BAD_REQUEST_MISSING_PARAM',
-                    }));
-                return;
-            }
-            if (!MessageUtilities.has(req.params, 'fileID')) {
-                res
-                    .status(constants.HTTP_STATUS_BAD_REQUEST)
-                    .json(MessageUtilities.wrapInFailure({
-                        message: 'missing parameter fileID',
-                        code: 'BAD_REQUEST_MISSING_PARAM',
-                    }));
-                return;
-            }
-
             const outgoingMessage: UnbindFilesFromEventMessage = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
                 msg_intention: 'DELETE',
