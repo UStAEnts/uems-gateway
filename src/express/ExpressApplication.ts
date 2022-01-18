@@ -93,6 +93,7 @@ export class ExpressApplication {
         // Assign the request identifier for logging
         this._app.use((req, res, next) => {
             req.requestID = v4();
+            res.requestID = req.requestID;
             logInfo(req.requestID, `Request received for ${req.path} at ${Date.now()} assigned ID ${req.requestID}`);
             next();
         });

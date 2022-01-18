@@ -1,6 +1,6 @@
 
 declare namespace Express {
-import type { LogIdentifier } from "../src/log/RequestLogger";
+    import type { LogIdentifier } from '../src/log/RequestLogger';
     import type Grant from 'keycloak-connect';
 
     interface Request {
@@ -21,5 +21,9 @@ import type { LogIdentifier } from "../src/log/RequestLogger";
         }
 
         requestID: LogIdentifier,
+    }
+
+    interface Response {
+        requestID: LogIdentifier;
     }
 }
