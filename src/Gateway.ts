@@ -409,7 +409,7 @@ export namespace GatewayMk2 {
                 return;
             }
 
-            logIncoming(request.response.req.requestID, message.properties.userId, json, message.fields.routingKey);
+            logIncoming(request.response.requestID, message.properties.userId, json, message.fields.routingKey);
             this.outstandingRequests.delete(json.msg_id);
 
             if (request.additionalValidator !== undefined) {
@@ -451,7 +451,7 @@ export namespace GatewayMk2 {
             callback: RequestCallback,
             validator?: MessageValidator,
         ) => {
-            logOutgoing(response.req.requestID, 'unknown', key, message);
+            logOutgoing(response.requestID, 'unknown', key, message);
             this.outstandingRequests.set(message.msg_id, {
                 response,
                 callback,

@@ -22,9 +22,9 @@ function handleDefaultResponse<SHALLOW, DEEP, RESULT extends { result: SHALLOW[]
     if (status === MsgStatus.SUCCESS) {
         if (transformer) {
             try {
-                return Promise.resolve(transformer(response.result, http.req.requestID))
+                return Promise.resolve(transformer(response.result, http.requestID))
                     .then((data) => {
-                        logResolve(http.req.requestID, constants.HTTP_STATUS_OK, MessageUtilities.wrapInSuccess(data));
+                        logResolve(http.requestID, constants.HTTP_STATUS_OK, MessageUtilities.wrapInSuccess(data));
 
                         if (data.status === 'success') {
                             http
@@ -38,8 +38,8 @@ function handleDefaultResponse<SHALLOW, DEEP, RESULT extends { result: SHALLOW[]
                     })
                     .catch((err) => {
                         console.error('Transformer failed when handling default response', err);
-                        logInfo(http.req.requestID, `Transformer failed when handling default response: ${err.message}`);
-                        logResolve(http.req.requestID, constants.HTTP_STATUS_INTERNAL_SERVER_ERROR, MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
+                        logInfo(http.requestID, `Transformer failed when handling default response: ${err.message}`);
+                        logResolve(http.requestID, constants.HTTP_STATUS_INTERNAL_SERVER_ERROR, MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
 
                         http
                             .status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
@@ -47,23 +47,23 @@ function handleDefaultResponse<SHALLOW, DEEP, RESULT extends { result: SHALLOW[]
                     });
             } catch (e) {
                 console.error('Transformer failed when handling default response', e);
-                logInfo(http.req.requestID, `Transformer failed when handling default response: ${e.message}`);
-                logResolve(http.req.requestID, constants.HTTP_STATUS_INTERNAL_SERVER_ERROR, MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
+                logInfo(http.requestID, `Transformer failed when handling default response: ${e.message}`);
+                logResolve(http.requestID, constants.HTTP_STATUS_INTERNAL_SERVER_ERROR, MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
 
                 http
                     .status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
                     .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
             }
         } else {
-            logResolve(http.req.requestID, constants.HTTP_STATUS_OK, MessageUtilities.wrapInSuccess(response.result));
+            logResolve(http.requestID, constants.HTTP_STATUS_OK, MessageUtilities.wrapInSuccess(response.result));
 
             http
                 .status(constants.HTTP_STATUS_OK)
                 .json(MessageUtilities.wrapInSuccess(response.result));
         }
     } else {
-        logInfo(http.req.requestID, `Expected SUCCESS (${MsgStatus.SUCCESS}) but got ${status}`);
-        logResolve(http.req.requestID, constants.HTTP_STATUS_INTERNAL_SERVER_ERROR, MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
+        logInfo(http.requestID, `Expected SUCCESS (${MsgStatus.SUCCESS}) but got ${status}`);
+        logResolve(http.requestID, constants.HTTP_STATUS_INTERNAL_SERVER_ERROR, MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
 
         http
             .status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
@@ -88,8 +88,8 @@ function handleReadSingleResponse<SHALLOW, DEEP, RESULT extends { result: SHALLO
             console.warn('Failing response because an invalid number of results, expected 1 got',
                 response.result.length);
 
-            logInfo(http.req.requestID, `Expected 1 result, got ${response.result.length}.`);
-            logResolve(http.req.requestID, constants.HTTP_STATUS_INTERNAL_SERVER_ERROR, MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
+            logInfo(http.requestID, `Expected 1 result, got ${response.result.length}.`);
+            logResolve(http.requestID, constants.HTTP_STATUS_INTERNAL_SERVER_ERROR, MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
 
             http
                 .status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
@@ -99,9 +99,9 @@ function handleReadSingleResponse<SHALLOW, DEEP, RESULT extends { result: SHALLO
 
         if (transformer) {
             try {
-                return Promise.resolve(transformer(response.result[0], http.req.requestID))
+                return Promise.resolve(transformer(response.result[0], http.requestID))
                     .then((data) => {
-                        logResolve(http.req.requestID, constants.HTTP_STATUS_OK, MessageUtilities.wrapInSuccess(response.result[0]));
+                        logResolve(http.requestID, constants.HTTP_STATUS_OK, MessageUtilities.wrapInSuccess(response.result[0]));
 
                         http
                             .status(constants.HTTP_STATUS_OK)
@@ -110,8 +110,8 @@ function handleReadSingleResponse<SHALLOW, DEEP, RESULT extends { result: SHALLO
                     .catch((err) => {
                         console.error('Transformer failed when handling default response', err);
 
-                        logInfo(http.req.requestID, `Transformer failed ${err.message}.`);
-                        logResolve(http.req.requestID, constants.HTTP_STATUS_INTERNAL_SERVER_ERROR, MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
+                        logInfo(http.requestID, `Transformer failed ${err.message}.`);
+                        logResolve(http.requestID, constants.HTTP_STATUS_INTERNAL_SERVER_ERROR, MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
 
                         http
                             .status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
@@ -120,15 +120,15 @@ function handleReadSingleResponse<SHALLOW, DEEP, RESULT extends { result: SHALLO
             } catch (e) {
                 console.error('Transformer failed when handling default response', e);
 
-                logInfo(http.req.requestID, `Transformer failed ${e.message}.`);
-                logResolve(http.req.requestID, constants.HTTP_STATUS_INTERNAL_SERVER_ERROR, MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
+                logInfo(http.requestID, `Transformer failed ${e.message}.`);
+                logResolve(http.requestID, constants.HTTP_STATUS_INTERNAL_SERVER_ERROR, MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
 
                 http
                     .status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
                     .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
             }
         } else {
-            logResolve(http.req.requestID, constants.HTTP_STATUS_OK, MessageUtilities.wrapInSuccess(response.result[0]));
+            logResolve(http.requestID, constants.HTTP_STATUS_OK, MessageUtilities.wrapInSuccess(response.result[0]));
 
             http
                 .status(constants.HTTP_STATUS_OK)
@@ -137,8 +137,8 @@ function handleReadSingleResponse<SHALLOW, DEEP, RESULT extends { result: SHALLO
     } else {
         console.warn('Response is failing because status was', status, 'when', MsgStatus.SUCCESS, 'was expected');
 
-        logInfo(http.req.requestID, `Expected SUCCESS (${MsgStatus.SUCCESS}) but got ${status}`);
-        logResolve(http.req.requestID, constants.HTTP_STATUS_INTERNAL_SERVER_ERROR, MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
+        logInfo(http.requestID, `Expected SUCCESS (${MsgStatus.SUCCESS}) but got ${status}`);
+        logResolve(http.requestID, constants.HTTP_STATUS_INTERNAL_SERVER_ERROR, MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
 
         http
             .status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
