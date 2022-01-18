@@ -168,10 +168,15 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
             }
 
             const body = validate.data;
-            for (const [k, v] of Object.entries(body)) {
-                // @ts-ignore
-                msg[k] = v;
-            }
+
+            if (body.name) msg.name = body.name;
+            if (body.start) msg.start = body.start;
+            if (body.end) msg.end = body.end;
+            if (body.attendance) msg.attendance = body.attendance;
+            if (body.addVenues) msg.addVenues = body.addVenues;
+            if (body.removeVenues) msg.removeVenues = body.removeVenues;
+            if (body.ents) msg.entsID = body.ents;
+            if (body.state) msg.stateID = body.state;
 
             await send(
                 ROUTING_KEY.event.update,
