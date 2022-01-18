@@ -134,6 +134,10 @@ export namespace Resolver {
                     data.attendedBy,
                     userID,
                 ),
+                topic: data.topic === undefined ? undefined : await resolver.resolveTopic(
+                    data.topic,
+                    userID,
+                ),
                 poster: await resolver.resolveUser(data.poster, userID),
             };
         };

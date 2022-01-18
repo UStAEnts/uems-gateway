@@ -1,6 +1,6 @@
 import { GatewayMk2 } from '../Gateway';
 import { MessageUtilities } from '../utilities/MessageUtilities';
-import { EntStateResponse, EquipmentResponse, EventResponse, FileResponse, StateResponse, UserResponse, VenueResponse } from '@uems/uemscommlib';
+import { EntStateResponse, EquipmentResponse, EventResponse, FileResponse, StateResponse, TopicResponse, UserResponse, VenueResponse } from '@uems/uemscommlib';
 import { _byFile } from '../log/Log';
 import { Constants } from '../utilities/Constants';
 import ROUTING_KEY = Constants.ROUTING_KEY;
@@ -16,6 +16,7 @@ import ShallowInternalEvent = EventResponse.ShallowInternalEvent;
 import InternalEvent = EventResponse.InternalEvent;
 import InternalFile = FileResponse.InternalFile;
 import ShallowInternalFile = FileResponse.ShallowInternalFile;
+import InternalTopic = TopicResponse.InternalTopic;
 
 const _l = _byFile(__filename);
 
@@ -104,6 +105,9 @@ export class EntityResolver {
 
     public resolveUser = (id: string, userID: string): Promise<InternalUser> => this
         .resolve(id, ROUTING_KEY.user.read, userID);
+
+    public resolveTopic = (id: string, userID: string): Promise<InternalTopic> => this
+        .resolve(id, ROUTING_KEY.topic.read, userID);
 
     public resolveVenue = async (id: string, userID: string): Promise<InternalVenue> => {
         // Load raw venue
