@@ -4,23 +4,34 @@ import { EntityResolver } from '../resolver/EntityResolver';
 import { __ } from '../log/Log';
 import SingleTransformer = GenericHandlerFunctions.SingleTransformer;
 import Transformer = GenericHandlerFunctions.Transformer;
+import { logInfo } from "../log/RequestLogger";
+import { EventValidators } from "@uems/uemscommlib/build/event/EventValidators";
+import { FileValidators } from "@uems/uemscommlib/build/file/FileValidators";
+import { inspect } from "util";
 
 function singleToDouble<S, D, R extends { result: S[] }>(x: SingleTransformer<S, D, R>): Transformer<S, D, R> {
     // TODO: log errors and maybe provide some indication of partial responses. Do this in a later feature phase
 
-    return (async (data) => {
-        const promises = data.map((e) => x(e));
+    return (async (data, requestID) => {
+        const promises = data.map((e) => x(e, requestID));
         const resolution = await Promise.allSettled(promises);
-        const fulfilled = resolution.filter((e) => e.status === 'fulfilled') as { value: D }[];
-        if (fulfilled.length !== resolution.length) {
-            __.warn('Some resolutions failed when settling');
-            resolution.forEach((e) => {
-                if (e.status === 'rejected') console.warn(e.reason);
+
+        const rejected = resolution.filter((e) => e.status === 'rejected') as PromiseRejectedResult[];
+        const fulfilled = resolution.filter((e) => e.status === 'fulfilled') as PromiseFulfilledResult<D>[];
+
+        if (rejected.length > 0) {
+            logInfo(requestID, `When executing resolver, some results rejected on settle (${rejected.length} rejected)`);
+
+            rejected.forEach((e) => {
+                logInfo(requestID, `Rejection reason: ${inspect(e.reason, true, null, true)}`);
             });
         }
 
         const results = fulfilled.map((e) => e.value);
-        return results;
+        return {
+            status: rejected.length === 0 ? 'success' : 'partial',
+            data: results,
+        };
     });
 }
 
@@ -46,6 +57,8 @@ export namespace Resolver {
     import ShallowInternalSignup = SignupResponse.ShallowInternalSignup;
     import ShallowQueryByFileResponse = FileBindingResponse.ShallowQueryByFileResponse;
     import ShallowQueryByEventResponse = FileBindingResponse.ShallowQueryByEventResponse;
+    import EventRepresentation = EventValidators.EventRepresentation;
+    import FileRepresentation = FileValidators.FileRepresentation;
 
     type MultiEventTransformer =
         Transformer<ShallowInternalEvent, InternalEvent, EventServiceReadResponseMessage>;
@@ -90,10 +103,10 @@ export namespace Resolver {
         Transformer<string, InternalFile, ShallowQueryByEventResponse>;
 
     export function resolveSingleEvent(resolver: EntityResolver | undefined, userID: string): EventTransformer {
-        return async (data) => {
+        return async (data, requestID) => {
             if (resolver === undefined) throw new Error('Resolver is not defined');
 
-            console.log(data);
+            logInfo(requestID, `Request has been made to resolve event ${data.id}, resolving author, state, ents, and venues`);
 
             return {
                 ...data,
@@ -110,8 +123,10 @@ export namespace Resolver {
     }
 
     export function resolveSingleComment(resolver: EntityResolver | undefined, userID: string): CommentTransformer {
-        return async (data) => {
+        return async (data, requestID) => {
             if (resolver === undefined) throw new Error('Resolver not defined');
+
+            logInfo(requestID, `Request has been made to resolve comment ${data.id} on asset ${data.assetType}:${data.assetID}, resolving attendedBy and poster`);
 
             return {
                 ...data,
@@ -129,8 +144,10 @@ export namespace Resolver {
     }
 
     export function resolveSingleVenue(resolver: EntityResolver | undefined, userID: string): VenueTransformer {
-        return async (data) => {
+        return async (data, requestID) => {
             if (resolver === undefined) throw new Error('Resolver not defined');
+
+            logInfo(requestID, `Request has been made to resolve venue ${data.id}, resolving user`);
 
             return {
                 ...data,
@@ -144,8 +161,10 @@ export namespace Resolver {
     }
 
     export function resolveSingleEquipment(resolver: EntityResolver | undefined, userID: string): EquipmentTransformer {
-        return async (data) => {
+        return async (data, requestID) => {
             if (resolver === undefined) throw new Error('Resolver not defined');
+
+            logInfo(requestID, `Request has been made to resolve equipment ${data.id}, resolving location and manager`);
 
             return {
                 ...data,
@@ -160,8 +179,10 @@ export namespace Resolver {
     }
 
     export function resolveSingleFile(resolver: EntityResolver | undefined, userID: string): FileTransformer {
-        return async (data) => {
+        return async (data, requestID) => {
             if (resolver === undefined) throw new Error('Resolver not defined');
+
+            logInfo(requestID, `Request has been made to resolve file ${data.id}, resolving owner`);
 
             return {
                 ...data,
@@ -179,8 +200,10 @@ export namespace Resolver {
         userID: string,
         includeEvent: boolean,
     ): SignupTransformer {
-        return async (data) => {
+        return async (data, requestID) => {
             if (resolver === undefined) throw new Error('Resolver not defined');
+
+            logInfo(requestID, `Request has been made to resolve signup ${data.id}, resolving user, event`);
 
             return {
                 ...data,
@@ -204,10 +227,19 @@ export namespace Resolver {
         resolver: EntityResolver | undefined,
         userID: string,
     ): EventsFileBindingTransformer {
-        return async (data) => {
+        return async (data, requestID) => {
             if (resolver === undefined) throw new Error('Resolver not defined');
 
-            return Promise.all(data.map((e) => resolver.resolveEvent(e, userID)));
+            logInfo(requestID, `Request has been made to resolve events for file bindings ${data.join(',')}`);
+
+            const results = await Promise.allSettled(data.map((e) => resolver.resolveEvent(e, userID)));
+            const failed = results.filter((e) => e.status === 'rejected').length;
+            const successful = results.filter((e) => e.status === 'fulfilled') as PromiseFulfilledResult<EventRepresentation>[];
+
+            return {
+                status: failed > 0 ? 'partial' : 'success',
+                data: successful.map((e) => e.value),
+            };
         };
     }
 
@@ -215,10 +247,19 @@ export namespace Resolver {
         resolver: EntityResolver | undefined,
         userID: string,
     ): FilesFileBindingTransformer {
-        return async (data) => {
+        return async (data, requestID) => {
             if (resolver === undefined) throw new Error('Resolver not defined');
 
-            return Promise.all(data.map((e) => resolver.resolveFile(e, userID)));
+            logInfo(requestID, `Request has been made to resolve files for file bindings ${data.join(',')}`);
+
+            const results = await Promise.allSettled(data.map((e) => resolver.resolveFile(e, userID)));
+            const failed = results.filter((e) => e.status === 'rejected').length;
+            const successful = results.filter((e) => e.status === 'fulfilled') as PromiseFulfilledResult<FileRepresentation>[];
+
+            return {
+                status: failed > 0 ? 'partial' : 'success',
+                data: successful.map((e) => e.value),
+            };
         };
     }
 

@@ -132,6 +132,7 @@ export class TopicGatewayInterface implements GatewayAttachmentInterface {
                 msg_intention: 'READ',
                 status: 0,
                 userID: req.uemsUser.userID,
+                id: req.params.id,
             };
 
             await send(

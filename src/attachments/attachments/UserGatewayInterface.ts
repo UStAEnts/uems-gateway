@@ -128,12 +128,17 @@ export class UserGatewayInterface implements GatewayAttachmentInterface {
                 outgoing,
                 res,
                 GenericHandlerFunctions.handleDefaultResponseFactory((from: any[]) => {
-                    return from.map((e) => {
+                    const result = from.map((e) => {
                         Object.keys(e)
                             .filter((k) => !permittedKeys.includes(k))
                             .forEach((k) => delete e[k]);
                         return e;
                     });
+
+                    return {
+                        status: 'success',
+                        data: result,
+                    };
                 }),
             );
         };

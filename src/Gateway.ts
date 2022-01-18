@@ -11,6 +11,8 @@ import { EntityResolver } from './resolver/EntityResolver';
 import { has, MessageValidator, MsgStatus } from '@uems/uemscommlib';
 import * as util from 'util';
 import { _byFile, _byFileWithTag } from './log/Log';
+import { LogIdentifier, logIncoming, logOutgoing, logResolve } from "./log/RequestLogger";
+import { inspect } from "util";
 
 const _l = _byFile(__filename);
 const _t = _byFileWithTag(__filename, 'terminator');
@@ -205,6 +207,12 @@ export namespace GatewayMk2 {
                     // The request has been waiting more than 15 seconds so we tell them that it has timed out
                     entry.response.status(constants.HTTP_STATUS_GATEWAY_TIMEOUT)
                         .json(MessageUtilities.wrapInFailure(ErrorCodes.SERVICE_TIMEOUT));
+
+                    logResolve(
+                        entry.response.requestID,
+                        constants.HTTP_STATUS_GATEWAY_TIMEOUT,
+                        MessageUtilities.wrapInFailure(ErrorCodes.SERVICE_TIMEOUT),
+                    );
 
                     // Then remove this request from the outstanding requests
                     this.outstandingRequests.delete(key);
@@ -407,6 +415,7 @@ export namespace GatewayMk2 {
                 return;
             }
 
+            logIncoming(request.response.requestID, message.properties.userId, json, message.fields.routingKey);
             this.outstandingRequests.delete(json.msg_id);
 
             if (request.additionalValidator !== undefined) {
@@ -448,6 +457,7 @@ export namespace GatewayMk2 {
             callback: RequestCallback,
             validator?: MessageValidator,
         ) => {
+            logOutgoing(response.requestID, 'unknown', key, message);
             this.outstandingRequests.set(message.msg_id, {
                 response,
                 callback,
