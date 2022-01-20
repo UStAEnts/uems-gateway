@@ -26,6 +26,7 @@ import * as zod from 'zod';
 import sendZodError = MessageUtilities.sendZodError;
 import UpdateCommentMessage = CommentMessage.UpdateCommentMessage;
 import { Configuration } from "../../configuration/Configuration";
+import { logInfo, logResolve } from "../../log/RequestLogger";
 
 export class EventGatewayAttachment implements GatewayAttachmentInterface {
     // TODO: bit dangerous using ! - maybe add null checks?
@@ -59,6 +60,14 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
                 handle: this.getEventsHandler(send),
                 additionalValidator: validator,
             },
+            // Ops planning
+            {
+                action: 'get',
+                path: '/events/review',
+                handle: this.getReviewEvents(send),
+                secure: ['ops', 'ents', 'admin'],
+            },
+            //
             {
                 action: 'get',
                 path: '/events/:id',
@@ -115,7 +124,7 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
                 path: '/events/:id/comments/:commentID/resolve',
                 handle: this.markCommentAsResolved(send),
                 secure: ['ops', 'ents', 'admin'],
-            }
+            },
         ];
     }
 
@@ -605,4 +614,50 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
         }
     }
 
+    private getReviewEvents(send: SendRequestFunction) {
+        /**
+         * = Gets events marked as needing review =
+         *
+         * [POST] /events/review
+         *
+         * Body:
+         *     N/A
+         */
+        return async (req: Request, res: Response) => {
+            if (!this.config) {
+                res.status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
+                    .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
+                logResolve(req.requestID, constants.HTTP_STATUS_INTERNAL_SERVER_ERROR, MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
+                return;
+            }
+
+            let states;
+            try {
+                states = await this.config.getReviewStates();
+            } catch (e: any) {
+                console.error(e);
+                logInfo(req.requestID, `Failed to get review states due to error: ${e.message}`);
+                logResolve(req.requestID, constants.HTTP_STATUS_INTERNAL_SERVER_ERROR, MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
+                return;
+            }
+
+            const msg: ReadEventMessage = {
+                msg_id: MessageUtilities.generateMessageIdentifier(),
+                status: 0,
+                msg_intention: 'READ',
+                userID: req.uemsUser.userID,
+                stateIn: states,
+            };
+
+            await send(
+                ROUTING_KEY.event.read,
+                msg,
+                res,
+                GenericHandlerFunctions.handleDefaultResponseFactory(Resolver.resolveEvents(
+                    this._resolver,
+                    req.uemsUser.userID,
+                )),
+            );
+        }
+    }
 }
