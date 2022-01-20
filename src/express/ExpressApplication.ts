@@ -205,9 +205,9 @@ export class ExpressApplication {
                         access_token: {
                             isExpired: () => false,
                             hasRole: () => true,
-                        }
-                    }
-                }
+                        },
+                    },
+                };
 
                 next();
             });
@@ -229,9 +229,15 @@ export class ExpressApplication {
         __.info('created a new API router');
     }
 
-    async attach(attachments: GatewayAttachmentInterface[], send: SendRequestFunction, resolver: EntityResolver, handler: GatewayMessageHandler) {
+    async attach(
+        attachments: GatewayAttachmentInterface[],
+        send: SendRequestFunction,
+        resolver: EntityResolver,
+        handler: GatewayMessageHandler,
+        configuration: Configuration,
+    ) {
         const resolvedAttachments = await Promise.all(
-            attachments.map((attachment) => attachment.generateInterfaces(send, resolver, handler)),
+            attachments.map((attachment) => attachment.generateInterfaces(send, resolver, handler, configuration)),
         );
 
         for (const attachment of resolvedAttachments) {

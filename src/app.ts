@@ -22,6 +22,7 @@ import { launchCheck, tryApplyTrait } from "@uems/micro-builder/build/src";
 import { has } from "@uems/uemscommlib";
 import GatewayMessageHandler = GatewayMk2.GatewayMessageHandler;
 import { MongoClient } from "mongodb";
+import { Configuration } from "./configuration/Configuration";
 
 launchCheck(['successful', 'errored', 'rabbitmq'], (traits: Record<string, any>) => {
     if (has(traits, 'rabbitmq') && traits.rabbitmq !== '_undefined' && !traits.rabbitmq) return 'unhealthy';
@@ -108,6 +109,9 @@ async function main() {
         await connection.close();
         return;
     }
+
+    const configuration = new Configuration(client);
+
     const handler = new GatewayMessageHandler(connection, {
         schemaValidator: () => Promise.resolve(true),
         validate: () => Promise.resolve(true),
@@ -127,7 +131,7 @@ async function main() {
 
     let expressApp;
     try {
-        expressApp = new ExpressApplication(expressValidation.data);
+        expressApp = new ExpressApplication(expressValidation.data, client);
         await expressApp.attach(
             [
                 new VenueGatewayInterface(),
@@ -144,6 +148,7 @@ async function main() {
             handler.sendRequest.bind(handler),
             resolver,
             handler,
+            configuration,
         );
         await expressApp.react((message) => {
             handler.publish('user.details.assert', message);

@@ -13,6 +13,7 @@ import * as util from 'util';
 import { _byFile, _byFileWithTag } from './log/Log';
 import { LogIdentifier, logIncoming, logOutgoing, logResolve } from "./log/RequestLogger";
 import { inspect } from "util";
+import { Configuration } from "./configuration/Configuration";
 
 const _l = _byFile(__filename);
 const _t = _byFileWithTag(__filename, 'terminator');
@@ -542,6 +543,7 @@ export namespace GatewayMk2 {
             send: SendRequestFunction,
             resolver: EntityResolver,
             handler: GatewayMessageHandler,
+            configuration: Configuration,
         ): GatewayInterfaceActionType[] | Promise<GatewayInterfaceActionType[]>;
 
     }
