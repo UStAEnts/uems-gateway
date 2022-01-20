@@ -21,6 +21,7 @@ import { EntityResolver } from './resolver/EntityResolver';
 import { launchCheck, tryApplyTrait } from "@uems/micro-builder/build/src";
 import { has } from "@uems/uemscommlib";
 import GatewayMessageHandler = GatewayMk2.GatewayMessageHandler;
+import { MongoClient } from "mongodb";
 
 launchCheck(['successful', 'errored', 'rabbitmq'], (traits: Record<string, any>) => {
     if (has(traits, 'rabbitmq') && traits.rabbitmq !== '_undefined' && !traits.rabbitmq) return 'unhealthy';
@@ -97,6 +98,16 @@ async function main() {
     console.log('[AMQP] connected');
     tryApplyTrait('rabbitmq', true);
 
+    let client;
+    try {
+        client = await new MongoClient(expressValidation.data.session.mongoURL).connect();
+    } catch (e) {
+        console.error('Failed to connect to mongodb');
+        console.error(e);
+
+        await connection.close();
+        return;
+    }
     const handler = new GatewayMessageHandler(connection, {
         schemaValidator: () => Promise.resolve(true),
         validate: () => Promise.resolve(true),

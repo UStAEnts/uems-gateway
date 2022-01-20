@@ -22,8 +22,11 @@ import { AuthUtilities } from "../utilities/AuthUtilities";
 import orProtect = AuthUtilities.orProtect;
 import { v4 } from 'uuid';
 import { logInfo } from "../log/RequestLogger";
+import { MongoClient } from "mongodb";
+import { Configuration } from "../configuration/Configuration";
+import MongoStore from "connect-mongo";
 
-const MongoStore = connectMongo(session);
+// const MongoStore = connectMongo(session);
 
 export const ExpressConfiguration = z.object({
     port: z.number()
@@ -86,7 +89,7 @@ export class ExpressApplication {
      */
     private _requestQueue: ('success' | 'fail')[] = [];
 
-    constructor(configuration: ExpressConfigurationType) {
+    constructor(configuration: ExpressConfigurationType, client: MongoClient) {
         this._configuration = configuration;
         this._app = express();
 
@@ -125,10 +128,7 @@ export class ExpressApplication {
         this._app.use(express.urlencoded({ extended: false }));
 
         const store = new MongoStore({
-            url: configuration.session.mongoURL,
-            secret: configuration.session.secrets.mongo,
-            collection: configuration.session.collection,
-            ttl: configuration.session.sessionTimeToLive,
+            client,
         });
 
         // Configure sessions for users that need to be backed by the database using connect-mongo.
