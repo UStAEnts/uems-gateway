@@ -45,7 +45,7 @@ function handleDefaultResponse<SHALLOW, DEEP, RESULT extends { result: SHALLOW[]
                             .status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
                             .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
                     });
-            } catch (e) {
+            } catch (e :any) {
                 console.error('Transformer failed when handling default response', e);
                 logInfo(http.requestID, `Transformer failed when handling default response: ${e.message}`);
                 logResolve(http.requestID, constants.HTTP_STATUS_INTERNAL_SERVER_ERROR, MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
@@ -117,7 +117,7 @@ function handleReadSingleResponse<SHALLOW, DEEP, RESULT extends { result: SHALLO
                             .status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
                             .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
                     });
-            } catch (e) {
+            } catch (e:any) {
                 console.error('Transformer failed when handling default response', e);
 
                 logInfo(http.requestID, `Transformer failed ${e.message}.`);

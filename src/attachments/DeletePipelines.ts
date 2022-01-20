@@ -356,7 +356,7 @@ export function removeEntity(
     handler: GatewayMessageHandler,
     localOnly: boolean = true,
 ) {
-    return new Promise((res, rej) => {
+    return new Promise<void>((res, rej) => {
         const action = new DeleteAction(entity, resolver, handler, localOnly);
         action.onFailure = rej;
         action.onSuccess = res;
