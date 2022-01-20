@@ -18,21 +18,27 @@ import ROUTING_KEY = Constants.ROUTING_KEY;
 import GatewayMessageHandler = GatewayMk2.GatewayMessageHandler;
 import * as zod from 'zod';
 import sendZodError = MessageUtilities.sendZodError;
+import { Configuration } from '../../configuration/Configuration';
 
 export class StateGatewayInterface implements GatewayAttachmentInterface {
-
     private readonly COLOR_REGEX = /^#?([0-9A-Fa-f]{3}([0-9A-Fa-f]{3})?)$/;
+
     private resolver?: EntityResolver;
+
     private handler?: GatewayMessageHandler;
+
+    private config?: Configuration;
 
     generateInterfaces(
         send: GatewayMk2.SendRequestFunction,
         resolver: EntityResolver,
         handler: GatewayMessageHandler,
+        config: Configuration,
     ): GatewayMk2.GatewayInterfaceActionType[] | Promise<GatewayMk2.GatewayInterfaceActionType[]> {
         const validator = new StateResponseValidator();
         this.resolver = resolver;
         this.handler = handler;
+        this.config = config;
 
         return [
             {

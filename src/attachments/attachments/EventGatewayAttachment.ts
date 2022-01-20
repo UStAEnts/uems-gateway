@@ -25,19 +25,23 @@ import orProtect = AuthUtilities.orProtect;
 import * as zod from 'zod';
 import sendZodError = MessageUtilities.sendZodError;
 import UpdateCommentMessage = CommentMessage.UpdateCommentMessage;
+import { Configuration } from "../../configuration/Configuration";
 
 export class EventGatewayAttachment implements GatewayAttachmentInterface {
     // TODO: bit dangerous using ! - maybe add null checks?
     private _resolver!: EntityResolver;
     private handler?: GatewayMessageHandler;
+    private config?: Configuration;
 
     async generateInterfaces(
         send: GatewayMk2.SendRequestFunction,
         resolver: EntityResolver,
         handler: GatewayMessageHandler,
+        config: Configuration,
     ): Promise<GatewayInterfaceActionType[]> {
         const validator = await EventResponseValidator.setup();
 
+        this.config = config;
         this._resolver = resolver;
         this.handler = handler;
 
