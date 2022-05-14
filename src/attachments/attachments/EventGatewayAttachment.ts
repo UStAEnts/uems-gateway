@@ -47,19 +47,6 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
         this.handler = handler;
 
         return [
-            // EVENTS ONLY
-            {
-                action: 'post',
-                path: '/events',
-                handle: EventGatewayAttachment.createEventHandler(send),
-                additionalValidator: validator,
-            },
-            {
-                action: 'get',
-                path: '/events',
-                handle: this.getEventsHandler(send),
-                additionalValidator: validator,
-            },
             // Ops planning
             {
                 action: 'get',
@@ -125,6 +112,20 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
                 handle: this.markCommentAsResolved(send),
                 secure: ['ops', 'ents', 'admin'],
             },
+            // EVENTS ONLY
+            {
+                action: 'post',
+                path: '/events',
+                handle: EventGatewayAttachment.createEventHandler(send),
+                additionalValidator: validator,
+            },
+            {
+                action: 'get',
+                path: '/events',
+                handle: this.getEventsHandler(send),
+                additionalValidator: validator,
+            },
+
         ];
     }
 
@@ -648,15 +649,64 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
                 userID: req.uemsUser.userID,
                 stateIn: states,
             };
+            console.log('stateIn', states);
 
-            await send(
-                ROUTING_KEY.event.read,
-                msg,
+            const msgNotReserved: ReadEventMessage = {
+                msg_id: MessageUtilities.generateMessageIdentifier(),
+                status: 0,
+                msg_intention: 'READ',
+                userID: req.uemsUser.userID,
+                reserved: false,
+            };
+
+            const msgPromise = new Promise((resolve, reject) => {
+                this.handler?.buildSend(
+                    ROUTING_KEY.event.read,
+                    msg
+                )
+                    .name('request-statuses')
+                    .fail(reject)
+                    .reply(resolve)
+                    .submit();
+            });
+            const msgReservedPromise = new Promise((resolve, reject) => {
+                this.handler?.buildSend(
+                    ROUTING_KEY.event.read,
+                    msgNotReserved
+                )
+                    .name('request-statuses')
+                    .fail(reject)
+                    .reply(resolve)
+                    .submit();
+            });
+
+            let results: [any[], any[]];
+            try {
+                results = await Promise.all([msgPromise, msgReservedPromise]) as any;
+                console.log(results);
+            } catch (e) {
+                console.error(e);
+                res
+                    .status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
+                    .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
+                return;
+            }
+
+            GenericHandlerFunctions.handleDefaultResponseFactory(Resolver.resolveEvents(
+                this._resolver,
+                req.uemsUser.userID,
+            ))(
                 res,
-                GenericHandlerFunctions.handleDefaultResponseFactory(Resolver.resolveEvents(
-                    this._resolver,
-                    req.uemsUser.userID,
-                )),
+                Date.now(),
+                {
+                    status: 200,
+                    msg_id: 0,
+                    result: [
+                        ...results[0],
+                        ...results[1],
+                    ],
+                },
+                200,
             );
         }
     }

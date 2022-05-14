@@ -43,6 +43,12 @@ export class StateGatewayInterface implements GatewayAttachmentInterface {
         return [
             {
                 action: 'get',
+                path: '/states/review',
+                handle: this.getReviewStates(),
+                secure: ['ops', 'admin'],
+            },
+            {
+                action: 'get',
                 path: '/states',
                 handle: this.queryStatesHandler(send),
                 additionalValidator: validator,
@@ -72,12 +78,6 @@ export class StateGatewayInterface implements GatewayAttachmentInterface {
                 path: '/states/:id',
                 handle: this.updateStateHandler(send),
                 additionalValidator: validator,
-                secure: ['ops', 'admin'],
-            },
-            {
-                action: 'get',
-                path: '/states/review',
-                handle: this.getReviewStates(),
                 secure: ['ops', 'admin'],
             },
         ];
