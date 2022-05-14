@@ -31,7 +31,7 @@
     "@types/node": "^14.0.14",
     "@types/passport": "^1.0.4",
     "@uems/micro-builder": "1.0.3",
-    "@uems/uemscommlib": "0.1.0-beta.53",
+    "@uems/uemscommlib": "0.1.0-beta.54",
     "ajv": "^6.12.3",
     "amqplib": "^0.7.1",
     "body-parser": "^1.19.0",
