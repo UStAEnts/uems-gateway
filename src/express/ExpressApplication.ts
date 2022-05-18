@@ -25,8 +25,11 @@ import { logInfo } from "../log/RequestLogger";
 import { MongoClient } from "mongodb";
 import { Configuration } from "../configuration/Configuration";
 import MongoStore from "connect-mongo";
+import log from '@uems/micro-builder/build/src/logging/Log';
 
 // const MongoStore = connectMongo(session);
+
+const _ = log.auto;
 
 export const ExpressConfiguration = z.object({
     port: z.number()
@@ -97,7 +100,12 @@ export class ExpressApplication {
         this._app.use((req, res, next) => {
             req.requestID = v4();
             res.requestID = req.requestID;
+            res.start = Date.now();
+
             logInfo(req.requestID, `Request received for ${req.path} at ${Date.now()} assigned ID ${req.requestID}`);
+            _(req.requestID)
+                .info(`Request received for ${req.path} at ${Date.now()} assigned ID ${req.requestID}`);
+
             next();
         });
 
@@ -183,6 +191,10 @@ export class ExpressApplication {
 
                 tryApplyTrait('successful', this._requestQueue.filter((e) => e === 'success').length);
                 tryApplyTrait('errored', this._requestQueue.filter((e) => e === 'fail').length);
+
+                _(req.requestID)
+                    .info(`Request resolved at ${Date.now()} with status 
+                    ${res.statusCode} in ${Date.now() - res.start} ms`);
             });
 
             next();
