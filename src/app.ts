@@ -23,6 +23,8 @@ import { has } from "@uems/uemscommlib";
 import GatewayMessageHandler = GatewayMk2.GatewayMessageHandler;
 import { MongoClient } from "mongodb";
 import { Configuration } from "./configuration/Configuration";
+import { configure } from "@uems/micro-builder/build/src/logging/Log";
+import AMQPTransport from "@uems/micro-builder/build/src/logging/AMQPTransport";
 
 launchCheck(['successful', 'errored', 'rabbitmq'], (traits: Record<string, any>) => {
     if (has(traits, 'rabbitmq') && traits.rabbitmq !== '_undefined' && !traits.rabbitmq) return 'unhealthy';
@@ -81,6 +83,12 @@ async function main() {
         console.error(e);
         return;
     }
+
+    // Setting up logger
+    configure({
+        transports: [await AMQPTransport({ connection })],
+        module: 'gateway',
+    }, 'merge');
 
     // Print out errors in the event of a connection error that is not the connection closing
     connection.on('error', (connectionError: Error) => {
