@@ -405,9 +405,11 @@ export namespace GatewayMk2 {
 
             if (MessageUtilities.has(json, 'requestID')) {
                 _(json.requestID)
-                    .trace(`incoming message @ ${json.msg_id} (${json.status})`);
+                    .trace(`incoming message from ${message.fields.routingKey} 
+                    @ ${json.msg_id} (${json.status})`, json);
             } else {
-                _.system.trace(`incoming message @ ${json.msg_id} (${json.status})`);
+                _.system.trace(`incoming message from ${message.fields.routingKey}
+                 @ ${json.msg_id} (${json.status})`, json);
             }
 
             // If this message ID has been sent by the resolver, it will mark it as requiring an intercept
@@ -449,13 +451,15 @@ export namespace GatewayMk2 {
             }
         };
 
-        public publish(key: string, data: any) {
+        public publish(key: string, data: any, requestID?: string) {
             if (this.sendChannel === undefined) {
                 throw new Error('Gateway is not configured, make sure you have called configure');
             }
 
             console.log(magenta(`transmitting to ${key}: `), util.inspect(data, false, null, true));
             if (data.userID === undefined) console.trace('undefined userID');
+
+            if (requestID) _(requestID).trace(`transmitting to ${key}`, data);
 
             return this.sendChannel.publish(REQUEST_EXCHANGE, key, Buffer.from(JSON.stringify(data)));
         }
@@ -480,7 +484,7 @@ export namespace GatewayMk2 {
 
             if (!MessageUtilities.has(message, 'requestID')) message.requestID = response.requestID;
 
-            return this.publish(key, message);
+            return this.publish(key, message, response.requestID);
         };
 
         public buildSend(key: string, message: { msg_id: number, [key: string]: any }) {
