@@ -233,6 +233,8 @@ export namespace GatewayMk2 {
                         .name} after 10 seconds, rejecting`);
                     this._pendingInterceptMessageIDs[entry].conclude.reject(new Error('timed out'));
                     delete this._pendingInterceptMessageIDs[entry];
+                    _.system.trace(`(-${entry}) - in flight ${Object.keys(this._pendingInterceptMessageIDs).length}`,
+                        Object.keys(this._pendingInterceptMessageIDs));
                 }
             }
         };
@@ -252,6 +254,8 @@ export namespace GatewayMk2 {
             if (!entry) return;
 
             delete this._pendingInterceptMessageIDs[message.msg_id];
+            _.system.trace(`(-${message.msg_id}) - in flight ${Object.keys(this._pendingInterceptMessageIDs).length}`,
+                Object.keys(this._pendingInterceptMessageIDs));
 
             if (message.status !== MsgStatus.SUCCESS) {
                 _.system.warn(`failed to resolve ${entry.name} because message status ${message.status}`);
@@ -284,6 +288,7 @@ export namespace GatewayMk2 {
                     stack: new Error(),
                     submitted: Date.now(),
                 };
+                _.system.trace(`(+${messageID}) - in flight ${Object.keys(this._pendingInterceptMessageIDs).length}`, Object.keys(this._pendingInterceptMessageIDs));
             });
         }
 
@@ -294,7 +299,12 @@ export namespace GatewayMk2 {
          * @param callback the callback to execute when successful
          * @param reject the callback to execute when failed
          */
-        public interceptResponseCallback(messageID: number, callback: (res: any) => void, reject: (res: any) => void) {
+        public interceptResponseCallback(
+            messageID: number,
+            callback: (res: any) => void,
+            reject: (res: any) => void,
+            requestID?: string,
+        ) {
             this._pendingInterceptMessageIDs[messageID] = {
                 conclude: {
                     reject,
@@ -304,6 +314,9 @@ export namespace GatewayMk2 {
                 stack: new Error(),
                 submitted: Date.now(),
             };
+
+            (requestID ? _(requestID) : _.system)
+                .trace(`(+${messageID}) - in flight ${Object.keys(this._pendingInterceptMessageIDs).length}`, Object.keys(this._pendingInterceptMessageIDs));
         }
 
         set resolver(value: EntityResolver) {
@@ -459,7 +472,10 @@ export namespace GatewayMk2 {
             console.log(magenta(`transmitting to ${key}: `), util.inspect(data, false, null, true));
             if (data.userID === undefined) console.trace('undefined userID');
 
-            if (requestID) _(requestID).trace(`transmitting to ${key}`, data);
+            if (requestID) {
+                _(requestID)
+                    .trace(`transmitting to ${key}`, data);
+            }
 
             return this.sendChannel.publish(REQUEST_EXCHANGE, key, Buffer.from(JSON.stringify(data)));
         }
@@ -528,7 +544,7 @@ export namespace GatewayMk2 {
                     basic.name = name;
                     return builder;
                 },
-                submit: () => {
+                submit: (requestID: string) => {
                     basic.submitted = Date.now();
                     basic.stack = new Error();
 
@@ -546,7 +562,8 @@ export namespace GatewayMk2 {
                     };
 
                     this._pendingInterceptMessageIDs[message.msg_id] = basic;
-                    this.publish(key, message);
+                    _.system.trace(`(+${message.msg_id}) - in flight ${Object.keys(this._pendingInterceptMessageIDs).length}`, Object.keys(this._pendingInterceptMessageIDs));
+                    this.publish(key, message, requestID);
                 },
             };
 
