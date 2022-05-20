@@ -18,23 +18,35 @@ import ROUTING_KEY = Constants.ROUTING_KEY;
 import GatewayMessageHandler = GatewayMk2.GatewayMessageHandler;
 import * as zod from 'zod';
 import sendZodError = MessageUtilities.sendZodError;
+import { Configuration } from '../../configuration/Configuration';
 
 export class StateGatewayInterface implements GatewayAttachmentInterface {
-
     private readonly COLOR_REGEX = /^#?([0-9A-Fa-f]{3}([0-9A-Fa-f]{3})?)$/;
+
     private resolver?: EntityResolver;
+
     private handler?: GatewayMessageHandler;
+
+    private config?: Configuration;
 
     generateInterfaces(
         send: GatewayMk2.SendRequestFunction,
         resolver: EntityResolver,
         handler: GatewayMessageHandler,
+        config: Configuration,
     ): GatewayMk2.GatewayInterfaceActionType[] | Promise<GatewayMk2.GatewayInterfaceActionType[]> {
         const validator = new StateResponseValidator();
         this.resolver = resolver;
         this.handler = handler;
+        this.config = config;
 
         return [
+            {
+                action: 'get',
+                path: '/states/review',
+                handle: this.getReviewStates(),
+                secure: ['ops', 'admin'],
+            },
             {
                 action: 'get',
                 path: '/states',
@@ -89,7 +101,7 @@ export class StateGatewayInterface implements GatewayAttachmentInterface {
                     icon: { primitive: 'string' },
                     color: {
                         primitive: 'string',
-                        validator: (x) => this.COLOR_REGEX.test(x)
+                        validator: (x) => this.COLOR_REGEX.test(x),
                     },
                     id: { primitive: 'string' },
                 },
@@ -156,7 +168,7 @@ export class StateGatewayInterface implements GatewayAttachmentInterface {
                 sendZodError(res, validate.error);
                 return;
             }
-            const body = req.body;
+            const { body } = req;
 
             const outgoingMessage: CreateStateMessage = {
                 msg_id: MessageUtilities.generateMessageIdentifier(),
@@ -184,6 +196,9 @@ export class StateGatewayInterface implements GatewayAttachmentInterface {
                     assetID: req.params.id,
                     assetType: 'state',
                 }, this.resolver, this.handler, res);
+
+                // TODO: On fail?
+                if (this.config) await this.config.removeReviewState(req.params.id);
             } else {
                 res.status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
                     .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
@@ -237,6 +252,25 @@ export class StateGatewayInterface implements GatewayAttachmentInterface {
                 res,
                 GenericHandlerFunctions.handleDefaultResponseFactory(),
             );
+        };
+    }
+
+    private getReviewStates() {
+        return async (req: Request, res: Response) => {
+            if (this.config) {
+                try {
+                    const states = await this.config.getReviewStates();
+                    res.status(constants.HTTP_STATUS_OK)
+                        .json(MessageUtilities.wrapInSuccess(states));
+                } catch (e) {
+                    console.error(e);
+                    res.status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
+                        .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
+                }
+            } else {
+                res.status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
+                    .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
+            }
         };
     }
 }

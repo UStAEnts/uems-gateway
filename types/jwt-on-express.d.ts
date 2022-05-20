@@ -25,5 +25,6 @@ declare namespace Express {
 
     interface Response {
         requestID: LogIdentifier;
+        start: number;
     }
 }

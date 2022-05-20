@@ -1,9 +1,9 @@
 import * as z from 'zod';
-import express, { Application, Request, RequestHandler, Response, Router, NextFunction } from 'express';
+import express, { Application, Request, RequestHandler, Response, Router } from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import session from 'express-session';
-import connectMongo from 'connect-mongo';
+import MongoStore from 'connect-mongo';
 import { GatewayMk2 } from '../Gateway';
 import { EntityResolver } from '../resolver/EntityResolver';
 import { join } from 'path';
@@ -12,18 +12,22 @@ import { UserMessage } from '@uems/uemscommlib';
 import { MessageUtilities } from '../utilities/MessageUtilities';
 import { constants } from 'http2';
 import { tryApplyTrait } from '@uems/micro-builder/build/src';
+import KeycloakConnect from 'keycloak-connect';
+import { AuthUtilities } from "../utilities/AuthUtilities";
+import { v4 } from 'uuid';
+import { logInfo } from "../log/RequestLogger";
+import { MongoClient } from "mongodb";
+import { Configuration } from "../configuration/Configuration";
+import log from '@uems/micro-builder/build/src/logging/Log';
 import GatewayAttachmentInterface = GatewayMk2.GatewayAttachmentInterface;
 import SendRequestFunction = GatewayMk2.SendRequestFunction;
 import AssertUserMessage = UserMessage.AssertUserMessage;
 import GatewayMessageHandler = GatewayMk2.GatewayMessageHandler;
-import * as util from 'util';
-import KeycloakConnect from 'keycloak-connect';
-import { AuthUtilities } from "../utilities/AuthUtilities";
 import orProtect = AuthUtilities.orProtect;
-import { v4 } from 'uuid';
-import { logInfo } from "../log/RequestLogger";
 
-const MongoStore = connectMongo(session);
+// const MongoStore = connectMongo(session);
+
+const _ = log.auto;
 
 export const ExpressConfiguration = z.object({
     port: z.number()
@@ -86,7 +90,7 @@ export class ExpressApplication {
      */
     private _requestQueue: ('success' | 'fail')[] = [];
 
-    constructor(configuration: ExpressConfigurationType) {
+    constructor(configuration: ExpressConfigurationType, client: MongoClient) {
         this._configuration = configuration;
         this._app = express();
 
@@ -94,7 +98,12 @@ export class ExpressApplication {
         this._app.use((req, res, next) => {
             req.requestID = v4();
             res.requestID = req.requestID;
+            res.start = Date.now();
+
             logInfo(req.requestID, `Request received for ${req.path} at ${Date.now()} assigned ID ${req.requestID}`);
+            _(req.requestID)
+                .info(`Request received for ${req.method} ${req.path} at ${Date.now()} assigned ID ${req.requestID}`);
+
             next();
         });
 
@@ -125,10 +134,7 @@ export class ExpressApplication {
         this._app.use(express.urlencoded({ extended: false }));
 
         const store = new MongoStore({
-            url: configuration.session.mongoURL,
-            secret: configuration.session.secrets.mongo,
-            collection: configuration.session.collection,
-            ttl: configuration.session.sessionTimeToLive,
+            client,
         });
 
         // Configure sessions for users that need to be backed by the database using connect-mongo.
@@ -183,6 +189,10 @@ export class ExpressApplication {
 
                 tryApplyTrait('successful', this._requestQueue.filter((e) => e === 'success').length);
                 tryApplyTrait('errored', this._requestQueue.filter((e) => e === 'fail').length);
+
+                _(req.requestID)
+                    .info(`Request resolved at ${Date.now()} with status 
+                    ${res.statusCode} in ${Date.now() - res.start} ms`);
             });
 
             next();
@@ -205,9 +215,9 @@ export class ExpressApplication {
                         access_token: {
                             isExpired: () => false,
                             hasRole: () => true,
-                        }
-                    }
-                }
+                        },
+                    },
+                };
 
                 next();
             });
@@ -229,9 +239,15 @@ export class ExpressApplication {
         __.info('created a new API router');
     }
 
-    async attach(attachments: GatewayAttachmentInterface[], send: SendRequestFunction, resolver: EntityResolver, handler: GatewayMessageHandler) {
+    async attach(
+        attachments: GatewayAttachmentInterface[],
+        send: SendRequestFunction,
+        resolver: EntityResolver,
+        handler: GatewayMessageHandler,
+        configuration: Configuration,
+    ) {
         const resolvedAttachments = await Promise.all(
-            attachments.map((attachment) => attachment.generateInterfaces(send, resolver, handler)),
+            attachments.map((attachment) => attachment.generateInterfaces(send, resolver, handler, configuration)),
         );
 
         for (const attachment of resolvedAttachments) {

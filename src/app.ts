@@ -21,6 +21,10 @@ import { EntityResolver } from './resolver/EntityResolver';
 import { launchCheck, tryApplyTrait } from "@uems/micro-builder/build/src";
 import { has } from "@uems/uemscommlib";
 import GatewayMessageHandler = GatewayMk2.GatewayMessageHandler;
+import { MongoClient } from "mongodb";
+import { Configuration } from "./configuration/Configuration";
+import { configure } from "@uems/micro-builder/build/src/logging/Log";
+import AMQPTransport from "@uems/micro-builder/build/src/logging/AMQPTransport";
 
 launchCheck(['successful', 'errored', 'rabbitmq'], (traits: Record<string, any>) => {
     if (has(traits, 'rabbitmq') && traits.rabbitmq !== '_undefined' && !traits.rabbitmq) return 'unhealthy';
@@ -80,6 +84,12 @@ async function main() {
         return;
     }
 
+    // Setting up logger
+    configure({
+        transports: [await AMQPTransport({ connection })],
+        module: 'gateway',
+    }, 'merge');
+
     // Print out errors in the event of a connection error that is not the connection closing
     connection.on('error', (connectionError: Error) => {
         if (connectionError.message !== 'Connection closing') {
@@ -96,6 +106,19 @@ async function main() {
 
     console.log('[AMQP] connected');
     tryApplyTrait('rabbitmq', true);
+
+    let client;
+    try {
+        client = await new MongoClient(expressValidation.data.session.mongoURL).connect();
+    } catch (e) {
+        console.error('Failed to connect to mongodb');
+        console.error(e);
+
+        await connection.close();
+        return;
+    }
+
+    const configuration = new Configuration(client);
 
     const handler = new GatewayMessageHandler(connection, {
         schemaValidator: () => Promise.resolve(true),
@@ -116,7 +139,7 @@ async function main() {
 
     let expressApp;
     try {
-        expressApp = new ExpressApplication(expressValidation.data);
+        expressApp = new ExpressApplication(expressValidation.data, client);
         await expressApp.attach(
             [
                 new VenueGatewayInterface(),
@@ -133,6 +156,7 @@ async function main() {
             handler.sendRequest.bind(handler),
             resolver,
             handler,
+            configuration,
         );
         await expressApp.react((message) => {
             handler.publish('user.details.assert', message);

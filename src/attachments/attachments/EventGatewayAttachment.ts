@@ -25,36 +25,41 @@ import orProtect = AuthUtilities.orProtect;
 import * as zod from 'zod';
 import sendZodError = MessageUtilities.sendZodError;
 import UpdateCommentMessage = CommentMessage.UpdateCommentMessage;
+import { Configuration } from "../../configuration/Configuration";
+import { logInfo, logResolve } from "../../log/RequestLogger";
+import { EventValidators } from "@uems/uemscommlib/build/event/EventValidators";
+import EventRepresentation = EventValidators.EventRepresentation;
+import log from '@uems/micro-builder/build/src/logging/Log';
+
+const _ = log.auto;
 
 export class EventGatewayAttachment implements GatewayAttachmentInterface {
     // TODO: bit dangerous using ! - maybe add null checks?
     private _resolver!: EntityResolver;
     private handler?: GatewayMessageHandler;
+    private config?: Configuration;
 
     async generateInterfaces(
         send: GatewayMk2.SendRequestFunction,
         resolver: EntityResolver,
         handler: GatewayMessageHandler,
+        config: Configuration,
     ): Promise<GatewayInterfaceActionType[]> {
         const validator = await EventResponseValidator.setup();
 
+        this.config = config;
         this._resolver = resolver;
         this.handler = handler;
 
         return [
-            // EVENTS ONLY
-            {
-                action: 'post',
-                path: '/events',
-                handle: EventGatewayAttachment.createEventHandler(send),
-                additionalValidator: validator,
-            },
+            // Ops planning
             {
                 action: 'get',
-                path: '/events',
-                handle: this.getEventsHandler(send),
-                additionalValidator: validator,
+                path: '/events/review',
+                handle: this.getReviewEvents(send),
+                secure: ['ops', 'ents', 'admin'],
             },
+            //
             {
                 action: 'get',
                 path: '/events/:id',
@@ -111,7 +116,21 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
                 path: '/events/:id/comments/:commentID/resolve',
                 handle: this.markCommentAsResolved(send),
                 secure: ['ops', 'ents', 'admin'],
-            }
+            },
+            // EVENTS ONLY
+            {
+                action: 'post',
+                path: '/events',
+                handle: EventGatewayAttachment.createEventHandler(send),
+                additionalValidator: validator,
+            },
+            {
+                action: 'get',
+                path: '/events',
+                handle: this.getEventsHandler(send),
+                additionalValidator: validator,
+            },
+
         ];
     }
 
@@ -119,6 +138,8 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
         return async (req: Request, res: Response) => {
 
             if (resolve && hand) {
+                _(req.requestID)
+                    .trace('dispatch to removeAndReply', req.params.id);
                 await removeAndReply({
                     assetID: req.params.id,
                     assetType: 'event',
@@ -149,6 +170,7 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
                 localOnly,
             };
 
+            // TODO: isn't this in commslib somewhere?
             const validate = zod.object({
                 name: zod.string(),
                 start: zod.number(),
@@ -158,11 +180,14 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
                 removeVenues: zod.array(zod.string()),
                 ents: zod.string(),
                 state: zod.string(),
+                reserved: zod.boolean(),
             })
                 .partial()
                 .safeParse(req.body);
 
             if (!validate.success) {
+                _(req.requestID)
+                    .debug('request failed validation', validate.error);
                 sendZodError(res, validate.error);
                 return;
             }
@@ -177,6 +202,7 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
             if (body.removeVenues) msg.removeVenues = body.removeVenues;
             if (body.ents) msg.entsID = body.ents;
             if (body.state) msg.stateID = body.state;
+            if (body.reserved !== undefined) msg.reserved = body.reserved;
 
             await send(
                 ROUTING_KEY.event.update,
@@ -222,6 +248,8 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
         );
 
         if (!validate) {
+            _(req.requestID)
+                .debug('request failed validation', req.query);
             return;
         }
 
@@ -351,6 +379,8 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
                 .safeParse(request.body);
 
             if (!validate.success) {
+                _(request.requestID)
+                    .debug(`request failed validation`, validate.error);
                 sendZodError(res, validate.error);
                 return;
             }
@@ -463,7 +493,7 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
         };
 
         await send(
-            'events.comment.get',
+            ROUTING_KEY.event.comments.read,
             msg,
             res,
             GenericHandlerFunctions.handleDefaultResponseFactory(Resolver.resolveComments(
@@ -485,6 +515,8 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
                 .safeParse(request.body);
 
             if (!validate.success) {
+                _(request.requestID)
+                    .debug(`request failed validation`, validate.error);
                 sendZodError(res, validate.error);
                 return;
             }
@@ -601,4 +633,112 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
         }
     }
 
+    private getReviewEvents(send: SendRequestFunction) {
+        /**
+         * = Gets events marked as needing review =
+         *
+         * [POST] /events/review
+         *
+         * Body:
+         *     N/A
+         */
+        return async (req: Request, res: Response) => {
+            if (!this.config) {
+                _(req.requestID)
+                    .error('event gateway attachment configuration was not defined');
+                res.status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
+                    .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
+                logResolve(req.requestID,
+                    constants.HTTP_STATUS_INTERNAL_SERVER_ERROR, MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
+                return;
+            }
+
+            let states;
+            try {
+                states = await this.config.getReviewStates();
+            } catch (e: any) {
+                _(req.requestID)
+                    .error('retrieving review states from configuration threw an error', e);
+                logInfo(req.requestID, `Failed to get review states due to error: ${e.message}`);
+                logResolve(req.requestID,
+                    constants.HTTP_STATUS_INTERNAL_SERVER_ERROR, MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
+                return;
+            }
+
+            const msg: ReadEventMessage = {
+                msg_id: MessageUtilities.generateMessageIdentifier(),
+                status: 0,
+                msg_intention: 'READ',
+                userID: req.uemsUser.userID,
+                stateIn: states,
+            };
+            console.log('stateIn', states);
+
+            const msgNotReserved: ReadEventMessage = {
+                msg_id: MessageUtilities.generateMessageIdentifier(),
+                status: 0,
+                msg_intention: 'READ',
+                userID: req.uemsUser.userID,
+                reserved: false,
+            };
+
+            const msgPromise = new Promise((resolve, reject) => {
+                this.handler?.buildSend(
+                    ROUTING_KEY.event.read,
+                    msg
+                )
+                    .name('request-statuses')
+                    .fail(reject)
+                    .reply(resolve)
+                    .submit(req.requestID);
+            });
+            const msgReservedPromise = new Promise((resolve, reject) => {
+                this.handler?.buildSend(
+                    ROUTING_KEY.event.read,
+                    msgNotReserved
+                )
+                    .name('request-statuses')
+                    .fail(reject)
+                    .reply(resolve)
+                    .submit(req.requestID);
+            });
+
+            let results: [EventRepresentation[], EventRepresentation[]];
+            try {
+                results = await Promise.all([msgPromise, msgReservedPromise]) as any;
+            } catch (e) {
+                _(req.requestID)
+                    .debug('failed to fetch events matching', e);
+                res
+                    .status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
+                    .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
+                return;
+            }
+
+            // Now deduplicate
+            const events: EventRepresentation[] = [];
+            const addedIDs: string[] = [];
+            const flattened = [...results[0], ...results[1]];
+            for (const result of flattened) {
+                if (!addedIDs.includes(result.id)) {
+                    events.push(result);
+                    addedIDs.push(result.id);
+                }
+            }
+
+            GenericHandlerFunctions.handleDefaultResponseFactory(Resolver.resolveEvents(
+                this._resolver,
+                req.uemsUser.userID,
+            ))(
+                res,
+                Date.now(),
+                {
+                    status: 200,
+                    msg_id: 0,
+                    result: events,
+                },
+                200,
+            );
+        };
+    }
 }
