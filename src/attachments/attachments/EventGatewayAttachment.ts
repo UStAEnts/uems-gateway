@@ -690,7 +690,7 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
                     .name('request-statuses')
                     .fail(reject)
                     .reply(resolve)
-                    .submit();
+                    .submit(req.requestID);
             });
             const msgReservedPromise = new Promise((resolve, reject) => {
                 this.handler?.buildSend(
@@ -700,7 +700,7 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
                     .name('request-statuses')
                     .fail(reject)
                     .reply(resolve)
-                    .submit();
+                    .submit(req.requestID);
             });
 
             let results: [EventRepresentation[], EventRepresentation[]];
