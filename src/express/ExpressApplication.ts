@@ -1,9 +1,9 @@
 import * as z from 'zod';
-import express, { Application, Request, RequestHandler, Response, Router, NextFunction } from 'express';
+import express, { Application, Request, RequestHandler, Response, Router } from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import session from 'express-session';
-import connectMongo from 'connect-mongo';
+import MongoStore from 'connect-mongo';
 import { GatewayMk2 } from '../Gateway';
 import { EntityResolver } from '../resolver/EntityResolver';
 import { join } from 'path';
@@ -12,20 +12,18 @@ import { UserMessage } from '@uems/uemscommlib';
 import { MessageUtilities } from '../utilities/MessageUtilities';
 import { constants } from 'http2';
 import { tryApplyTrait } from '@uems/micro-builder/build/src';
-import GatewayAttachmentInterface = GatewayMk2.GatewayAttachmentInterface;
-import SendRequestFunction = GatewayMk2.SendRequestFunction;
-import AssertUserMessage = UserMessage.AssertUserMessage;
-import GatewayMessageHandler = GatewayMk2.GatewayMessageHandler;
-import * as util from 'util';
 import KeycloakConnect from 'keycloak-connect';
 import { AuthUtilities } from "../utilities/AuthUtilities";
-import orProtect = AuthUtilities.orProtect;
 import { v4 } from 'uuid';
 import { logInfo } from "../log/RequestLogger";
 import { MongoClient } from "mongodb";
 import { Configuration } from "../configuration/Configuration";
-import MongoStore from "connect-mongo";
 import log from '@uems/micro-builder/build/src/logging/Log';
+import GatewayAttachmentInterface = GatewayMk2.GatewayAttachmentInterface;
+import SendRequestFunction = GatewayMk2.SendRequestFunction;
+import AssertUserMessage = UserMessage.AssertUserMessage;
+import GatewayMessageHandler = GatewayMk2.GatewayMessageHandler;
+import orProtect = AuthUtilities.orProtect;
 
 // const MongoStore = connectMongo(session);
 
@@ -104,7 +102,7 @@ export class ExpressApplication {
 
             logInfo(req.requestID, `Request received for ${req.path} at ${Date.now()} assigned ID ${req.requestID}`);
             _(req.requestID)
-                .info(`Request received for ${req.path} at ${Date.now()} assigned ID ${req.requestID}`);
+                .info(`Request received for ${req.method} ${req.path} at ${Date.now()} assigned ID ${req.requestID}`);
 
             next();
         });
