@@ -30,6 +30,7 @@ import { logInfo, logResolve } from "../../log/RequestLogger";
 import { EventValidators } from "@uems/uemscommlib/build/event/EventValidators";
 import EventRepresentation = EventValidators.EventRepresentation;
 import log from '@uems/micro-builder/build/src/logging/Log';
+import { resolveEventsFlow } from "../../flows/EventResolveFlow";
 
 const _ = log.auto;
 
@@ -215,6 +216,11 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
 
     private getEventsHandler = (send: SendRequestFunction) => async (req: Request, res: Response) => {
         // TODO add failures
+        if (this.handler === undefined) {
+            res.status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
+                .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
+            return;
+        }
 
         let localOnly = true;
         if (req.kauth && req.kauth.grant && req.kauth.grant.access_token) {
@@ -325,10 +331,7 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
             ROUTING_KEY.event.read,
             msg,
             res,
-            GenericHandlerFunctions.handleDefaultResponseFactory(Resolver.resolveEvents(
-                this._resolver,
-                req.uemsUser.userID,
-            )),
+            resolveEventsFlow(this.handler),
         );
     };
 
@@ -420,6 +423,12 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
     }
 
     private getEventsByState = (send: SendRequestFunction) => async (req: Request, res: Response) => {
+        if (this.handler === undefined) {
+            res.status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
+                .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
+            return;
+        }
+
         // TODO add failures
         let localOnly = true;
         if (req.kauth && req.kauth.grant && req.kauth.grant.access_token) {
@@ -439,14 +448,16 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
             ROUTING_KEY.event.read,
             msg,
             res,
-            GenericHandlerFunctions.handleDefaultResponseFactory(Resolver.resolveEvents(
-                this._resolver,
-                req.uemsUser.userID,
-            )),
+            resolveEventsFlow(this.handler),
         );
     };
 
     private getEventsByVenue = (send: SendRequestFunction) => async (req: Request, res: Response) => {
+        if (this.handler === undefined) {
+            res.status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
+                .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
+            return;
+        }
         // TODO add failures
         let localOnly = true;
         if (req.kauth && req.kauth.grant && req.kauth.grant.access_token) {
@@ -467,10 +478,7 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
             ROUTING_KEY.event.read,
             msg,
             res,
-            GenericHandlerFunctions.handleDefaultResponseFactory(Resolver.resolveEvents(
-                this._resolver,
-                req.uemsUser.userID,
-            )),
+            resolveEventsFlow(this.handler),
         );
     };
 
@@ -643,6 +651,12 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
          *     N/A
          */
         return async (req: Request, res: Response) => {
+            if (this.handler === undefined) {
+                res.status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
+                    .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
+                return;
+            }
+
             if (!this.config) {
                 _(req.requestID)
                     .error('event gateway attachment configuration was not defined');
@@ -726,18 +740,14 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
                 }
             }
 
-            GenericHandlerFunctions.handleDefaultResponseFactory(Resolver.resolveEvents(
-                this._resolver,
-                req.uemsUser.userID,
-            ))(
+            await resolveEventsFlow(this.handler)(
                 res,
                 Date.now(),
                 {
                     status: 200,
-                    msg_id: 0,
+                    msg_id: -1,
                     result: events,
                 },
-                200,
             );
         };
     }
