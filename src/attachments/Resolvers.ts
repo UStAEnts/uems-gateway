@@ -120,10 +120,6 @@ export namespace Resolver {
         };
     }
 
-    export function resolveEvents(resolver: EntityResolver | undefined, userID: string): MultiEventTransformer {
-        return singleToDouble(resolveSingleEvent(resolver, userID));
-    }
-
     export function resolveSingleComment(resolver: EntityResolver | undefined, userID: string): CommentTransformer {
         return async (data, requestID) => {
             if (resolver === undefined) throw new Error('Resolver not defined');
