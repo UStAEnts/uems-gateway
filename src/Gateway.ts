@@ -418,11 +418,9 @@ export namespace GatewayMk2 {
 
             if (MessageUtilities.has(json, 'requestID')) {
                 _(json.requestID)
-                    .trace(`incoming message from ${message.fields.routingKey} 
-                    @ ${json.msg_id} (${json.status})`, json);
+                    .trace(`incoming message ${json.msg_id} (${json.status})`, json, message);
             } else {
-                _.system.trace(`incoming message from ${message.fields.routingKey}
-                 @ ${json.msg_id} (${json.status})`, json);
+                _.system.trace(`incoming message ${json.msg_id} (${json.status})`, json, message);
             }
 
             // If this message ID has been sent by the resolver, it will mark it as requiring an intercept
