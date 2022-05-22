@@ -58,7 +58,7 @@ export function resolveVenuesFlow(
             gateway,
             response.result,
             http.requestID,
-            http.req.uemsUser.userID,
+            http.req?.uemsUser?.userID ?? 'anonymous',
         );
 
         if (partial) {

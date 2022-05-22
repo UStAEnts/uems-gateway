@@ -77,7 +77,7 @@ export function resolveEventsFlow(
         resp: MinimalMessageType,
     ): Promise<void> {
         const { requestID } = http;
-        const { userID } = http.req.uemsUser;
+        const { userID } = http.req?.uemsUser ?? { userID: 'anonymous' };
 
         // TODO revalidate
         const response = resp as any as EventServiceReadResponseMessage;
