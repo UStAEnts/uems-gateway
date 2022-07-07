@@ -82,7 +82,7 @@ export class SignupGatewayInterface implements GatewayAttachmentInterface {
                 msg_intention: 'READ',
                 status: 0,
                 userID: req.uemsUser.userID,
-                eventID: req.params.eventID,
+                event: req.params.eventID,
             };
 
             const validate = MessageUtilities.coerceAndVerifyQuery(
@@ -103,22 +103,16 @@ export class SignupGatewayInterface implements GatewayAttachmentInterface {
                 return;
             }
 
-            const parameters = req.query;
-            const validProperties: (keyof SignupReadSchema)[] = [
-                'id',
-                'date',
-                'signupUser',
-                'dateRangeBegin',
-                'dateRangeEnd',
-                'role',
-            ];
-
-            validProperties.forEach((key) => {
-                if (MessageUtilities.has(parameters, key)) {
-                    // @ts-ignore
-                    outgoing[key] = parameters[key];
-                }
-            });
+            if (req.query.id) outgoing.id = req.query.id as string;
+            if (req.query.date) outgoing.date = req.query.date as unknown as number;
+            if (req.query.userid) outgoing.user = req.query.userid as string;
+            if (req.query.dateRangeBegin || req.query.dateRangeEnd) {
+                outgoing.date = {
+                    ...(req.query.dateRangeBegin ? { greater: req.query.dateRangeBegin as unknown as number } : {}),
+                    ...(req.query.dateRangeEnd ? { less: req.query.dateRangeEnd as unknown as number } : {}),
+                };
+            }
+            if (req.query.role) outgoing.role = req.query.role as string;
 
             await send(
                 ROUTING_KEY.signups.read,
@@ -140,7 +134,7 @@ export class SignupGatewayInterface implements GatewayAttachmentInterface {
                 msg_intention: 'READ',
                 status: 0,
                 userID: req.uemsUser.userID,
-                eventID: req.params.eventID,
+                event: req.params.eventID,
                 id: req.params.id,
             };
 
@@ -181,8 +175,10 @@ export class SignupGatewayInterface implements GatewayAttachmentInterface {
 
             const validate = zod.object({
                 role: zod.string(),
-                signupUser: zod.string().optional(),
-            }).safeParse(req.body);
+                signupUser: zod.string()
+                    .optional(),
+            })
+                .safeParse(req.body);
 
             if (!validate.success) {
                 sendZodError(res, validate.error);
@@ -195,9 +191,10 @@ export class SignupGatewayInterface implements GatewayAttachmentInterface {
                 msg_intention: 'CREATE',
                 status: 0,
                 userID: req.uemsUser.userID,
-                eventID: req.params.eventID,
-                signupUser: body.signupUser,
+                event: req.params.eventID,
+                user: body.signupUser ?? req.uemsUser.userID,
                 role: body.role,
+                date: Math.floor(Date.now() / 1000),
             };
 
             await send(
@@ -244,7 +241,7 @@ export class SignupGatewayInterface implements GatewayAttachmentInterface {
                 status: 0,
                 userID: req.uemsUser.userID,
                 id: req.params.id,
-                localOnly,
+                userScoped: localOnly,
             };
 
             const parameters = req.body;

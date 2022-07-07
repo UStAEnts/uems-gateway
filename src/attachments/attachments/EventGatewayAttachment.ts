@@ -40,13 +40,149 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
     private handler?: GatewayMessageHandler;
     private config?: Configuration;
 
+    private static deleteEventHandler(send: SendRequestFunction, hand: GatewayMessageHandler, resolve: EntityResolver) {
+        return async (req: Request, res: Response) => {
+
+            if (resolve && hand) {
+                _(req.requestID)
+                    .trace('dispatch to removeAndReply', req.params.id);
+                await removeAndReply({
+                    assetID: req.params.id,
+                    assetType: 'event',
+                }, resolve, hand, res);
+            } else {
+                res.status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
+                    .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
+            }
+        };
+    }
+
+    private static updateEventHandler(send: SendRequestFunction) {
+        return async (req: Request, res: Response) => {
+            const eventId = req.params.id;
+
+            let localOnly = true;
+            if (req.kauth && req.kauth.grant && req.kauth.grant.access_token) {
+                // req.kauth.grant.kauth
+                if (orProtect('ops', 'ents', 'admin')(req.kauth.grant.access_token)) localOnly = false;
+            }
+
+            const msg: UpdateEventMessage = {
+                msg_id: MessageUtilities.generateMessageIdentifier(),
+                status: 0,
+                msg_intention: 'UPDATE',
+                id: eventId,
+                userID: req.uemsUser.userID,
+                userScoped: localOnly,
+            };
+
+            // TODO: isn't this in commslib somewhere?
+            const validate = zod.object({
+                name: zod.string(),
+                start: zod.number(),
+                end: zod.number(),
+                attendance: zod.number(),
+                addVenues: zod.array(zod.string()),
+                removeVenues: zod.array(zod.string()),
+                ents: zod.string(),
+                state: zod.string(),
+                reserved: zod.boolean(),
+            })
+                .partial()
+                .safeParse(req.body);
+
+            if (!validate.success) {
+                _(req.requestID)
+                    .debug('request failed validation', validate.error);
+                sendZodError(res, validate.error);
+                return;
+            }
+
+            const body = validate.data;
+
+            if (body.name) msg.name = body.name;
+            if (body.start) msg.start = body.start;
+            if (body.end) msg.end = body.end;
+            if (body.attendance) msg.attendance = body.attendance;
+            if (body.addVenues) msg.addVenues = body.addVenues;
+            if (body.removeVenues) msg.removeVenues = body.removeVenues;
+            if (body.ents) msg.ents = body.ents;
+            if (body.state) msg.state = body.state;
+            if (body.reserved !== undefined) msg.reserved = body.reserved;
+
+            await send(
+                ROUTING_KEY.event.update,
+                msg,
+                res,
+                GenericHandlerFunctions.handleDefaultResponseFactory(),
+            );
+        };
+    }
+
+    private static createEventHandler(send: SendRequestFunction) {
+        return async (request: Request, res: Response) => {
+            const validate = zod.object({
+                name: zod.string(),
+                venue: zod.string(),
+                start: zod.number(),
+                end: zod.number(),
+                attendance: zod.number(),
+                state: zod.string()
+                    .optional(),
+                ents: zod.string()
+                    .optional(),
+            })
+                .safeParse(request.body);
+
+            if (!validate.success) {
+                _(request.requestID)
+                    .debug(`request failed validation`, validate.error);
+                sendZodError(res, validate.error);
+                return;
+            }
+
+            const {
+                name,
+                start,
+                end,
+                venue,
+                state,
+                ents,
+                attendance,
+            } = request.body;
+
+            const msg: CreateEventMessage = {
+                msg_id: MessageUtilities.generateMessageIdentifier(),
+                status: 0, // 0 Code used when the status is still to be decided.
+                msg_intention: 'CREATE',
+                userID: request.uemsUser.userID,
+                author: request.uemsUser.userID,
+
+                name,
+                start,
+                end,
+                venues: [venue], // Placeholder as venue assignment not in API yet.
+                attendance, // Placeholder.
+                state,
+                ents,
+            };
+
+            await send(
+                ROUTING_KEY.event.create,
+                msg,
+                res,
+                GenericHandlerFunctions.handleDefaultResponseFactory(),
+            );
+        };
+    }
+
     async generateInterfaces(
         send: GatewayMk2.SendRequestFunction,
         resolver: EntityResolver,
         handler: GatewayMessageHandler,
         config: Configuration,
     ): Promise<GatewayInterfaceActionType[]> {
-        const validator = await EventResponseValidator.setup();
+        const validator = new EventResponseValidator();
 
         this.config = config;
         this._resolver = resolver;
@@ -135,85 +271,6 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
         ];
     }
 
-    private static deleteEventHandler(send: SendRequestFunction, hand: GatewayMessageHandler, resolve: EntityResolver) {
-        return async (req: Request, res: Response) => {
-
-            if (resolve && hand) {
-                _(req.requestID)
-                    .trace('dispatch to removeAndReply', req.params.id);
-                await removeAndReply({
-                    assetID: req.params.id,
-                    assetType: 'event',
-                }, resolve, hand, res);
-            } else {
-                res.status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
-                    .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
-            }
-        };
-    }
-
-    private static updateEventHandler(send: SendRequestFunction) {
-        return async (req: Request, res: Response) => {
-            const eventId = req.params.id;
-
-            let localOnly = true;
-            if (req.kauth && req.kauth.grant && req.kauth.grant.access_token) {
-                // req.kauth.grant.kauth
-                if (orProtect('ops', 'ents', 'admin')(req.kauth.grant.access_token)) localOnly = false;
-            }
-
-            const msg: UpdateEventMessage = {
-                msg_id: MessageUtilities.generateMessageIdentifier(),
-                status: 0,
-                msg_intention: 'UPDATE',
-                id: eventId,
-                userID: req.uemsUser.userID,
-                localOnly,
-            };
-
-            // TODO: isn't this in commslib somewhere?
-            const validate = zod.object({
-                name: zod.string(),
-                start: zod.number(),
-                end: zod.number(),
-                attendance: zod.number(),
-                addVenues: zod.array(zod.string()),
-                removeVenues: zod.array(zod.string()),
-                ents: zod.string(),
-                state: zod.string(),
-                reserved: zod.boolean(),
-            })
-                .partial()
-                .safeParse(req.body);
-
-            if (!validate.success) {
-                _(req.requestID)
-                    .debug('request failed validation', validate.error);
-                sendZodError(res, validate.error);
-                return;
-            }
-
-            const body = validate.data;
-
-            if (body.name) msg.name = body.name;
-            if (body.start) msg.start = body.start;
-            if (body.end) msg.end = body.end;
-            if (body.attendance) msg.attendance = body.attendance;
-            if (body.addVenues) msg.addVenues = body.addVenues;
-            if (body.removeVenues) msg.removeVenues = body.removeVenues;
-            if (body.ents) msg.entsID = body.ents;
-            if (body.state) msg.stateID = body.state;
-            if (body.reserved !== undefined) msg.reserved = body.reserved;
-
-            await send(
-                ROUTING_KEY.event.update,
-                msg,
-                res,
-                GenericHandlerFunctions.handleDefaultResponseFactory(),
-            );
-        };
-    }
-
     private getEventsHandler = (send: SendRequestFunction) => async (req: Request, res: Response) => {
         // TODO add failures
         if (this.handler === undefined) {
@@ -264,7 +321,7 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
             status: 0,
             msg_intention: 'READ',
             userID: req.uemsUser.userID,
-            localOnly,
+            userScoped: localOnly,
         };
 
         if (req.query.name !== undefined) {
@@ -291,40 +348,67 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
                     msg.anyVenues = req.query.venueIDs.split(',');
                 }
             } else {
-                msg.venueIDs = req.query.venueIDs.split(',');
+                msg.venues = req.query.venueIDs.split(',');
             }
         }
 
         if (req.query.entsID !== undefined && typeof (req.query.entsID) === 'string') {
-            msg.entsID = req.query.entsID;
+            msg.ents = req.query.entsID;
         }
 
         if (req.query.stateID !== undefined && typeof (req.query.stateID) === 'string') {
-            msg.stateID = req.query.stateID;
+            msg.state = req.query.stateID;
         }
 
         if (req.query.startafter !== undefined) {
-            msg.startRangeBegin = parseInt(req.query.startafter.toString(), 10);
+            if (typeof (msg.start) === 'object') {
+                msg.start = {
+                    ...msg.start,
+                    greater: parseInt(req.query.startafter.toString(), 10)
+                };
+            } else {
+                msg.start = { greater: parseInt(req.query.startafter.toString(), 10) };
+            }
         }
 
         if (req.query.startbefore !== undefined) {
-            msg.startRangeEnd = parseInt(req.query.startbefore.toString(), 10);
+            if (typeof (msg.start) === 'object') {
+                msg.start = {
+                    ...msg.start,
+                    less: parseInt(req.query.startbefore.toString(), 10)
+                };
+            } else {
+                msg.start = { less: parseInt(req.query.startbefore.toString(), 10) };
+            }
         }
 
         if (req.query.endafter !== undefined) {
-            msg.endRangeBegin = parseInt(req.query.endafter.toString(), 10);
+            if (typeof (msg.end) === 'object') {
+                msg.end = {
+                    ...msg.end,
+                    greater: parseInt(req.query.endafter.toString(), 10)
+                };
+            } else {
+                msg.end = { greater: parseInt(req.query.endafter.toString(), 10) };
+            }
         }
 
         if (req.query.endbefore !== undefined) {
-            msg.endRangeEnd = parseInt(req.query.endbefore.toString(), 10);
+            if (typeof (msg.end) === 'object') {
+                msg.end = {
+                    ...msg.end,
+                    less: parseInt(req.query.endbefore.toString(), 10)
+                };
+            } else {
+                msg.end = { less: parseInt(req.query.endbefore.toString(), 10) };
+            }
         }
 
-        if (req.query.attendanceGreater !== undefined) {
-            msg.attendanceRangeBegin = parseInt(req.query.attendanceGreater.toString(), 10);
-        }
-
-        if (req.query.attendanceLess !== undefined) {
-            msg.attendanceRangeEnd = parseInt(req.query.attendanceLess.toString(), 10);
+        if (req.query.attendanceGreater !== undefined || req.query.attendanceLess !== undefined) {
+            msg.attendance = {
+                ...(req.query.attendanceGreater ? { greater: parseInt(req.query.attendanceGreater.toString(), 10) } : {}),
+                ...(req.query.attendanceLess ? { less: parseInt(req.query.attendanceLess.toString(), 10) } : {}),
+            };
         }
 
         await send(
@@ -349,7 +433,7 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
                 status: 0,
                 userID: req.uemsUser.userID,
                 id: req.params.id,
-                localOnly,
+                userScoped: localOnly,
             };
 
             await send(
@@ -362,62 +446,6 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
                         changelog: [],
                     }),
                 ),
-            );
-        };
-    }
-
-    private static createEventHandler(send: SendRequestFunction) {
-        return async (request: Request, res: Response) => {
-            const validate = zod.object({
-                name: zod.string(),
-                venue: zod.string(),
-                start: zod.number(),
-                end: zod.number(),
-                attendance: zod.number(),
-                state: zod.string()
-                    .optional(),
-                ents: zod.string()
-                    .optional(),
-            })
-                .safeParse(request.body);
-
-            if (!validate.success) {
-                _(request.requestID)
-                    .debug(`request failed validation`, validate.error);
-                sendZodError(res, validate.error);
-                return;
-            }
-
-            const {
-                name,
-                start,
-                end,
-                venue,
-                state,
-                ents,
-                attendance,
-            } = request.body;
-
-            const msg: CreateEventMessage = {
-                msg_id: MessageUtilities.generateMessageIdentifier(),
-                status: 0, // 0 Code used when the status is still to be decided.
-                msg_intention: 'CREATE',
-                userID: request.uemsUser.userID,
-
-                name,
-                start,
-                end,
-                venueIDs: [venue], // Placeholder as venue assignment not in API yet.
-                attendance, // Placeholder.
-                stateID: state,
-                entsID: ents,
-            };
-
-            await send(
-                ROUTING_KEY.event.create,
-                msg,
-                res,
-                GenericHandlerFunctions.handleDefaultResponseFactory(),
             );
         };
     }
@@ -440,8 +468,8 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
             status: 0,
             msg_intention: 'READ',
             userID: req.uemsUser.userID,
-            stateID: req.params.id,
-            localOnly,
+            state: req.params.id,
+            userScoped: localOnly,
         };
 
         await send(
@@ -471,7 +499,7 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
             msg_intention: 'READ',
             userID: req.uemsUser.userID,
             anyVenues: [req.params.id],
-            localOnly,
+            userScoped: localOnly,
         };
 
         await send(
@@ -495,7 +523,7 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
             status: 0,
             msg_intention: 'READ',
             userID: req.uemsUser.userID,
-            localAssetOnly: localOnly,
+            userScoped: localOnly,
             assetType: 'event',
             assetID: req.params.id,
         };
@@ -549,11 +577,12 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
                 topic,
                 requiresAttention,
                 body,
-                localAssetOnly: localOnly,
+                userScoped: localOnly,
 
                 assetID: request.params.id,
                 assetType: 'event',
-                posterID: request.uemsUser.userID,
+                poster: request.uemsUser.userID,
+                posted: Math.floor(Date.now() / 1000),
             };
 
             await send(
@@ -590,7 +619,7 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
                 id: commentID,
                 userID: req.uemsUser.userID,
                 requiresAttention: true,
-                localOnly: false,
+                userScoped: false,
                 attendedBy: undefined,
             };
 
@@ -628,7 +657,7 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
                 id: commentID,
                 userID: req.uemsUser.userID,
                 requiresAttention: false,
-                localOnly: false,
+                userScoped: false,
                 attendedBy: req.uemsUser.userID,
             };
 

@@ -187,8 +187,10 @@ export class EquipmentGatewayInterface implements GatewayAttachmentInterface {
                 manufacturer: body.manufacturer,
                 model: body.model,
                 amount: body.amount,
-                locationID: body.locationID,
+                location: body.locationID,
                 category: body.category,
+                date: Math.floor(Date.now() / 1000),
+                manager: req.uemsUser.userID,
             };
 
             if (body.assetID) outgoingMessage.assetID = body.assetID;

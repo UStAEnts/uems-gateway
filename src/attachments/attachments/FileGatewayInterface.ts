@@ -30,6 +30,8 @@ import { FileBindingValidators } from "@uems/uemscommlib/build/filebinding/FileB
 import FileBindingResponseValidator = FileBindingValidators.FileBindingResponseValidator;
 import { EventValidators } from "@uems/uemscommlib/build/event/EventValidators";
 import EventResponseValidator = EventValidators.EventResponseValidator;
+import { FileValidators } from "@uems/uemscommlib/build/file/FileValidators";
+import FileModifyResponse = FileValidators.FileModifyResponse;
 
 export class FileGatewayInterface implements GatewayAttachmentInterface {
 
@@ -119,7 +121,7 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
                 msg_intention: 'READ',
                 status: 0,
                 userID: req.uemsUser.userID,
-                localOnly,
+                userScoped: localOnly,
             };
 
             const validate = MessageUtilities.coerceAndVerifyQuery(
@@ -149,7 +151,7 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
                 'size',
                 'type',
                 'date',
-                'userid',
+                'owner',
             ];
 
             validProperties.forEach((key) => {
@@ -185,7 +187,7 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
                 status: 0,
                 userID: req.uemsUser.userID,
                 id: req.params.id,
-                localOnly,
+                userScoped: localOnly,
             };
 
             await send(
@@ -224,6 +226,11 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
                 filename: req.body.filename,
                 size: req.body.size,
                 type: req.body.type,
+                date: Math.floor(Date.now() / 1000),
+                owner: req.uemsUser.userID,
+                downloadURL: 'pending',
+                checksum: 'pending',
+                mime: 'pending',
             };
 
             await send(
@@ -232,7 +239,7 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
                 res,
                 async (http, timestamp, raw, status) => {
                     MessageUtilities.identifierConsumed(raw.msg_id);
-                    const response = raw as FileResponseMessage;
+                    const response = raw as FileModifyResponse;
 
                     if (status === MsgStatus.SUCCESS) {
                         http
@@ -323,7 +330,7 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
                 status: 0,
                 userID: req.uemsUser.userID,
                 fileID: req.params.id,
-                localOnly,
+                userScoped: localOnly,
             };
 
             await send(
@@ -352,7 +359,7 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
                 status: 0,
                 userID: req.uemsUser.userID,
                 eventID: req.params.id,
-                localOnly,
+                userScoped: localOnly,
             };
 
             await send(
@@ -392,7 +399,7 @@ export class FileGatewayInterface implements GatewayAttachmentInterface {
                 userID: req.uemsUser.userID,
                 eventID: req.params.id,
                 fileIDs: [req.body.fileID],
-                localOnly,
+                userScoped: localOnly,
             };
 
             await send(

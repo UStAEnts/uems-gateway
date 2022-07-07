@@ -10,7 +10,7 @@ import GatewayMessageHandler = GatewayMk2.GatewayMessageHandler;
 import EventRepresentation = EventValidators.EventRepresentation;
 import EventServiceReadResponseMessage = EventResponse.EventServiceReadResponseMessage;
 import MinimalMessageType = GatewayMk2.MinimalMessageType;
-import ShallowEventRepresentation = EventValidators.ShallowEventRepresentation;
+import ShallowEventRepresentation = EventValidators.EventShallowRepresentation;
 
 export async function resolveEvents(
     gateway: GatewayMessageHandler,

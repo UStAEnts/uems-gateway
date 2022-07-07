@@ -15,6 +15,7 @@ import { LogIdentifier, logIncoming, logOutgoing, logResolve } from "./log/Reque
 import { inspect } from "util";
 import { Configuration } from "./configuration/Configuration";
 import log from '@uems/micro-builder/build/src/logging/Log';
+import { SimpleValidator } from "@uems/uemscommlib/build/MessageValidator";
 
 const _ = log.auto;
 // const _l = _byFile(__filename);
@@ -72,7 +73,7 @@ export namespace GatewayMk2 {
         action: 'get' | 'delete' | 'post' | 'patch',
         path: string,
         handle: RequestHandler,
-        additionalValidator?: MessageValidator,
+        additionalValidator?: SimpleValidator,
         secure?: SecureRoles[] | false,
     };
 
@@ -100,7 +101,7 @@ export namespace GatewayMk2 {
         /**
          * The basic validator to be run against incoming messages, before entry specific validators are executed
          */
-        private basicValidator: MessageValidator | undefined;
+        private basicValidator: SimpleValidator | undefined;
 
         /**
          * The interval bound to the terminator function which closes requests after minimum amounts of time

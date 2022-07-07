@@ -9,7 +9,7 @@ import GatewayMessageHandler = GatewayMk2.GatewayMessageHandler;
 import VenueServiceReadResponseMessage = VenueResponse.VenueServiceReadResponseMessage;
 import MinimalMessageType = GatewayMk2.MinimalMessageType;
 import VenueRepresentation = VenueValidators.VenueRepresentation;
-import ShallowVenueRepresentation = VenueValidators.ShallowVenueRepresentation;
+import ShallowVenueRepresentation = VenueValidators.VenueShallowRepresentation;
 
 export async function resolveVenues(
     gateway: GatewayMessageHandler,

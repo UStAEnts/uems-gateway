@@ -291,7 +291,6 @@ export class ExpressApplication {
                 status: 0,
                 userID: 'anonymous',
                 email: req.uemsUser.email,
-                hash: '',
                 id: req.uemsUser.userID,
                 name: req.uemsUser.fullName,
                 profile: req.uemsUser.profile,

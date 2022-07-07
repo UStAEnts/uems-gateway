@@ -123,6 +123,7 @@ async function main() {
     const handler = new GatewayMessageHandler(connection, {
         schemaValidator: () => Promise.resolve(true),
         validate: () => Promise.resolve(true),
+        validateWithErrors: () => Promise.resolve({ success: true }),
     });
     const resolver = new EntityResolver(handler);
     try {
