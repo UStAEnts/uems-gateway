@@ -95,6 +95,7 @@ export async function testValidRoute(
     params?: any,
     skipChild: boolean = false,
     roles?: string[],
+    comparisonData?: any,
 ) {
     const response = new Response();
     const fake = response as unknown as express.Response;
@@ -114,7 +115,7 @@ export async function testValidRoute(
         .toHaveBeenCalledTimes(1);
     if (data !== undefined && !skipChild) {
         expect(send.mock.calls[0][1])
-            .toEqual(expect.objectContaining(data));
+            .toEqual(expect.objectContaining(comparisonData ?? data));
     }
     return response;
 }

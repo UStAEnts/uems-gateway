@@ -160,7 +160,7 @@ export class EquipmentGatewayInterface implements GatewayAttachmentInterface {
                 manufacturer: zod.string(),
                 model: zod.string(),
                 amount: zod.number(),
-                locationID: zod.string(),
+                location: zod.string(),
                 category: zod.string(),
 
                 assetID: zod.string()
@@ -187,7 +187,7 @@ export class EquipmentGatewayInterface implements GatewayAttachmentInterface {
                 manufacturer: body.manufacturer,
                 model: body.model,
                 amount: body.amount,
-                location: body.locationID,
+                location: body.location,
                 category: body.category,
                 date: Math.floor(Date.now() / 1000),
                 manager: req.uemsUser.userID,

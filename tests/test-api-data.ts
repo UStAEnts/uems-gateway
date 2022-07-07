@@ -103,7 +103,7 @@ export const POST_EQUIPMENT_VALID = {
     manufacturer: 'ptsHY055OjM+6sgtXAmNtQ==',
     model: 'r4u3ix9IX1TG3AlBgcXNRw==',
     amount: 977,
-    locationID: 'xIW+TgcpFi4u4Pe483hnKQ==',
+    location: 'xIW+TgcpFi4u4Pe483hnKQ==',
     category: 'SM7uDNy5F1PWZa3mnOCq5A==',
     assetID: 'wwSpqCpYPV7jZ/qKYChiMw==',
     miscIdentifier: 'HOYo0sN7JIgxe409JOAZhA==',
@@ -265,7 +265,7 @@ export const GET_FILES_VALID = {
     size: '53',
     type: 'm9yjnAw7AH1R8FT0yGVDeQ==',
     date: '53',
-    userid: '2UhQFpwmWR2chUaPwRY94w=='
+    owner: '2UhQFpwmWR2chUaPwRY94w=='
 }
 export const GET_FILES_INVALID = {
     id: '1vvM/ndhe69Fm5ybbgiW3Q==',

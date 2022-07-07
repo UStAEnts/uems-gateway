@@ -53,12 +53,27 @@ describe('SignupGatewayInterface.ts', () => {
         });
 
         it('sends on a valid message', async () => {
+            const {
+                date,
+                dateRangeBegin,
+                dateRangeEnd,
+                ...rest
+            } = GET_EVENTS_EVENTID_SIGNUPS_VALID;
             await testValidRoute(
                 routes['get.events.id.signups'],
                 GET_EVENTS_EVENTID_SIGNUPS_VALID,
                 'query',
                 send,
                 { eventID: 'abc' },
+                false,
+                undefined,
+                {
+                    date: {
+                        greater: Number(GET_EVENTS_EVENTID_SIGNUPS_VALID.dateRangeBegin),
+                        less: Number(GET_EVENTS_EVENTID_SIGNUPS_VALID.dateRangeEnd),
+                    },
+                    ...rest,
+                },
             );
         });
     });
