@@ -7,7 +7,6 @@ import MongoStore from 'connect-mongo';
 import { GatewayMk2 } from '../Gateway';
 import { EntityResolver } from '../resolver/EntityResolver';
 import { join } from 'path';
-import { __ } from '../log/Log';
 import { UserMessage } from '@uems/uemscommlib';
 import { MessageUtilities } from '../utilities/MessageUtilities';
 import { constants } from 'http2';
@@ -24,6 +23,9 @@ import SendRequestFunction = GatewayMk2.SendRequestFunction;
 import AssertUserMessage = UserMessage.AssertUserMessage;
 import GatewayMessageHandler = GatewayMk2.GatewayMessageHandler;
 import orProtect = AuthUtilities.orProtect;
+import ROUTES from "../routes";
+import { getAPIEndpoints, methodToString } from "../decorators/endpoint";
+import sendZodError = MessageUtilities.sendZodError;
 
 // const MongoStore = connectMongo(session);
 
@@ -236,7 +238,7 @@ export class ExpressApplication {
         });
 
         this._app.use('/api', this._apiRouter);
-        __.info('created a new API router');
+        _.system.info('created a new API router');
     }
 
     async attach(
@@ -246,37 +248,116 @@ export class ExpressApplication {
         handler: GatewayMessageHandler,
         configuration: Configuration,
     ) {
-        const resolvedAttachments = await Promise.all(
-            attachments.map((attachment) => attachment.generateInterfaces(send, resolver, handler, configuration)),
-        );
+        const endpoints = ROUTES.map((Class) => {
+            // @ts-ignore
+            const entry = new Class(resolver, handler, send, configuration);
+            return getAPIEndpoints(entry);
+        })
+            .flat();
 
-        for (const attachment of resolvedAttachments) {
-            attachment.forEach((value) => {
-                const secure = value.secure ?? [];
-                const handle = (req: Request, res: Response) => value.handle(req, res, () => false);
+        endpoints.forEach((endpoint) => {
+            const secure = endpoint.roles ?? false;
+            const handle = (req: Request, res: Response) => {
+                let {
+                    query,
+                    body,
+                } = req;
 
-                if (typeof (secure) !== 'boolean') {
-                    this._apiRouter[value.action].bind(this._apiRouter)(
-                        value.path,
-                        this._protector(orProtect(...secure)),
-                        (req, res) => {
-                            if (req.uemsUser === undefined) {
-                                res.sendStatus(constants.HTTP_STATUS_UNAUTHORIZED);
-                                return;
-                            }
+                if (endpoint.query) {
+                    const parse = endpoint.query.safeParse(query);
+                    if (!parse.success) {
+                        sendZodError(res, parse.error);
+                        return;
+                    }
 
-                            handle(req, res);
-                        },
-                    );
-                } else {
-                    this._apiRouter[value.action].bind(this._apiRouter)(value.path, handle);
+                    query = parse.data;
                 }
 
-                __.info(`[register endpoints]: trying to register ${value.action} with path ${value.path}`, {
-                    secure,
-                });
-            });
-        }
+                if (endpoint.body) {
+                    const parse = endpoint.body.safeParse(body);
+                    if (!parse.success) {
+                        sendZodError(res, parse.error);
+                        return;
+                    }
+
+                    body = parse.data;
+                }
+
+                console.log(endpoint.handler);
+                endpoint.handler(req, res, query, body);
+            };
+
+            if (typeof (secure) !== 'boolean') {
+                this._apiRouter[methodToString(endpoint.method)].bind(this._apiRouter)(
+                    endpoint.simpleRoute,
+                    this._protector(orProtect(...secure)),
+                    (req, res) => {
+                        if (req.uemsUser === undefined) {
+                            res.sendStatus(constants.HTTP_STATUS_UNAUTHORIZED);
+                            return;
+                        }
+
+                        handle(req, res);
+                    },
+                );
+            } else {
+                this._apiRouter[methodToString(endpoint.method)].bind(this._apiRouter)(endpoint.simpleRoute, handle);
+            }
+
+            let logMessage = `[endpoints]: ${methodToString(endpoint.method)
+                .toUpperCase()} ${endpoint.route}  `;
+            if (endpoint.roles) {
+                logMessage += `[✓] secure (${endpoint.roles.join(',')})  `;
+            } else {
+                logMessage += '[ ] secure  ';
+            }
+
+            if (endpoint.query) {
+                logMessage += '[✓] query validator  ';
+            } else {
+                logMessage += '[ ] query validator  ';
+            }
+
+            if (endpoint.body) {
+                logMessage += '[✓] body validator  ';
+            } else {
+                logMessage += '[ ] body validator  ';
+            }
+
+            _.system.info(logMessage);
+        });
+        //
+        // const resolvedAttachments = await Promise.all(
+        //     attachments.map((attachment) => attachment.generateInterfaces(send, resolver, handler, configuration)),
+        // );
+        //
+        // for (const attachment of resolvedAttachments) {
+        //     attachment.forEach((value) => {
+        //         const secure = value.secure ?? [];
+        //         const handle = (req: Request, res: Response) => value.handle(req, res, () => false);
+        //
+        //         if (typeof (secure) !== 'boolean') {
+        //             this._apiRouter[value.action].bind(this._apiRouter)(
+        //                 value.path,
+        //                 this._protector(orProtect(...secure)),
+        //                 (req, res) => {
+        //                     if (req.uemsUser === undefined) {
+        //                         res.sendStatus(constants.HTTP_STATUS_UNAUTHORIZED);
+        //                         return;
+        //                     }
+        //
+        //                     handle(req, res);
+        //                 },
+        //             );
+        //         } else {
+        //             this._apiRouter[value.action].bind(this._apiRouter)(value.path, handle);
+        //         }
+        //
+        //         __.info(`[register endpoints]: trying to register ${value.action} with path ${value.path}`, {
+        //             secure,
+        //         });
+        //     });
+        // }
     }
 
     async react(assert: (assert: AssertUserMessage) => void) {

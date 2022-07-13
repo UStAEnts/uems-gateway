@@ -32,7 +32,7 @@ const GATEWAY_EXCHANGE: string = 'gateway';
 // The exchange used for fanning / distributing requests out to the microservices.
 const REQUEST_EXCHANGE: string = 'request';
 
-type SecureRoles = 'admin' | 'extended' | 'ops' | 'ents';
+export type SecureRoles = 'admin' | 'extended' | 'ops' | 'ents';
 
 type OutStandingReq = {
     unique_id: Number,
@@ -579,5 +579,13 @@ export namespace GatewayMk2 {
             configuration: Configuration,
         ): GatewayInterfaceActionType[] | Promise<GatewayInterfaceActionType[]>;
 
+    }
+
+    export abstract class Attachment {
+        public constructor(protected resolver: EntityResolver,
+            protected handler: GatewayMk2.GatewayMessageHandler,
+            protected send: GatewayMk2.SendRequestFunction,
+            protected config: Configuration) {
+        }
     }
 }
