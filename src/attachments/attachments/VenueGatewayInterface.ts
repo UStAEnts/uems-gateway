@@ -64,7 +64,7 @@ export class VenueGatewayInterface extends Attachment {
         'Get a venue',
         'Get the properties of a single venue by ID',
     )
-    private async handleGetRequest(request: Request, response: Response, _0: undefined, _1: undefined) {
+    public async handleGetRequest(request: Request, response: Response, _0: undefined, _1: undefined) {
         const outgoingMessage: ReadVenueMessage = {
             msg_id: MessageUtilities.generateMessageIdentifier(),
             msg_intention: 'READ',
@@ -98,7 +98,7 @@ export class VenueGatewayInterface extends Attachment {
         'Delete a venue',
         'Removes a venue from the system (physical buildings are unfortunately not removed)',
     )
-    private async handleDeleteRequest(request: Request, response: Response, _0: undefined, _1: undefined) {
+    public async handleDeleteRequest(request: Request, response: Response, _0: undefined, _1: undefined) {
         if (this.resolver && this.handler) {
             await removeAndReply({
                 assetID: request.params.id,
@@ -129,7 +129,7 @@ export class VenueGatewayInterface extends Attachment {
         'Adds a new venue with the associated properties, building construction is left as an exercise '
         + 'to the reader',
     )
-    private async handleCreateRequest(request: Request, response: Response, _: undefined, body: PostVenueBody) {
+    public async handleCreateRequest(request: Request, response: Response, _: undefined, body: PostVenueBody) {
         const outgoingMessage: CreateVenueMessage = {
             msg_id: MessageUtilities.generateMessageIdentifier(),
             msg_intention: 'CREATE',
@@ -174,7 +174,7 @@ export class VenueGatewayInterface extends Attachment {
         'Search for venues against a range of properties',
     )
     @warn('Query parameters are incomplete against the range of possible options defined in uemscommlib')
-    private async handleReadRequest(request: Request, response: Response, query: GetVenueQuery, _: undefined) {
+    public async handleReadRequest(request: Request, response: Response, query: GetVenueQuery, _: undefined) {
         const outgoingMessage: ReadVenueMessage = {
             msg_id: MessageUtilities.generateMessageIdentifier(),
             msg_intention: 'READ',
@@ -237,7 +237,7 @@ export class VenueGatewayInterface extends Attachment {
         'Update a venue',
         'Update the properties of a venue as listed',
     )
-    private async handleUpdateRequest(request: Request, response: Response, _: undefined, body: PatchVenueBody) {
+    public async handleUpdateRequest(request: Request, response: Response, _: undefined, body: PatchVenueBody) {
         const outgoingMessage: UpdateVenueMessage = {
             msg_id: MessageUtilities.generateMessageIdentifier(),
             msg_intention: 'UPDATE',

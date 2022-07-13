@@ -73,7 +73,7 @@ export class TopicGatewayInterface extends Attachment {
         'Search topics',
         'This will return all topics matching the provided filters',
     )
-    private async queryTopicsHandler(req: Request, res: Response, query: QueryTopicQuery, _: undefined) {
+    public async queryTopicsHandler(req: Request, res: Response, query: QueryTopicQuery, _: undefined) {
         const outgoing: ReadTopicMessage = {
             msg_id: MessageUtilities.generateMessageIdentifier(),
             msg_intention: 'READ',
@@ -106,7 +106,7 @@ export class TopicGatewayInterface extends Attachment {
         'Get a topic',
         'Returns all properties associated with the given topic',
     )
-    private async getTopicHandler(req: Request, res: Response, _0: undefined, _1: undefined) {
+    public async getTopicHandler(req: Request, res: Response, _0: undefined, _1: undefined) {
         const outgoingMessage: ReadTopicMessage = {
             msg_id: MessageUtilities.generateMessageIdentifier(),
             msg_intention: 'READ',
@@ -142,7 +142,7 @@ export class TopicGatewayInterface extends Attachment {
         'Create a new topic',
         'This will create a new topic with the specified details, returning the newly generated ID',
     )
-    private async createTopicHandler(req: Request, res: Response, _: undefined, body: PostTopicBody) {
+    public async createTopicHandler(req: Request, res: Response, _: undefined, body: PostTopicBody) {
         const outgoingMessage: CreateTopicMessage = {
             msg_id: MessageUtilities.generateMessageIdentifier(),
             msg_intention: 'CREATE',
@@ -176,7 +176,7 @@ export class TopicGatewayInterface extends Attachment {
         'Delete a topic',
         'This will remove a topic provided there are no critical dependencies on it',
     )
-    private async deleteTopicHandler(req: Request, res: Response, _0: undefined, _1: undefined) {
+    public async deleteTopicHandler(req: Request, res: Response, _0: undefined, _1: undefined) {
         if (this.resolver && this.handler) {
             await removeAndReply({
                 assetID: req.params.id,
@@ -214,7 +214,7 @@ export class TopicGatewayInterface extends Attachment {
         'Update a topic',
         'This will update the specified properties against the provided topic',
     )
-    private async updateTopicHandler(req: Request, res: Response, _: undefined, body: PatchTopicBody) {
+    public async updateTopicHandler(req: Request, res: Response, _: undefined, body: PatchTopicBody) {
         const outgoing: UpdateTopicMessage = {
             msg_id: MessageUtilities.generateMessageIdentifier(),
             msg_intention: 'UPDATE',

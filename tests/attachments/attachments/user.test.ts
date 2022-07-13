@@ -1,18 +1,17 @@
 import { UserGatewayInterface } from '../../../src/attachments/attachments/UserGatewayInterface';
 import { GatewayMk2 } from '../../../src/Gateway';
 import { GET_USER_INVALID, GET_USER_VALID, PATCH_USER_USERID_VALID, POST_USER_MISSING, POST_USER_VALID } from '../../test-api-data';
-import { testMissingParameters, testParameterTypes, testValidRoute } from '../../utils';
-import GatewayInterfaceActionType = GatewayMk2.GatewayInterfaceActionType;
+import { AttachmentFunction, testMissingParameters, testParameterTypes, testValidRoute } from '../../utils';
 import { EntityResolver } from "../../../src/resolver/EntityResolver";
 
 describe('UserGatewayInterface.ts', () => {
     const send = jest.fn();
     let routes: {
-        'get.user': GatewayInterfaceActionType,
-        'post.user': GatewayInterfaceActionType,
-        'get.user.id': GatewayInterfaceActionType,
-        'delete.user.id': GatewayInterfaceActionType,
-        'patch.user.id': GatewayInterfaceActionType,
+        'get.user': AttachmentFunction,
+        // 'post.user': AttachmentFunction,
+        'get.user.id': AttachmentFunction,
+        'delete.user.id': AttachmentFunction,
+        'patch.user.id': AttachmentFunction,
     };
 
     beforeEach(() => {
@@ -24,19 +23,14 @@ describe('UserGatewayInterface.ts', () => {
         const resolver: EntityResolver = null;
         // @ts-ignore
         const handler: GatewayMessageHandler = null;
-        const entries = await new UserGatewayInterface().generateInterfaces(send, resolver, handler);
+        const entries = new UserGatewayInterface(resolver, handler, send, null as any);
 
         routes = {
-            'get.user': entries
-                .find((e) => e.action === 'get' && e.path === '/user') as GatewayInterfaceActionType,
-            'post.user': entries
-                .find((e) => e.action === 'post' && e.path === '/user') as GatewayInterfaceActionType,
-            'get.user.id': entries
-                .find((e) => e.action === 'get' && e.path === '/user/:id') as GatewayInterfaceActionType,
-            'delete.user.id': entries
-                .find((e) => e.action === 'delete' && e.path === '/user/:id') as GatewayInterfaceActionType,
-            'patch.user.id': entries
-                .find((e) => e.action === 'patch' && e.path === '/user/:id') as GatewayInterfaceActionType,
+            'get.user': entries.queryUsersHandler,
+            // 'post.user': entries.cre,
+            'get.user.id': entries.getUserHandler,
+            'delete.user.id': entries.deleteUserHandler,
+            'patch.user.id': entries.updateUserHandler,
         };
     });
     describe('GET /user', () => {

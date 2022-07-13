@@ -1,22 +1,21 @@
 import { FileGatewayInterface } from '../../../src/attachments/attachments/FileGatewayInterface';
 import { EntityResolver } from '../../../src/resolver/EntityResolver';
 import { GatewayMk2 } from '../../../src/Gateway';
-import GatewayInterfaceActionType = GatewayMk2.GatewayInterfaceActionType;
 import { GET_FILES_INVALID, GET_FILES_VALID, PATCH_FILES_FILEID_VALID, POST_EVENTS_EVENTID_FILES_MISSING, POST_EVENTS_EVENTID_FILES_VALID, POST_FILES_INVALID, POST_FILES_MISSING, POST_FILES_VALID } from '../../test-api-data';
-import { testMissingParameters, testParameterTypes, testValidRoute } from '../../utils';
+import { AttachmentFunction, testMissingParameters, testParameterTypes, testValidRoute } from '../../utils';
 
 describe('FileGatewayInterface.ts', () => {
     const send = jest.fn();
     let routes: {
-        'get.files': GatewayInterfaceActionType,
-        'post.files': GatewayInterfaceActionType,
-        'get.files.id': GatewayInterfaceActionType,
-        'patch.files.id': GatewayInterfaceActionType,
-        'delete.files.id': GatewayInterfaceActionType,
-        'get.files.id.events': GatewayInterfaceActionType,
-        'get.events.id.files': GatewayInterfaceActionType,
-        'post.events.id.files': GatewayInterfaceActionType,
-        'delete.events.eventID.files.fileID': GatewayInterfaceActionType,
+        'get.files': AttachmentFunction,
+        'post.files': AttachmentFunction,
+        'get.files.id': AttachmentFunction,
+        'patch.files.id': AttachmentFunction,
+        'delete.files.id': AttachmentFunction,
+        'get.files.id.events': AttachmentFunction,
+        'get.events.id.files': AttachmentFunction,
+        'post.events.id.files': AttachmentFunction,
+        'delete.events.eventID.files.fileID': AttachmentFunction,
     };
 
     beforeEach(() => {
@@ -28,28 +27,19 @@ describe('FileGatewayInterface.ts', () => {
         const resolver: EntityResolver = null;
         // @ts-ignore
         const handler: GatewayMessageHandler = null;
-        const entries = await new FileGatewayInterface().generateInterfaces(send, resolver, handler);
+        const entries = new FileGatewayInterface(resolver, handler, send, null as any);
 
         routes = {
-            'get.files': entries
-                .find((e) => e.action === 'get' && e.path === '/files') as GatewayInterfaceActionType,
-            'post.files': entries
-                .find((e) => e.action === 'post' && e.path === '/files') as GatewayInterfaceActionType,
-            'get.files.id': entries
-                .find((e) => e.action === 'get' && e.path === '/files/:id') as GatewayInterfaceActionType,
-            'patch.files.id': entries
-                .find((e) => e.action === 'patch' && e.path === '/files/:id') as GatewayInterfaceActionType,
-            'delete.files.id': entries
-                .find((e) => e.action === 'delete' && e.path === '/files/:id') as GatewayInterfaceActionType,
-            'get.files.id.events': entries
-                .find((e) => e.action === 'get' && e.path === '/files/:id/events') as GatewayInterfaceActionType,
+            'get.files': entries.queryFilesHandler,
+            'post.files': entries.createFileHandler,
+            'get.files.id': entries.getFileHandler,
+            'patch.files.id': entries.updateFileHandler,
+            'delete.files.id': entries.deleteFileHandler,
+            'get.files.id.events': entries.getEventsByFileHandler,
 
-            'get.events.id.files': entries
-                .find((e) => e.action === 'get' && e.path === '/events/:id/files') as GatewayInterfaceActionType,
-            'post.events.id.files': entries
-                .find((e) => e.action === 'post' && e.path === '/events/:id/files') as GatewayInterfaceActionType,
-            'delete.events.eventID.files.fileID': entries
-                .find((e) => e.action === 'delete' && e.path === '/events/:eventID/files/:fileID') as GatewayInterfaceActionType,
+            'get.events.id.files': entries.getFilesByEventsHandler,
+            'post.events.id.files': entries.postFileToEventHandler,
+            'delete.events.eventID.files.fileID': entries.deleteFileFromEventHandler,
         };
     });
 

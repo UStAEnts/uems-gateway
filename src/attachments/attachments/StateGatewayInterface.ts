@@ -69,7 +69,7 @@ export class StateGatewayInterface extends Attachment {
         'Search for a state',
         'Returns all states matching a particular query, otherwise return all the states in the system',
     )
-    private async queryStatesHandler(req: Request, res: Response, query: GetStateQuery, _: undefined) {
+    public async queryStatesHandler(req: Request, res: Response, query: GetStateQuery, _: undefined) {
         const outgoing: ReadStateMessage = {
             msg_id: MessageUtilities.generateMessageIdentifier(),
             msg_intention: 'READ',
@@ -102,7 +102,7 @@ export class StateGatewayInterface extends Attachment {
         'Gets a state',
         'Returns the properties of a single individual state',
     )
-    private async getStateHandler(req: Request, res: Response, _0: undefined, _1: undefined) {
+    public async getStateHandler(req: Request, res: Response, _0: undefined, _1: undefined) {
         const outgoingMessage: ReadStateMessage = {
             msg_id: MessageUtilities.generateMessageIdentifier(),
             msg_intention: 'READ',
@@ -137,7 +137,7 @@ export class StateGatewayInterface extends Attachment {
         'Creates a state',
         'This will insert the specified state into the system and return the newly appointed ID',
     )
-    private async createStateHandler(req: Request, res: Response, _: undefined, body: PostStateBody) {
+    public async createStateHandler(req: Request, res: Response, _: undefined, body: PostStateBody) {
         const outgoingMessage: CreateStateMessage = {
             msg_id: MessageUtilities.generateMessageIdentifier(),
             msg_intention: 'CREATE',
@@ -170,7 +170,7 @@ export class StateGatewayInterface extends Attachment {
         'Deletes a state',
         'This will remove a state from the system provided it is not a required dependency of any other object.',
     )
-    private async deleteStateHandler(req: Request, res: Response, _0: undefined, _1: undefined) {
+    public async deleteStateHandler(req: Request, res: Response, _0: undefined, _1: undefined) {
         if (this.resolver && this.handler) {
             await removeAndReply({
                 assetID: req.params.id,
@@ -209,7 +209,7 @@ export class StateGatewayInterface extends Attachment {
         'Update the properties of a state',
         'The values provided in the body will be updated in the state',
     )
-    private async updateStateHandler(req: Request, res: Response, _: undefined, body: PatchStateBody) {
+    public async updateStateHandler(req: Request, res: Response, _: undefined, body: PatchStateBody) {
         const outgoing: UpdateStateMessage = {
             msg_id: MessageUtilities.generateMessageIdentifier(),
             msg_intention: 'UPDATE',
@@ -240,7 +240,7 @@ export class StateGatewayInterface extends Attachment {
         'This will return the list of states that have been marked as requiring manual review when '
         + 'assigned to events',
     )
-    private async getReviewStates(req: Request, res: Response, _0: undefined, _1: undefined) {
+    public async getReviewStates(req: Request, res: Response, _0: undefined, _1: undefined) {
         if (this.config) {
             try {
                 const states = await this.config.getReviewStates();

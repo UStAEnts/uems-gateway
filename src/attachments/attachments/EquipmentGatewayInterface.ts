@@ -145,7 +145,7 @@ export class EquipmentGatewayInterface extends Attachment {
         'Get details for a single equipment entry',
         'Retrieves information about a single equipment entry based on ID. ',
     )
-    private async getEquipmentHandler(req: Request, res: Response, _0: {}, _1: undefined) {
+    public async getEquipmentHandler(req: Request, res: Response, _0: {}, _1: undefined) {
         const outgoingMessage: ReadEquipmentMessage = {
             msg_id: MessageUtilities.generateMessageIdentifier(),
             msg_intention: 'READ',
@@ -189,7 +189,7 @@ export class EquipmentGatewayInterface extends Attachment {
     )
     @tag('equipment')
     @describe('Creates a new equipment asset', 'This adds a new piece of equipment to the entry catalogue')
-    private async createEquipmentHandler(req: Request, res: Response, _: undefined, body: CreateEquipmentBody) {
+    public async createEquipmentHandler(req: Request, res: Response, _: undefined, body: CreateEquipmentBody) {
         const outgoingMessage: CreateEquipmentMessage = {
             msg_id: MessageUtilities.generateMessageIdentifier(),
             msg_intention: 'CREATE',
@@ -236,7 +236,7 @@ export class EquipmentGatewayInterface extends Attachment {
         'Deletes a piece of equipment',
         'Removes a single equipment entry from the database',
     )
-    private async deleteEquipmentHandler(req: Request, res: Response, _0: undefined, _1: undefined) {
+    public async deleteEquipmentHandler(req: Request, res: Response, _0: undefined, _1: undefined) {
         if (this.resolver && this.handler) {
             await removeAndReply({
                 assetID: req.params.id,
@@ -283,7 +283,7 @@ export class EquipmentGatewayInterface extends Attachment {
         'Deletes an equipment entry',
         'Deletes this piece of equipment from the records unless there are dependent objects on it',
     )
-    private async updateEquipmentHandler(req: Request, res: Response, _: undefined, body: UpdateEquipmentBody) {
+    public async updateEquipmentHandler(req: Request, res: Response, _: undefined, body: UpdateEquipmentBody) {
         const outgoing: UpdateEquipmentMessage = {
             msg_id: MessageUtilities.generateMessageIdentifier(),
             msg_intention: 'UPDATE',

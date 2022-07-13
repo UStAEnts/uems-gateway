@@ -85,7 +85,7 @@ export class FileGatewayInterface extends Attachment {
         'Search for files',
         'Return files matching the given query',
     )
-    private async queryFilesHandler(req: Request, res: Response, query: GetFilesHandlerQuery, _: undefined) {
+    public async queryFilesHandler(req: Request, res: Response, query: GetFilesHandlerQuery, _: undefined) {
         let localOnly = true;
         if (req.kauth && req.kauth.grant && req.kauth.grant.access_token) {
             if (orProtect('ops', 'ents', 'admin')(req.kauth.grant.access_token)) localOnly = false;
@@ -143,7 +143,7 @@ export class FileGatewayInterface extends Attachment {
         'Get a single file',
         'Returns properties for a single file entry',
     )
-    private async getFileHandler(req: Request, res: Response, _0: undefined, _1: undefined) {
+    public async getFileHandler(req: Request, res: Response, _0: undefined, _1: undefined) {
         let localOnly = true;
         if (req.kauth && req.kauth.grant && req.kauth.grant.access_token) {
             if (orProtect('ops', 'ents', 'admin')(req.kauth.grant.access_token)) localOnly = false;
@@ -195,7 +195,7 @@ export class FileGatewayInterface extends Attachment {
         + 'within a certain time frame, the metadata record will be automatically deleted so it is recommended you '
         + 'upload the file immediately after.',
     )
-    private async createFileHandler(req: Request, res: Response, _: undefined, body: PostFileBody) {
+    public async createFileHandler(req: Request, res: Response, _: undefined, body: PostFileBody) {
         const outgoingMessage: CreateFileMessage = {
             msg_id: MessageUtilities.generateMessageIdentifier(),
             msg_intention: 'CREATE',
@@ -251,7 +251,7 @@ export class FileGatewayInterface extends Attachment {
         'Delete a file',
         'This will remove a file from the system providing no other objects are currently depending on it',
     )
-    private async deleteFileHandler(req: Request, res: Response, _0: undefined, _1: undefined) {
+    public async deleteFileHandler(req: Request, res: Response, _0: undefined, _1: undefined) {
         if (this.resolver && this.handler) {
             await removeAndReply({
                 assetID: req.params.id,
@@ -282,7 +282,7 @@ export class FileGatewayInterface extends Attachment {
         'Update a file',
         'Update the name and type of a file currently in the system',
     )
-    private async updateFileHandler(req: Request, res: Response, _: undefined, body: PatchFileBody) {
+    public async updateFileHandler(req: Request, res: Response, _: undefined, body: PatchFileBody) {
         const outgoing: UpdateFileMessage = {
             msg_id: MessageUtilities.generateMessageIdentifier(),
             msg_intention: 'UPDATE',
@@ -314,7 +314,7 @@ export class FileGatewayInterface extends Attachment {
         'Get all events associated with a file',
         'Returns all events which have been bound with this file',
     )
-    private async getEventsByFileHandler(req: Request, res: Response, _0: undefined, _1: undefined) {
+    public async getEventsByFileHandler(req: Request, res: Response, _0: undefined, _1: undefined) {
         let localOnly = true;
         if (req.kauth && req.kauth.grant && req.kauth.grant.access_token) {
             if (orProtect('ops', 'ents', 'admin')(req.kauth.grant.access_token)) localOnly = false;
@@ -353,7 +353,7 @@ export class FileGatewayInterface extends Attachment {
         'Get all files for an event',
         'Returns all files associated with a given event',
     )
-    private async getFilesByEventsHandler(req: Request, res: Response, _0: undefined, _1: undefined) {
+    public async getFilesByEventsHandler(req: Request, res: Response, _0: undefined, _1: undefined) {
         let localOnly = true;
         if (req.kauth && req.kauth.grant && req.kauth.grant.access_token) {
             if (orProtect('ops', 'ents', 'admin')(req.kauth.grant.access_token)) localOnly = false;
@@ -397,7 +397,7 @@ export class FileGatewayInterface extends Attachment {
         'Link a file to an event',
         'Links a file by ID to the event ID specified in the path',
     )
-    private async postFileToEventHandler(req: Request, res: Response, _: undefined, body: { fileID: string }) {
+    public async postFileToEventHandler(req: Request, res: Response, _: undefined, body: { fileID: string }) {
         let localOnly = true;
         if (req.kauth && req.kauth.grant && req.kauth.grant.access_token) {
             if (orProtect('ops', 'ents', 'admin')(req.kauth.grant.access_token)) localOnly = false;
@@ -438,7 +438,7 @@ export class FileGatewayInterface extends Attachment {
         'Unlink a file an event',
         'Removes any link between this file and event if one exists',
     )
-    private async deleteFileFromEventHandler(req: Request, res: Response, _0: undefined, _1: undefined) {
+    public async deleteFileFromEventHandler(req: Request, res: Response, _0: undefined, _1: undefined) {
         const outgoingMessage: UnbindFilesFromEventMessage = {
             msg_id: MessageUtilities.generateMessageIdentifier(),
             msg_intention: 'DELETE',

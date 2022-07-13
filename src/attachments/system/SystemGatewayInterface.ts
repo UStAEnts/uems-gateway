@@ -30,7 +30,7 @@ export class SystemGatewayInterface extends Attachment {
         'Self introspection',
         'Details of your user account, unfortunately less philosophical answer',
     )
-    private async me(req: Request, res: Response, _0: undefined, _1: undefined) {
+    public async me(req: Request, res: Response, _0: undefined, _1: undefined) {
         res.json({
             username: req.uemsUser.username,
             profile: req.uemsUser.profile,
@@ -53,7 +53,7 @@ export class SystemGatewayInterface extends Attachment {
         + 'features are currently enabled and exposed to users and which are hidden only in the backend. This only '
         + 'modifies what the frontend should render - all features are available through the API!',
     )
-    private async getSupportedFeatures(req: Request, res: Response, _0: undefined, _1: undefined){
+    public async getSupportedFeatures(req: Request, res: Response, _0: undefined, _1: undefined){
         // TODO: make this config based / user based
         res.json({
             equipment: false,

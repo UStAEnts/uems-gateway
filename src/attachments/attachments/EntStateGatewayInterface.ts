@@ -68,7 +68,7 @@ export class EntStateGatewayInterface extends Attachment {
         'Queries ent state',
         'Supports querying a set of ents states based on a range of properties',
     )
-    private async queryEntStatesHandler(req: Request, res: Response, query: QueryQueryType, _: undefined) {
+    public async queryEntStatesHandler(req: Request, res: Response, query: QueryQueryType, _: undefined) {
         const outgoing: ReadEntStateMessage = {
             msg_id: MessageUtilities.generateMessageIdentifier(),
             msg_intention: 'READ',
@@ -99,7 +99,7 @@ export class EntStateGatewayInterface extends Attachment {
         'Retrieve a single ent state',
         'Returns a single ent state record based on its unique ID',
     )
-    private async getEntStateHandler(req: Request, res: Response, _0: undefined, _1: undefined) {
+    public async getEntStateHandler(req: Request, res: Response, _0: undefined, _1: undefined) {
         const outgoingMessage: ReadEntStateMessage = {
             msg_id: MessageUtilities.generateMessageIdentifier(),
             msg_intention: 'READ',
@@ -134,7 +134,7 @@ export class EntStateGatewayInterface extends Attachment {
         'Create a new ent state',
         'Creates a new ent state and returns its identifier based on the body provided',
     )
-    private async createEntStateHandler(req: Request, res: Response, _: undefined, body: CreateBodyType) {
+    public async createEntStateHandler(req: Request, res: Response, _: undefined, body: CreateBodyType) {
         const outgoingMessage: CreateEntStateMessage = {
             msg_id: MessageUtilities.generateMessageIdentifier(),
             msg_intention: 'CREATE',
@@ -167,7 +167,7 @@ export class EntStateGatewayInterface extends Attachment {
         'Delete an ents state',
         'Deletes an ent state from the system provided there are no other objects depending on this object',
     )
-    private async deleteEntStateHandler(req: Request, res: Response, _0: undefined, _1: undefined) {
+    public async deleteEntStateHandler(req: Request, res: Response, _0: undefined, _1: undefined) {
         if (this.resolver && this.handler) {
             await removeAndReply({
                 assetID: req.params.id,
@@ -203,7 +203,7 @@ export class EntStateGatewayInterface extends Attachment {
         'Updates an ent state',
         'Updates the properties of an ents state with the modifications specified in the body',
     )
-    private async updateEntStateHandler(req: Request, res: Response, _: undefined, body: UpdateBodyType) {
+    public async updateEntStateHandler(req: Request, res: Response, _: undefined, body: UpdateBodyType) {
         const outgoing: UpdateEntStateMessage = {
             msg_id: MessageUtilities.generateMessageIdentifier(),
             msg_intention: 'UPDATE',

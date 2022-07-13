@@ -1,22 +1,20 @@
 import { EntityResolver } from '../../../src/resolver/EntityResolver';
-import { GatewayMk2 } from '../../../src/Gateway';
-import GatewayInterfaceActionType = GatewayMk2.GatewayInterfaceActionType;
 import { EventGatewayAttachment } from '../../../src/attachments/attachments/EventGatewayAttachment';
 import { GET_EVENTS_INVALID, GET_EVENTS_VALID, PATCH_EVENTS_EVENTID_INVALID, PATCH_EVENTS_EVENTID_VALID, POST_EVENTS_EVENTID_COMMENTS_INVALID, POST_EVENTS_EVENTID_COMMENTS_MISSING, POST_EVENTS_EVENTID_COMMENTS_VALID, POST_EVENTS_INVALID, POST_EVENTS_MISSING, POST_EVENTS_VALID } from '../../test-api-data';
-import { testMissingParameters, testParameterTypes, testValidRoute } from '../../utils';
+import { AttachmentFunction, testMissingParameters, testParameterTypes, testValidRoute } from '../../utils';
 
 describe('EventGatewayAttachment.ts', () => {
     const send = jest.fn();
     let routes: {
-        'get.events': GatewayInterfaceActionType,
-        'post.events': GatewayInterfaceActionType,
-        'get.events.id': GatewayInterfaceActionType,
-        'patch.events.id': GatewayInterfaceActionType,
-        'delete.events.id': GatewayInterfaceActionType,
-        'get.events.id.comments': GatewayInterfaceActionType,
-        'post.events.id.comments': GatewayInterfaceActionType,
-        'get.states.id.events': GatewayInterfaceActionType,
-        'get.venues.id.events': GatewayInterfaceActionType,
+        'get.events': AttachmentFunction,
+        'post.events': AttachmentFunction,
+        'get.events.id': AttachmentFunction,
+        'patch.events.id': AttachmentFunction,
+        'delete.events.id': AttachmentFunction,
+        'get.events.id.comments': AttachmentFunction,
+        'post.events.id.comments': AttachmentFunction,
+        'get.states.id.events': AttachmentFunction,
+        'get.venues.id.events': AttachmentFunction,
     };
 
     beforeEach(() => {
@@ -28,32 +26,18 @@ describe('EventGatewayAttachment.ts', () => {
         const resolver: EntityResolver = null;
         // @ts-ignore
         const handler: GatewayMessageHandler = null;
-        const entries = await new EventGatewayAttachment().generateInterfaces(
-            send,
-            resolver,
-            handler,
-            undefined as any,
-        );
+        const entries = new EventGatewayAttachment(resolver, handler, send, null as any);
 
         routes = {
-            'get.events': entries
-                .find((e) => e.action === 'get' && e.path === '/events') as GatewayInterfaceActionType,
-            'post.events': entries
-                .find((e) => e.action === 'post' && e.path === '/events') as GatewayInterfaceActionType,
-            'get.events.id': entries
-                .find((e) => e.action === 'get' && e.path === '/events/:id') as GatewayInterfaceActionType,
-            'patch.events.id': entries
-                .find((e) => e.action === 'patch' && e.path === '/events/:id') as GatewayInterfaceActionType,
-            'delete.events.id': entries
-                .find((e) => e.action === 'delete' && e.path === '/events/:id') as GatewayInterfaceActionType,
-            'get.events.id.comments': entries
-                .find((e) => e.action === 'get' && e.path === '/events/:id/comments') as GatewayInterfaceActionType,
-            'post.events.id.comments': entries
-                .find((e) => e.action === 'post' && e.path === '/events/:id/comments') as GatewayInterfaceActionType,
-            'get.states.id.events': entries
-                .find((e) => e.action === 'get' && e.path === '/states/:id/events') as GatewayInterfaceActionType,
-            'get.venues.id.events': entries
-                .find((e) => e.action === 'get' && e.path === '/venues/:id/events') as GatewayInterfaceActionType,
+            'get.events': entries.getEventsHandler,
+            'post.events': entries.createEventHandler,
+            'get.events.id': entries.getEventHandler,
+            'patch.events.id': entries.updateEventHandler,
+            'delete.events.id': entries.deleteEventHandler,
+            'get.events.id.comments': entries.getCommentsForEvent,
+            'post.events.id.comments': entries.postCommentsForEvent,
+            'get.states.id.events': entries.getEventsByState,
+            'get.venues.id.events': entries.getEventsByVenue,
         };
     });
 

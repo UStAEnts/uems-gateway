@@ -2,17 +2,16 @@ import { GatewayMk2 } from '../../../src/Gateway';
 import { VenueGatewayInterface } from '../../../src/attachments/attachments/VenueGatewayInterface';
 import { EntityResolver } from '../../../src/resolver/EntityResolver';
 import { GET_VENUES_INVALID, GET_VENUES_VALID, PATCH_VENUES_VENUEID_INVALID, PATCH_VENUES_VENUEID_VALID, POST_VENUES_INVALID, POST_VENUES_MISSING, POST_VENUES_VALID } from '../../test-api-data';
-import { testMissingParameters, testParameterTypes, testValidRoute } from '../../utils';
-import GatewayInterfaceActionType = GatewayMk2.GatewayInterfaceActionType;
+import { AttachmentFunction, testMissingParameters, testParameterTypes, testValidRoute } from '../../utils';
 
 describe('VenueGatewayInterface.ts', () => {
     const send = jest.fn();
     let routes: {
-        'get.venues': GatewayInterfaceActionType,
-        'get.venues.id': GatewayInterfaceActionType,
-        'post.venues': GatewayInterfaceActionType,
-        'delete.venues.id': GatewayInterfaceActionType,
-        'patch.venues.id': GatewayInterfaceActionType,
+        'get.venues': AttachmentFunction,
+        'get.venues.id': AttachmentFunction,
+        'post.venues': AttachmentFunction,
+        'delete.venues.id': AttachmentFunction,
+        'patch.venues.id': AttachmentFunction,
     };
 
     beforeEach(() => {
@@ -24,19 +23,14 @@ describe('VenueGatewayInterface.ts', () => {
         const resolver: EntityResolver = null;
         // @ts-ignore
         const handler: GatewayMessageHandler = null;
-        const entries = await new VenueGatewayInterface().generateInterfaces(send, resolver, handler);
+        const entries = new VenueGatewayInterface(resolver, handler, send, null as any);
 
         routes = {
-            'get.venues': entries
-                .find((e) => e.action === 'get' && e.path === '/venues') as GatewayInterfaceActionType,
-            'get.venues.id': entries
-                .find((e) => e.action === 'get' && e.path === '/venues/:id') as GatewayInterfaceActionType,
-            'post.venues': entries
-                .find((e) => e.action === 'post' && e.path === '/venues') as GatewayInterfaceActionType,
-            'delete.venues.id': entries
-                .find((e) => e.action === 'delete' && e.path === '/venues/:id') as GatewayInterfaceActionType,
-            'patch.venues.id': entries
-                .find((e) => e.action === 'patch' && e.path === '/venues/:id') as GatewayInterfaceActionType,
+            'get.venues': entries.handleReadRequest,
+            'get.venues.id': entries.handleGetRequest,
+            'post.venues': entries.handleCreateRequest,
+            'delete.venues.id': entries.handleDeleteRequest,
+            'patch.venues.id': entries.handleUpdateRequest,
         };
     });
 

@@ -69,7 +69,7 @@ export class SignupGatewayInterface extends Attachment {
         'Get signups',
         'Returns signups from the given event, filtered by the given opens',
     )
-    private async querySignupsHandler(req: Request, res: Response, query: GetSignupQuery, _: undefined) {
+    public async querySignupsHandler(req: Request, res: Response, query: GetSignupQuery, _: undefined) {
         const outgoing: ReadSignupMessage = {
             msg_id: MessageUtilities.generateMessageIdentifier(),
             msg_intention: 'READ',
@@ -123,7 +123,7 @@ export class SignupGatewayInterface extends Attachment {
         'Get details of a signup',
         'This will return details of a single signup identified by ID on an event if the record exists',
     )
-    private async getSignupHandler(req: Request, res: Response, _0: undefined, _1: undefined) {
+    public async getSignupHandler(req: Request, res: Response, _0: undefined, _1: undefined) {
         const outgoingMessage: ReadSignupMessage = {
             msg_id: MessageUtilities.generateMessageIdentifier(),
             msg_intention: 'READ',
@@ -166,7 +166,7 @@ export class SignupGatewayInterface extends Attachment {
         'With this endpoint you can register to join an event (authentication as ops or ents required), or '
         + 'sign another user up to the event (must be an admin)',
     )
-    private async createSignupHandler(req: Request, res: Response, _: undefined, body: PostSignupBody) {
+    public async createSignupHandler(req: Request, res: Response, _: undefined, body: PostSignupBody) {
         if (req.kauth && req.kauth.grant && req.kauth.grant.access_token) {
             if (req.params.signupUser && req.params.signupUser !== req.uemsUser.userID) {
                 // Signing up another user, mu for now
@@ -223,7 +223,7 @@ export class SignupGatewayInterface extends Attachment {
         'With this endpoint you can remove your own signup from an event or the sign up of another user '
         + '(if you are an ent, ops or admin)',
     )
-    private async deleteSignupHandler(req: Request, res: Response, _0: undefined, _1: undefined) {
+    public async deleteSignupHandler(req: Request, res: Response, _0: undefined, _1: undefined) {
         let localOnly = true;
         if (req.kauth && req.kauth.grant && req.kauth.grant.access_token) {
             if (orProtect('ops', 'ents', 'admin')(req.kauth.grant.access_token)) localOnly = false;
@@ -268,7 +268,7 @@ export class SignupGatewayInterface extends Attachment {
         'You can change the role of the signup on this signup on the provided event. If you are an admin '
         + 'you can edit any signup, otherwise it will only be your own signups',
     )
-    private async updateSignupHandler(req: Request, res: Response, _: undefined, body: { role: string }) {
+    public async updateSignupHandler(req: Request, res: Response, _: undefined, body: { role: string }) {
         let localOnly = true;
         if (req.kauth && req.kauth.grant && req.kauth.grant.access_token) {
             if (orProtect('admin')(req.kauth.grant.access_token)) {

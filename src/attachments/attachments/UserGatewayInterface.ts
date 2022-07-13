@@ -64,7 +64,7 @@ export class UserGatewayInterface extends Attachment {
         'This will allow you to query users by a range of properties. Emails will not be included unless '
         + 'you are a member of ops, ents or admin and queries by email will not be supported either',
     )
-    private async queryUsersHandler(req: Request, res: Response, query: GetUserQuery, _: undefined) {
+    public async queryUsersHandler(req: Request, res: Response, query: GetUserQuery, _: undefined) {
         const outgoing: ReadUserMessage = {
             msg_id: MessageUtilities.generateMessageIdentifier(),
             msg_intention: 'READ',
@@ -123,7 +123,7 @@ export class UserGatewayInterface extends Attachment {
         'Retrieves properties on a single user, emails will only be included if you are part of the ops, '
         + 'ents or admin groups',
     )
-    private async getUserHandler(req: Request, res: Response, _0: undefined, _1: undefined) {
+    public async getUserHandler(req: Request, res: Response, _0: undefined, _1: undefined) {
         const outgoingMessage: ReadUserMessage = {
             msg_id: MessageUtilities.generateMessageIdentifier(),
             msg_intention: 'READ',
@@ -202,7 +202,7 @@ export class UserGatewayInterface extends Attachment {
         + 'through the associated keycloak or user management platform. If you delete a user their records will be '
         + 'regenerated from keycloak on their next login / authentication assertion',
     )
-    private async deleteUserHandler(req: Request, res: Response, _0: undefined, _1: undefined) {
+    public async deleteUserHandler(req: Request, res: Response, _0: undefined, _1: undefined) {
         if (this.resolver && this.handler) {
             await removeAndReply({
                 assetID: req.params.id,
@@ -241,7 +241,7 @@ export class UserGatewayInterface extends Attachment {
         + 'keycloak syncing but for example profile should be safe. If you are admin you can change any user otherwise '
         + 'only yourself',
     )
-    private async updateUserHandler(req: Request, res: Response, _: undefined, body: PatchUserQuery) {
+    public async updateUserHandler(req: Request, res: Response, _: undefined, body: PatchUserQuery) {
         if (!orProtect('admin')(req.kauth?.grant?.access_token) && req.uemsUser.userID !== req.params.id) {
             res.status(constants.HTTP_STATUS_UNAUTHORIZED)
                 .json(MessageUtilities.wrapInFailure(ErrorCodes.PERMISSION));

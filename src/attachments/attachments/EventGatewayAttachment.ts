@@ -118,7 +118,7 @@ export class EventGatewayAttachment extends Attachment {
         'Updates this event',
         'This will modify the properties of the event as requested',
     )
-    private async updateEventHandler(req: Request, res: Response, _0: undefined, body: UpdateBodyEvent) {
+    public async updateEventHandler(req: Request, res: Response, _0: undefined, body: UpdateBodyEvent) {
         const eventId = req.params.id;
 
         let localOnly = true;
@@ -176,7 +176,7 @@ export class EventGatewayAttachment extends Attachment {
         'Create a new event',
         'Creates a new event with the given configuration',
     )
-    private async createEventHandler(request: Request, res: Response, _0: undefined, body: CreateBodyEvent) {
+    public async createEventHandler(request: Request, res: Response, _0: undefined, body: CreateBodyEvent) {
         const {
             name,
             start,
@@ -227,7 +227,7 @@ export class EventGatewayAttachment extends Attachment {
         + 'restricted to staff as for users events should be cancelled rather than deleted to provide a comprehensive '
         + 'audit trail of the processes. ',
     )
-    private async deleteEventHandler(req: Request, res: Response, _0: undefined, _1: undefined) {
+    public async deleteEventHandler(req: Request, res: Response, _0: undefined, _1: undefined) {
         _(req.requestID)
             .trace('dispatch to removeAndReply', req.params.id);
         await removeAndReply({
@@ -263,7 +263,7 @@ export class EventGatewayAttachment extends Attachment {
         'Retrieve events matching a filter',
         'Returns all events matching the filters defined in the query',
     )
-    private async getEventsHandler(req: Request, res: Response, query: QueryQueryEvents, _0: undefined) {
+    public async getEventsHandler(req: Request, res: Response, query: QueryQueryEvents, _0: undefined) {
         let localOnly = true;
         if (req.kauth && req.kauth.grant && req.kauth.grant.access_token) {
             if (orProtect('ops', 'ents', 'admin')(req.kauth.grant.access_token)) localOnly = false;
@@ -364,7 +364,7 @@ export class EventGatewayAttachment extends Attachment {
         'Retrieves a single event',
         'Returns the event associated with the given ID if one exists',
     )
-    private async getEventHandler(req: Request, res: Response, _0: undefined, _1: undefined) {
+    public async getEventHandler(req: Request, res: Response, _0: undefined, _1: undefined) {
         let localOnly = true;
         if (req.kauth && req.kauth.grant && req.kauth.grant.access_token) {
             if (orProtect('ops', 'ents', 'admin')(req.kauth.grant.access_token)) localOnly = false;
@@ -405,7 +405,7 @@ export class EventGatewayAttachment extends Attachment {
         'Returns all events for the given state',
         'This will return the details of all events which have the given state associated with them',
     )
-    private async getEventsByState(req: Request, res: Response, _0: undefined, _1: undefined) {
+    public async getEventsByState(req: Request, res: Response, _0: undefined, _1: undefined) {
         // TODO add failures
         let localOnly = true;
         if (req.kauth && req.kauth.grant && req.kauth.grant.access_token) {
@@ -442,7 +442,7 @@ export class EventGatewayAttachment extends Attachment {
         'Returns all events taking place in the given venue',
         'Returns all events that have ever taken place in the given venue',
     )
-    private async getEventsByVenue(req: Request, res: Response, _0: undefined, _1: undefined) {
+    public async getEventsByVenue(req: Request, res: Response, _0: undefined, _1: undefined) {
         // TODO add failures
         let localOnly = true;
         if (req.kauth && req.kauth.grant && req.kauth.grant.access_token) {
@@ -479,7 +479,7 @@ export class EventGatewayAttachment extends Attachment {
         'Returns all comments on the event',
         'Returns all comments which are associated with the given event identifier',
     )
-    private async getCommentsForEvent(req: Request, res: Response, _0: undefined, _1: undefined) {
+    public async getCommentsForEvent(req: Request, res: Response, _0: undefined, _1: undefined) {
         // TODO add failures
         let localOnly = true;
         if (req.kauth && req.kauth.grant && req.kauth.grant.access_token) {
@@ -529,7 +529,7 @@ export class EventGatewayAttachment extends Attachment {
         'Posts a new comment on this event',
         'Adds a new comment to the event associated with the id provided',
     )
-    private async postCommentsForEvent(request: Request, res: Response, _0: undefined, body: CreateBodyComment) {
+    public async postCommentsForEvent(request: Request, res: Response, _0: undefined, body: CreateBodyComment) {
         const {
             topic,
             requiresAttention,
@@ -583,7 +583,7 @@ export class EventGatewayAttachment extends Attachment {
         'Marks this comment as requiring attention',
         'This will flag this comment as needing attention from another member of staff before the event can go ahead',
     )
-    private async markCommentAsRequiringAttention(req: Request, res: Response, _0: undefined, _1: undefined) {
+    public async markCommentAsRequiringAttention(req: Request, res: Response, _0: undefined, _1: undefined) {
         const {
             id: eventID,
             commentID,
@@ -627,7 +627,7 @@ export class EventGatewayAttachment extends Attachment {
         'Marks the comment on the given event as resolved meaning it no longer requires attention by '
         + 'another staff member',
     )
-    private async markCommentAsResolved(req: Request, res: Response, _0: undefined, _1: undefined) {
+    public async markCommentAsResolved(req: Request, res: Response, _0: undefined, _1: undefined) {
         const {
             id: eventID,
             commentID,
@@ -665,7 +665,7 @@ export class EventGatewayAttachment extends Attachment {
         'This will return all events that are currently marked with the review state or who have not yet '
         + 'had their time reserved in the booking system',
     )
-    private async getReviewEvents(req: Request, res: Response, _0: undefined, _1: undefined) {
+    public async getReviewEvents(req: Request, res: Response, _0: undefined, _1: undefined) {
         if (!this.config) {
             _(req.requestID)
                 .error('event gateway attachment configuration was not defined');

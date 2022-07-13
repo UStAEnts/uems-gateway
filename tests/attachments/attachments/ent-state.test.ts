@@ -1,18 +1,20 @@
 import { EntStateGatewayInterface } from '../../../src/attachments/attachments/EntStateGatewayInterface';
 import { GatewayMk2 } from '../../../src/Gateway';
 import { GET_ENTS_INVALID, GET_ENTS_VALID, PATCH_ENTS_ENTID_INVALID, PATCH_ENTS_ENTID_VALID, POST_ENTS_INVALID, POST_ENTS_MISSING, POST_ENTS_VALID } from '../../test-api-data';
-import { testMissingParameters, testParameterTypes, testValidRoute } from '../../utils';
+import { AttachmentFunction, testMissingParameters, testParameterTypes, testValidRoute } from '../../utils';
 import GatewayInterfaceActionType = GatewayMk2.GatewayInterfaceActionType;
 import { EntityResolver } from "../../../src/resolver/EntityResolver";
+import { Configuration } from "../../../src/configuration/Configuration";
+import { Request, Response } from "express";
 
 describe('EntStateGatewayInterface.ts', () => {
     const send = jest.fn();
     let routes: {
-        'get.ents': GatewayInterfaceActionType,
-        'post.ents': GatewayInterfaceActionType,
-        'get.ents.id': GatewayInterfaceActionType,
-        'delete.ents.id': GatewayInterfaceActionType,
-        'patch.ents.id': GatewayInterfaceActionType,
+        'get.ents': AttachmentFunction,
+        'post.ents': AttachmentFunction,
+        'get.ents.id': AttachmentFunction,
+        'delete.ents.id': AttachmentFunction,
+        'patch.ents.id': AttachmentFunction,
     };
 
     beforeEach(() => {
@@ -24,19 +26,16 @@ describe('EntStateGatewayInterface.ts', () => {
         const resolver: EntityResolver = null;
         // @ts-ignore
         const handler: GatewayMessageHandler = null;
-        const entries = await new EntStateGatewayInterface().generateInterfaces(send, resolver, handler);
+        // @ts-ignore
+        const config: Configuration = null;
+        const entries = new EntStateGatewayInterface(resolver, handler, send, config);
 
         routes = {
-            'get.ents': entries
-                .find((e) => e.action === 'get' && e.path === '/ents') as GatewayInterfaceActionType,
-            'post.ents': entries
-                .find((e) => e.action === 'post' && e.path === '/ents') as GatewayInterfaceActionType,
-            'get.ents.id': entries
-                .find((e) => e.action === 'get' && e.path === '/ents/:id') as GatewayInterfaceActionType,
-            'delete.ents.id': entries
-                .find((e) => e.action === 'delete' && e.path === '/ents/:id') as GatewayInterfaceActionType,
-            'patch.ents.id': entries
-                .find((e) => e.action === 'patch' && e.path === '/ents/:id') as GatewayInterfaceActionType,
+            'get.ents': entries.queryEntStatesHandler,
+            'post.ents': entries.createEntStateHandler,
+            'get.ents.id': entries.getEntStateHandler,
+            'delete.ents.id': entries.deleteEntStateHandler,
+            'patch.ents.id': entries.updateEntStateHandler,
         };
     });
 

@@ -1,19 +1,18 @@
 import { SignupGatewayInterface } from '../../../src/attachments/attachments/SignupGatewayInterface';
 import { EntityResolver } from '../../../src/resolver/EntityResolver';
 import { GatewayMk2 } from '../../../src/Gateway';
-import GatewayInterfaceActionType = GatewayMk2.GatewayInterfaceActionType;
 import { GET_EVENTS_EVENTID_SIGNUPS_INVALID, GET_EVENTS_EVENTID_SIGNUPS_VALID, PATCH_EVENTS_EVENTID_SIGNUPS_SIGNUPID_VALID, POST_EVENTS_EVENTID_SIGNUPS_MISSING, POST_EVENTS_EVENTID_SIGNUPS_VALID } from '../../test-api-data';
-import { testMissingParameters, testParameterTypes, testRouteWithoutSend, testValidRoute } from '../../utils';
+import { AttachmentFunction, testMissingParameters, testParameterTypes, testRouteWithoutSend, testValidRoute } from '../../utils';
 import { constants } from "http2";
 
 describe('SignupGatewayInterface.ts', () => {
     const send = jest.fn();
     let routes: {
-        'get.events.id.signups': GatewayInterfaceActionType,
-        'post.events.id.signups': GatewayInterfaceActionType,
-        'get.events.id.signups.id': GatewayInterfaceActionType,
-        'patch.events.id.signups.id': GatewayInterfaceActionType,
-        'delete.events.id.signups.id': GatewayInterfaceActionType,
+        'get.events.id.signups': AttachmentFunction,
+        'post.events.id.signups': AttachmentFunction,
+        'get.events.id.signups.id': AttachmentFunction,
+        'patch.events.id.signups.id': AttachmentFunction,
+        'delete.events.id.signups.id': AttachmentFunction,
     };
 
     beforeEach(() => {
@@ -25,19 +24,14 @@ describe('SignupGatewayInterface.ts', () => {
         const resolver: EntityResolver = null;
         // @ts-ignore
         const handler: GatewayMessageHandler = null;
-        const entries = await new SignupGatewayInterface().generateInterfaces(send, resolver, handler);
+        const entries = new SignupGatewayInterface(resolver, handler, send, null as any);
 
         routes = {
-            'get.events.id.signups': entries
-                .find((e) => e.action === 'get' && e.path === '/events/:eventID/signups') as GatewayInterfaceActionType,
-            'post.events.id.signups': entries
-                .find((e) => e.action === 'post' && e.path === '/events/:eventID/signups') as GatewayInterfaceActionType,
-            'get.events.id.signups.id': entries
-                .find((e) => e.action === 'get' && e.path === '/events/:eventID/signups/:id') as GatewayInterfaceActionType,
-            'patch.events.id.signups.id': entries
-                .find((e) => e.action === 'patch' && e.path === '/events/:eventID/signups/:id') as GatewayInterfaceActionType,
-            'delete.events.id.signups.id': entries
-                .find((e) => e.action === 'delete' && e.path === '/events/:eventID/signups/:id') as GatewayInterfaceActionType,
+            'get.events.id.signups': entries.querySignupsHandler,
+            'post.events.id.signups': entries.createSignupHandler,
+            'get.events.id.signups.id': entries.getSignupHandler,
+            'patch.events.id.signups.id': entries.updateSignupHandler,
+            'delete.events.id.signups.id': entries.deleteSignupHandler,
         };
     });
 
@@ -86,7 +80,7 @@ describe('SignupGatewayInterface.ts', () => {
                 'body',
                 send,
                 { eventID: 'abc' },
-                ['admin']
+                ['admin'],
             );
         });
 
