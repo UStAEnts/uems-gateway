@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { CommentMessage, EventMessage, EventResponse, EventResponseValidator } from '@uems/uemscommlib';
+import { CommentMessage, EventMessage, EventResponse } from '@uems/uemscommlib';
 import { MessageUtilities } from '../../utilities/MessageUtilities';
 import { GatewayMk2 } from '../../Gateway';
 import { EntityResolver } from '../../resolver/EntityResolver';
@@ -9,9 +9,16 @@ import { Resolver } from '../Resolvers';
 import { Constants } from '../../utilities/Constants';
 import { removeAndReply } from '../DeletePipelines';
 import { ErrorCodes } from '../../constants/ErrorCodes';
-import GatewayAttachmentInterface = GatewayMk2.GatewayAttachmentInterface;
+import { AuthUtilities } from '../../utilities/AuthUtilities';
+import * as zod from 'zod';
+import { logInfo, logResolve } from '../../log/RequestLogger';
+import { EventValidators } from '@uems/uemscommlib/build/event/EventValidators';
+import log from '@uems/micro-builder/build/src/logging/Log';
+import { resolveEventsFlow } from '../../flows/EventResolveFlow';
+import { copyKeysIfDefined, describe, endpoint, mapKeysIfDefined, Method, tag } from '../../decorators/endpoint';
+import { CommentValidators } from '@uems/uemscommlib/build/comment/CommentValidators';
+import { Configuration } from '../../configuration/Configuration';
 import SendRequestFunction = GatewayMk2.SendRequestFunction;
-import GatewayInterfaceActionType = GatewayMk2.GatewayInterfaceActionType;
 import UpdateEventMessage = EventMessage.UpdateEventMessage;
 import ReadEventMessage = EventMessage.ReadEventMessage;
 import CreateEventMessage = EventMessage.CreateEventMessage;
@@ -19,301 +26,247 @@ import ShallowInternalEvent = EventResponse.ShallowInternalEvent;
 import ReadCommentMessage = CommentMessage.ReadCommentMessage;
 import CreateCommentMessage = CommentMessage.CreateCommentMessage;
 import ROUTING_KEY = Constants.ROUTING_KEY;
-import GatewayMessageHandler = GatewayMk2.GatewayMessageHandler;
-import { AuthUtilities } from "../../utilities/AuthUtilities";
 import orProtect = AuthUtilities.orProtect;
-import * as zod from 'zod';
 import sendZodError = MessageUtilities.sendZodError;
 import UpdateCommentMessage = CommentMessage.UpdateCommentMessage;
-import { Configuration } from "../../configuration/Configuration";
-import { logInfo, logResolve } from "../../log/RequestLogger";
-import { EventValidators } from "@uems/uemscommlib/build/event/EventValidators";
 import EventRepresentation = EventValidators.EventRepresentation;
-import log from '@uems/micro-builder/build/src/logging/Log';
-import { resolveEventsFlow } from "../../flows/EventResolveFlow";
+import Attachment = GatewayMk2.Attachment;
+import ZEvent = EventValidators.ZEvent;
+import ZComment = CommentValidators.ZComment;
 
 const _ = log.auto;
 
-export class EventGatewayAttachment implements GatewayAttachmentInterface {
-    // TODO: bit dangerous using ! - maybe add null checks?
-    private _resolver!: EntityResolver;
-    private handler?: GatewayMessageHandler;
-    private config?: Configuration;
+type QueryQueryEvents = Partial<{
+    attendance: number,
+    attendanceGreater: number,
+    attendanceLess: number,
+    end: number,
+    endAfter: number,
+    endBefore: number,
+    entsID: string,
+    name: string,
+    start: number,
+    startAfter: number,
+    startBefore: number,
+    stateID: string,
+    venueCriteria: string,
+    venueIDs: string[],
+}>;
 
-    private static deleteEventHandler(send: SendRequestFunction, hand: GatewayMessageHandler, resolve: EntityResolver) {
-        return async (req: Request, res: Response) => {
+type CreateBodyComment = {
+    topic?: string,
+    requiresAttention?: boolean,
+    body: string,
+};
 
-            if (resolve && hand) {
-                _(req.requestID)
-                    .trace('dispatch to removeAndReply', req.params.id);
-                await removeAndReply({
-                    assetID: req.params.id,
-                    assetType: 'event',
-                }, resolve, hand, res);
-            } else {
-                res.status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
-                    .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
-            }
-        };
-    }
+type CreateBodyEvent = {
+    name: string,
+    venue: string,
+    start: number,
+    end: number,
+    attendance: number,
+    state?: string,
+    ents?: string
+};
 
-    private static updateEventHandler(send: SendRequestFunction) {
-        return async (req: Request, res: Response) => {
-            const eventId = req.params.id;
+type UpdateBodyEvent = Partial<{
+    name: string,
+    start: number,
+    end: number,
+    attendance: number,
+    addVenues: string[],
+    removeVenues: string[],
+    ents: string,
+    state: string,
+    reserved: boolean,
+}>;
 
-            let localOnly = true;
-            if (req.kauth && req.kauth.grant && req.kauth.grant.access_token) {
-                // req.kauth.grant.kauth
-                if (orProtect('ops', 'ents', 'admin')(req.kauth.grant.access_token)) localOnly = false;
-            }
-
-            const msg: UpdateEventMessage = {
-                msg_id: MessageUtilities.generateMessageIdentifier(),
-                status: 0,
-                msg_intention: 'UPDATE',
-                id: eventId,
-                userID: req.uemsUser.userID,
-                userScoped: localOnly,
-            };
-
-            // TODO: isn't this in commslib somewhere?
-            const validate = zod.object({
-                name: zod.string(),
-                start: zod.number(),
-                end: zod.number(),
-                attendance: zod.number(),
-                addVenues: zod.array(zod.string()),
-                removeVenues: zod.array(zod.string()),
-                ents: zod.string(),
-                state: zod.string(),
-                reserved: zod.boolean(),
-            })
-                .partial()
-                .safeParse(req.body);
-
-            if (!validate.success) {
-                _(req.requestID)
-                    .debug('request failed validation', validate.error);
-                sendZodError(res, validate.error);
-                return;
-            }
-
-            const body = validate.data;
-
-            if (body.name) msg.name = body.name;
-            if (body.start) msg.start = body.start;
-            if (body.end) msg.end = body.end;
-            if (body.attendance) msg.attendance = body.attendance;
-            if (body.addVenues) msg.addVenues = body.addVenues;
-            if (body.removeVenues) msg.removeVenues = body.removeVenues;
-            if (body.ents) msg.ents = body.ents;
-            if (body.state) msg.state = body.state;
-            if (body.reserved !== undefined) msg.reserved = body.reserved;
-
-            await send(
-                ROUTING_KEY.event.update,
-                msg,
-                res,
-                GenericHandlerFunctions.handleDefaultResponseFactory(),
-            );
-        };
-    }
-
-    private static createEventHandler(send: SendRequestFunction) {
-        return async (request: Request, res: Response) => {
-            const validate = zod.object({
-                name: zod.string(),
-                venue: zod.string(),
-                start: zod.number(),
-                end: zod.number(),
-                attendance: zod.number(),
-                state: zod.string()
-                    .optional(),
-                ents: zod.string()
-                    .optional(),
-            })
-                .safeParse(request.body);
-
-            if (!validate.success) {
-                _(request.requestID)
-                    .debug(`request failed validation`, validate.error);
-                sendZodError(res, validate.error);
-                return;
-            }
-
-            const {
-                name,
-                start,
-                end,
-                venue,
-                state,
-                ents,
-                attendance,
-            } = request.body;
-
-            const msg: CreateEventMessage = {
-                msg_id: MessageUtilities.generateMessageIdentifier(),
-                status: 0, // 0 Code used when the status is still to be decided.
-                msg_intention: 'CREATE',
-                userID: request.uemsUser.userID,
-                author: request.uemsUser.userID,
-
-                name,
-                start,
-                end,
-                venues: [venue], // Placeholder as venue assignment not in API yet.
-                attendance, // Placeholder.
-                state,
-                ents,
-            };
-
-            await send(
-                ROUTING_KEY.event.create,
-                msg,
-                res,
-                GenericHandlerFunctions.handleDefaultResponseFactory(),
-            );
-        };
-    }
-
-    async generateInterfaces(
-        send: GatewayMk2.SendRequestFunction,
+export class EventGatewayAttachment extends Attachment {
+    constructor(
         resolver: EntityResolver,
-        handler: GatewayMessageHandler,
+        handler: GatewayMk2.GatewayMessageHandler,
+        send: GatewayMk2.SendRequestFunction,
         config: Configuration,
-    ): Promise<GatewayInterfaceActionType[]> {
-        const validator = new EventResponseValidator();
-
-        this.config = config;
-        this._resolver = resolver;
-        this.handler = handler;
-
-        return [
-            // Ops planning
-            {
-                action: 'get',
-                path: '/events/review',
-                handle: this.getReviewEvents(send),
-                secure: ['ops', 'ents', 'admin'],
-            },
-            //
-            {
-                action: 'get',
-                path: '/events/:id',
-                handle: this.getEventHandler(send),
-                additionalValidator: validator,
-            },
-            {
-                action: 'patch',
-                path: '/events/:id',
-                handle: EventGatewayAttachment.updateEventHandler(send),
-                additionalValidator: validator,
-            },
-            {
-                action: 'delete',
-                path: '/events/:id',
-                handle: EventGatewayAttachment.deleteEventHandler(send, handler, resolver),
-                additionalValidator: validator,
-                secure: ['ops', 'admin'], // events shouldn't be deleted, just cancelled
-            },
-            // EVENT <--> STATE LINK
-            {
-                action: 'get',
-                path: '/states/:id/events',
-                handle: this.getEventsByState(send),
-                additionalValidator: validator,
-            },
-            // EVENT <--> VENUE LINK
-            {
-                action: 'get',
-                path: '/venues/:id/events',
-                handle: this.getEventsByVenue(send),
-                additionalValidator: validator,
-            },
-            // EVENT COMMENTS
-            {
-                action: 'get',
-                path: '/events/:id/comments',
-                handle: this.getCommentsForEvent(send),
-                additionalValidator: validator,
-            },
-            {
-                action: 'post',
-                path: '/events/:id/comments',
-                handle: this.postCommentsForEvent(send),
-            },
-            {
-                action: 'post',
-                path: '/events/:id/comments/:commentID/attention',
-                handle: this.markCommentAsRequiringAttention(send),
-                secure: ['ops', 'ents', 'admin'],
-            },
-            {
-                action: 'post',
-                path: '/events/:id/comments/:commentID/resolve',
-                handle: this.markCommentAsResolved(send),
-                secure: ['ops', 'ents', 'admin'],
-            },
-            // EVENTS ONLY
-            {
-                action: 'post',
-                path: '/events',
-                handle: EventGatewayAttachment.createEventHandler(send),
-                additionalValidator: validator,
-            },
-            {
-                action: 'get',
-                path: '/events',
-                handle: this.getEventsHandler(send),
-                additionalValidator: validator,
-            },
-
-        ];
+    ) {
+        super(resolver, handler, send, config);
     }
 
-    private getEventsHandler = (send: SendRequestFunction) => async (req: Request, res: Response) => {
-        // TODO add failures
-        if (this.handler === undefined) {
-            res.status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
-                .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
-            return;
-        }
+    @endpoint(
+        Method.PATCH,
+        ['events', {
+            key: 'id',
+            description: 'The unique identifier for this event',
+        }],
+        ['ModifyResponse', zod.array(zod.string())],
+        undefined,
+        undefined,
+        zod.object({
+            name: zod.string(),
+            start: zod.number(),
+            end: zod.number(),
+            attendance: zod.number(),
+            addVenues: zod.array(zod.string()),
+            removeVenues: zod.array(zod.string()),
+            ents: zod.string(),
+            state: zod.string(),
+            reserved: zod.boolean(),
+        })
+            .partial(),
+    )
+    @tag('event')
+    @describe(
+        'Updates this event',
+        'This will modify the properties of the event as requested',
+    )
+    private async updateEventHandler(req: Request, res: Response, _0: undefined, body: UpdateBodyEvent) {
+        const eventId = req.params.id;
 
         let localOnly = true;
         if (req.kauth && req.kauth.grant && req.kauth.grant.access_token) {
-            // req.kauth.grant.kauth
             if (orProtect('ops', 'ents', 'admin')(req.kauth.grant.access_token)) localOnly = false;
         }
 
-        const validate = MessageUtilities.coerceAndVerifyQuery(
-            req,
-            res,
-            [],
-            {
-                attendance: { primitive: 'number' },
-                attendanceGreater: { primitive: 'number' },
-                attendanceLess: { primitive: 'number' },
-                end: { primitive: 'number' },
-                endafter: { primitive: 'number' },
-                endbefore: { primitive: 'number' },
-                entsID: { primitive: 'string' },
-                name: { primitive: 'string' },
-                start: { primitive: 'number' },
-                startafter: { primitive: 'number' },
-                startbefore: { primitive: 'number' },
-                stateID: { primitive: 'string' },
-                venueCriteria: { primitive: 'string' },
-                venueIDs: {
-                    primitive: 'array',
-                    validator: (x) => Array.isArray(x) && x.every((e) => typeof (e) === 'string')
-                },
-            },
-        );
+        const msg: UpdateEventMessage = {
+            msg_id: MessageUtilities.generateMessageIdentifier(),
+            status: 0,
+            msg_intention: 'UPDATE',
+            id: eventId,
+            userID: req.uemsUser.userID,
+            userScoped: localOnly,
+        };
 
-        if (!validate) {
-            _(req.requestID)
-                .debug('request failed validation', req.query);
-            return;
+        if (body.name) msg.name = body.name;
+        if (body.start) msg.start = body.start;
+        if (body.end) msg.end = body.end;
+        if (body.attendance) msg.attendance = body.attendance;
+        if (body.addVenues) msg.addVenues = body.addVenues;
+        if (body.removeVenues) msg.removeVenues = body.removeVenues;
+        if (body.ents) msg.ents = body.ents;
+        if (body.state) msg.state = body.state;
+        if (body.reserved !== undefined) msg.reserved = body.reserved;
+
+        await this.send(
+            ROUTING_KEY.event.update,
+            msg,
+            res,
+            GenericHandlerFunctions.handleDefaultResponseFactory(),
+        );
+    }
+
+    @endpoint(
+        Method.POST,
+        ['events'],
+        ['ModifyResponse', zod.array(zod.string())],
+        undefined,
+        undefined,
+        zod.object({
+            name: zod.string(),
+            venue: zod.string(),
+            start: zod.number(),
+            end: zod.number(),
+            attendance: zod.number(),
+            state: zod.string()
+                .optional(),
+            ents: zod.string()
+                .optional(),
+        }),
+    )
+    @tag('event')
+    @describe(
+        'Create a new event',
+        'Creates a new event with the given configuration',
+    )
+    private async createEventHandler(request: Request, res: Response, _0: undefined, body: CreateBodyEvent) {
+        const {
+            name,
+            start,
+            end,
+            venue,
+            state,
+            ents,
+            attendance,
+        } = body;
+
+        const msg: CreateEventMessage = {
+            msg_id: MessageUtilities.generateMessageIdentifier(),
+            status: 0, // 0 Code used when the status is still to be decided.
+            msg_intention: 'CREATE',
+            userID: request.uemsUser.userID,
+            author: request.uemsUser.userID,
+
+            name,
+            start,
+            end,
+            venues: [venue], // Placeholder as venue assignment not in API yet.
+            attendance, // Placeholder.
+            state,
+            ents,
+        };
+
+        await this.send(
+            ROUTING_KEY.event.create,
+            msg,
+            res,
+            GenericHandlerFunctions.handleDefaultResponseFactory(),
+        );
+    }
+
+    @endpoint(
+        Method.DELETE,
+        ['events', {
+            key: 'id',
+            description: 'The unique ID for this event',
+        }],
+        ['ModifyResponse', zod.array(zod.string())],
+        ['ops', 'admin'],
+    )
+    @tag('event')
+    @describe(
+        'Delete an event',
+        'This will try and delete the event as long as no other objects rely on the entity. This is '
+        + 'restricted to staff as for users events should be cancelled rather than deleted to provide a comprehensive '
+        + 'audit trail of the processes. ',
+    )
+    private async deleteEventHandler(req: Request, res: Response, _0: undefined, _1: undefined) {
+        _(req.requestID)
+            .trace('dispatch to removeAndReply', req.params.id);
+        await removeAndReply({
+            assetID: req.params.id,
+            assetType: 'event',
+        }, this.resolver, this.handler, res);
+    }
+
+    @endpoint(
+        Method.GET,
+        ['events'],
+        ['EventList', zod.array(ZEvent)],
+        undefined,
+        zod.object({
+            attendance: zod.preprocess((v) => Number(v), zod.number()),
+            attendanceGreater: zod.preprocess((v) => Number(v), zod.number()),
+            attendanceLess: zod.preprocess((v) => Number(v), zod.number()),
+            end: zod.preprocess((v) => Number(v), zod.number()),
+            endAfter: zod.preprocess((v) => Number(v), zod.number()),
+            endBefore: zod.preprocess((v) => Number(v), zod.number()),
+            entsID: zod.string(),
+            name: zod.string(),
+            start: zod.preprocess((v) => Number(v), zod.number()),
+            startAfter: zod.preprocess((v) => Number(v), zod.number()),
+            startBefore: zod.preprocess((v) => Number(v), zod.number()),
+            stateID: zod.string(),
+            venueCriteria: zod.string(),
+            venueIDs: zod.array(zod.string()),
+        }).partial(),
+    )
+    @tag('event')
+    @describe(
+        'Retrieve events matching a filter',
+        'Returns all events matching the filters defined in the query',
+    )
+    private async getEventsHandler(req: Request, res: Response, query: QueryQueryEvents, _0: undefined) {
+        let localOnly = true;
+        if (req.kauth && req.kauth.grant && req.kauth.grant.access_token) {
+            if (orProtect('ops', 'ents', 'admin')(req.kauth.grant.access_token)) localOnly = false;
         }
 
         const msg: ReadEventMessage = {
@@ -324,139 +277,135 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
             userScoped: localOnly,
         };
 
-        if (req.query.name !== undefined) {
-            msg.name = req.query.name.toString();
-        }
+        copyKeysIfDefined([
+            'name', 'end', 'start', 'attendance',
+        ], query, msg);
 
-        if (req.query.start !== undefined) {
-            msg.start = parseInt(req.query.start.toString(), 10);
-        }
+        mapKeysIfDefined({
+            venueIDs: 'venues',
+            entsID: 'ents',
+            stateID: 'state',
+        }, query, msg);
 
-        if (req.query.end !== undefined) {
-            msg.end = parseInt(req.query.end.toString(), 10);
-        }
-
-        if (req.query.attendance !== undefined) {
-            msg.attendance = parseInt(req.query.attendance.toString(), 10);
-        }
-
-        if (req.query.venueIDs !== undefined && typeof (req.query.venueIDs) === 'string') {
-            if (req.query.venueCriteria !== undefined) {
-                if (req.query.venueCriteria === 'all') {
-                    msg.allVenues = req.query.venueIDs.split(',');
-                } else if (req.query.venueCriteria === 'any') {
-                    msg.anyVenues = req.query.venueIDs.split(',');
-                }
-            } else {
-                msg.venues = req.query.venueIDs.split(',');
-            }
-        }
-
-        if (req.query.entsID !== undefined && typeof (req.query.entsID) === 'string') {
-            msg.ents = req.query.entsID;
-        }
-
-        if (req.query.stateID !== undefined && typeof (req.query.stateID) === 'string') {
-            msg.state = req.query.stateID;
-        }
-
-        if (req.query.startafter !== undefined) {
+        if (query.startAfter !== undefined) {
             if (typeof (msg.start) === 'object') {
                 msg.start = {
                     ...msg.start,
-                    greater: parseInt(req.query.startafter.toString(), 10)
+                    greater: query.startAfter,
                 };
             } else {
-                msg.start = { greater: parseInt(req.query.startafter.toString(), 10) };
+                msg.start = { greater: query.startAfter };
             }
         }
 
-        if (req.query.startbefore !== undefined) {
+        if (query.startBefore !== undefined) {
             if (typeof (msg.start) === 'object') {
                 msg.start = {
                     ...msg.start,
-                    less: parseInt(req.query.startbefore.toString(), 10)
+                    less: query.startBefore,
                 };
             } else {
-                msg.start = { less: parseInt(req.query.startbefore.toString(), 10) };
+                msg.start = { less: query.startBefore };
             }
         }
 
-        if (req.query.endafter !== undefined) {
+        if (query.endAfter !== undefined) {
             if (typeof (msg.end) === 'object') {
                 msg.end = {
                     ...msg.end,
-                    greater: parseInt(req.query.endafter.toString(), 10)
+                    greater: query.endAfter,
                 };
             } else {
-                msg.end = { greater: parseInt(req.query.endafter.toString(), 10) };
+                msg.end = { greater: query.endAfter };
             }
         }
 
-        if (req.query.endbefore !== undefined) {
+        if (query.endBefore !== undefined) {
             if (typeof (msg.end) === 'object') {
                 msg.end = {
                     ...msg.end,
-                    less: parseInt(req.query.endbefore.toString(), 10)
+                    less: query.endBefore,
                 };
             } else {
-                msg.end = { less: parseInt(req.query.endbefore.toString(), 10) };
+                msg.end = { less: query.endBefore };
             }
         }
 
-        if (req.query.attendanceGreater !== undefined || req.query.attendanceLess !== undefined) {
+        if (query.attendanceGreater !== undefined || query.attendanceLess !== undefined) {
             msg.attendance = {
-                ...(req.query.attendanceGreater ? { greater: parseInt(req.query.attendanceGreater.toString(), 10) } : {}),
-                ...(req.query.attendanceLess ? { less: parseInt(req.query.attendanceLess.toString(), 10) } : {}),
+                ...(query.attendanceGreater ? { greater: query.attendanceGreater } : {}),
+                ...(query.attendanceLess ? { less: query.attendanceLess } : {}),
             };
         }
 
-        await send(
+        console.log(this, this.send);
+
+        await this.send(
             ROUTING_KEY.event.read,
             msg,
             res,
             resolveEventsFlow(this.handler),
         );
-    };
-
-    private getEventHandler(send: SendRequestFunction) {
-        return async (req: Request, res: Response) => {
-            let localOnly = true;
-            if (req.kauth && req.kauth.grant && req.kauth.grant.access_token) {
-                // req.kauth.grant.kauth
-                if (orProtect('ops', 'ents', 'admin')(req.kauth.grant.access_token)) localOnly = false;
-            }
-
-            const outgoingMessage: ReadEventMessage = {
-                msg_id: MessageUtilities.generateMessageIdentifier(),
-                msg_intention: 'READ',
-                status: 0,
-                userID: req.uemsUser.userID,
-                id: req.params.id,
-                userScoped: localOnly,
-            };
-
-            await send(
-                ROUTING_KEY.event.read,
-                outgoingMessage,
-                res,
-                GenericHandlerFunctions.handleReadSingleResponseFactory(
-                    async (data: ShallowInternalEvent) => ({
-                        event: await Resolver.resolveSingleEvent(this._resolver, req.uemsUser.userID)(data, req.requestID),
-                        changelog: [],
-                    }),
-                ),
-            );
-        };
     }
 
-    private getEventsByState = (send: SendRequestFunction) => async (req: Request, res: Response) => {
-        if (this.handler === undefined) {
-            res.status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
-                .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
-            return;
+    @endpoint(
+        Method.GET,
+        ['events', {
+            key: 'id',
+            description: 'The unique ID of this event',
+        }],
+        ['UEMSEventWithChangelog', zod.object({
+            event: ZEvent,
+            changelog: zod.array(zod.never()),
+        })],
+    )
+    @tag('event')
+    @describe(
+        'Retrieves a single event',
+        'Returns the event associated with the given ID if one exists',
+    )
+    private async getEventHandler(req: Request, res: Response, _0: undefined, _1: undefined) {
+        let localOnly = true;
+        if (req.kauth && req.kauth.grant && req.kauth.grant.access_token) {
+            if (orProtect('ops', 'ents', 'admin')(req.kauth.grant.access_token)) localOnly = false;
         }
 
+        const outgoingMessage: ReadEventMessage = {
+            msg_id: MessageUtilities.generateMessageIdentifier(),
+            msg_intention: 'READ',
+            status: 0,
+            userID: req.uemsUser.userID,
+            id: req.params.id,
+            userScoped: localOnly,
+        };
+
+        await this.send(
+            ROUTING_KEY.event.read,
+            outgoingMessage,
+            res,
+            GenericHandlerFunctions.handleReadSingleResponseFactory(
+                async (data: ShallowInternalEvent) => ({
+                    event: await Resolver.resolveSingleEvent(this.resolver, req.uemsUser.userID)(data, req.requestID),
+                    changelog: [],
+                }),
+            ),
+        );
+    }
+
+    @endpoint(
+        Method.GET,
+        ['states', {
+            key: 'id',
+            description: 'The unique ID of this state',
+        }, 'events'],
+        ['EventList', zod.array(ZEvent)],
+    )
+    @tag('event', 'state')
+    @describe(
+        'Returns all events for the given state',
+        'This will return the details of all events which have the given state associated with them',
+    )
+    private async getEventsByState(req: Request, res: Response, _0: undefined, _1: undefined) {
         // TODO add failures
         let localOnly = true;
         if (req.kauth && req.kauth.grant && req.kauth.grant.access_token) {
@@ -472,24 +421,31 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
             userScoped: localOnly,
         };
 
-        await send(
+        await this.send(
             ROUTING_KEY.event.read,
             msg,
             res,
             resolveEventsFlow(this.handler),
         );
-    };
+    }
 
-    private getEventsByVenue = (send: SendRequestFunction) => async (req: Request, res: Response) => {
-        if (this.handler === undefined) {
-            res.status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
-                .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
-            return;
-        }
+    @endpoint(
+        Method.GET,
+        ['venues', {
+            key: 'id',
+            description: 'The unique ID of the venue',
+        }, 'events'],
+        ['EventList', zod.array(ZEvent)],
+    )
+    @tag('event', 'venue')
+    @describe(
+        'Returns all events taking place in the given venue',
+        'Returns all events that have ever taken place in the given venue',
+    )
+    private async getEventsByVenue(req: Request, res: Response, _0: undefined, _1: undefined) {
         // TODO add failures
         let localOnly = true;
         if (req.kauth && req.kauth.grant && req.kauth.grant.access_token) {
-            // req.kauth.grant.kauth
             if (orProtect('ops', 'ents', 'admin')(req.kauth.grant.access_token)) localOnly = false;
         }
 
@@ -502,19 +458,31 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
             userScoped: localOnly,
         };
 
-        await send(
+        await this.send(
             ROUTING_KEY.event.read,
             msg,
             res,
             resolveEventsFlow(this.handler),
         );
-    };
+    }
 
-    private getCommentsForEvent = (send: SendRequestFunction) => async (req: Request, res: Response) => {
+    @endpoint(
+        Method.GET,
+        ['events', {
+            key: 'id',
+            description: 'The unique ID for this event',
+        }, 'comments'],
+        ['CommentList', zod.array(ZComment)],
+    )
+    @tag('event', 'comment')
+    @describe(
+        'Returns all comments on the event',
+        'Returns all comments which are associated with the given event identifier',
+    )
+    private async getCommentsForEvent(req: Request, res: Response, _0: undefined, _1: undefined) {
         // TODO add failures
         let localOnly = true;
         if (req.kauth && req.kauth.grant && req.kauth.grant.access_token) {
-            // req.kauth.grant.kauth
             if (orProtect('ops', 'ents', 'admin')(req.kauth.grant.access_token)) localOnly = false;
         }
 
@@ -528,256 +496,266 @@ export class EventGatewayAttachment implements GatewayAttachmentInterface {
             assetID: req.params.id,
         };
 
-        await send(
+        await this.send(
             ROUTING_KEY.event.comments.read,
             msg,
             res,
             GenericHandlerFunctions.handleDefaultResponseFactory(Resolver.resolveComments(
-                this._resolver,
+                this.resolver,
                 req.uemsUser.userID,
             )),
         );
-    };
-
-    private postCommentsForEvent(send: SendRequestFunction) {
-        return async (request: Request, res: Response) => {
-            const validate = zod.object({
-                topic: zod.string()
-                    .optional(),
-                requiresAttention: zod.boolean()
-                    .optional(),
-                body: zod.string()
-            })
-                .safeParse(request.body);
-
-            if (!validate.success) {
-                _(request.requestID)
-                    .debug(`request failed validation`, validate.error);
-                sendZodError(res, validate.error);
-                return;
-            }
-
-            const {
-                topic,
-                requiresAttention,
-                body,
-            } = request.body;
-
-            let localOnly = true;
-            if (request.kauth && request.kauth.grant && request.kauth.grant.access_token) {
-                if (orProtect('ops', 'ents', 'admin')(request.kauth.grant.access_token)) localOnly = false;
-            }
-
-            const msg: CreateCommentMessage = {
-                msg_id: MessageUtilities.generateMessageIdentifier(),
-                status: 0, // 0 Code used when the status is still to be decided.
-                msg_intention: 'CREATE',
-                userID: request.uemsUser.userID,
-
-                topic,
-                requiresAttention,
-                body,
-                userScoped: localOnly,
-
-                assetID: request.params.id,
-                assetType: 'event',
-                poster: request.uemsUser.userID,
-                posted: Math.floor(Date.now() / 1000),
-            };
-
-            await send(
-                ROUTING_KEY.event.comments.create,
-                msg,
-                res,
-                GenericHandlerFunctions.handleDefaultResponseFactory(),
-            );
-        };
     }
 
-    private markCommentAsRequiringAttention(send: SendRequestFunction) {
-        /**
-         * = Mark a comment as requiring attention =
-         *
-         * [POST] /events/:id/comments/:commentID/attention
-         *                ^            ^
-         *                Event ID     ^
-         *                             Comment ID on this event
-         *
-         * Body:
-         *     N/A
-         */
-        return async (req: Request, res: Response) => {
-            const {
-                id: eventID,
-                commentID
-            } = req.params;
+    @endpoint(
+        Method.POST,
+        ['events', {
+            key: 'id',
+            description: 'The unique identifier for this event',
+        }, 'comments'],
+        ['ModifyResponse', zod.array(zod.string())],
+        undefined,
+        undefined,
+        zod.object({
+            topic: zod.string()
+                .optional(),
+            requiresAttention: zod.boolean()
+                .optional(),
+            body: zod.string(),
+        }),
+    )
+    @tag('event', 'comment')
+    @describe(
+        'Posts a new comment on this event',
+        'Adds a new comment to the event associated with the id provided',
+    )
+    private async postCommentsForEvent(request: Request, res: Response, _0: undefined, body: CreateBodyComment) {
+        const {
+            topic,
+            requiresAttention,
+            body: content,
+        } = body;
 
-            const msg: UpdateCommentMessage = {
-                msg_id: MessageUtilities.generateMessageIdentifier(),
-                status: 0,
-                msg_intention: 'UPDATE',
-                id: commentID,
-                userID: req.uemsUser.userID,
-                requiresAttention: true,
-                userScoped: false,
-                attendedBy: undefined,
-            };
-
-            await send(
-                ROUTING_KEY.event.comments.update,
-                msg,
-                res,
-                GenericHandlerFunctions.handleDefaultResponseFactory(),
-            );
+        let localOnly = true;
+        if (request.kauth && request.kauth.grant && request.kauth.grant.access_token) {
+            if (orProtect('ops', 'ents', 'admin')(request.kauth.grant.access_token)) localOnly = false;
         }
-    }
 
-    private markCommentAsResolved(send: SendRequestFunction) {
-        /**
-         * = Mark a comment as attended to, using the person who issues the request as the resolver =
-         *
-         * [POST] /events/:id/comments/:commentID/resolve
-         *                ^            ^
-         *                Event ID     ^
-         *                             Comment ID on this event
-         *
-         * Body:
-         *     N/A
-         */
-        return async (req: Request, res: Response) => {
-            const {
-                id: eventID,
-                commentID
-            } = req.params;
+        const msg: CreateCommentMessage = {
+            msg_id: MessageUtilities.generateMessageIdentifier(),
+            status: 0, // 0 Code used when the status is still to be decided.
+            msg_intention: 'CREATE',
+            userID: request.uemsUser.userID,
 
-            const msg: UpdateCommentMessage = {
-                msg_id: MessageUtilities.generateMessageIdentifier(),
-                status: 0,
-                msg_intention: 'UPDATE',
-                id: commentID,
-                userID: req.uemsUser.userID,
-                requiresAttention: false,
-                userScoped: false,
-                attendedBy: req.uemsUser.userID,
-            };
+            topic,
+            requiresAttention,
+            body: content,
+            userScoped: localOnly,
 
-            await send(
-                ROUTING_KEY.event.comments.update,
-                msg,
-                res,
-                GenericHandlerFunctions.handleDefaultResponseFactory(),
-            );
-        }
-    }
-
-    private getReviewEvents(send: SendRequestFunction) {
-        /**
-         * = Gets events marked as needing review =
-         *
-         * [POST] /events/review
-         *
-         * Body:
-         *     N/A
-         */
-        return async (req: Request, res: Response) => {
-            if (this.handler === undefined) {
-                res.status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
-                    .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
-                return;
-            }
-
-            if (!this.config) {
-                _(req.requestID)
-                    .error('event gateway attachment configuration was not defined');
-                res.status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
-                    .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
-                logResolve(req.requestID,
-                    constants.HTTP_STATUS_INTERNAL_SERVER_ERROR, MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
-                return;
-            }
-
-            let states;
-            try {
-                states = await this.config.getReviewStates();
-            } catch (e: any) {
-                _(req.requestID)
-                    .error('retrieving review states from configuration threw an error', e);
-                logInfo(req.requestID, `Failed to get review states due to error: ${e.message}`);
-                logResolve(req.requestID,
-                    constants.HTTP_STATUS_INTERNAL_SERVER_ERROR, MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
-                return;
-            }
-
-            const msg: ReadEventMessage = {
-                msg_id: MessageUtilities.generateMessageIdentifier(),
-                status: 0,
-                msg_intention: 'READ',
-                userID: req.uemsUser.userID,
-                stateIn: states,
-            };
-            console.log('stateIn', states);
-
-            const msgNotReserved: ReadEventMessage = {
-                msg_id: MessageUtilities.generateMessageIdentifier(),
-                status: 0,
-                msg_intention: 'READ',
-                userID: req.uemsUser.userID,
-                reserved: false,
-            };
-
-            const msgPromise = new Promise((resolve, reject) => {
-                this.handler?.buildSend(
-                    ROUTING_KEY.event.read,
-                    msg
-                )
-                    .name('request-statuses')
-                    .fail(reject)
-                    .reply(resolve)
-                    .submit(req.requestID);
-            });
-            const msgReservedPromise = new Promise((resolve, reject) => {
-                this.handler?.buildSend(
-                    ROUTING_KEY.event.read,
-                    msgNotReserved
-                )
-                    .name('request-statuses')
-                    .fail(reject)
-                    .reply(resolve)
-                    .submit(req.requestID);
-            });
-
-            let results: [EventRepresentation[], EventRepresentation[]];
-            try {
-                results = await Promise.all([msgPromise, msgReservedPromise]) as any;
-            } catch (e) {
-                _(req.requestID)
-                    .debug('failed to fetch events matching', e);
-                res
-                    .status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
-                    .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
-                return;
-            }
-
-            // Now deduplicate
-            const events: EventRepresentation[] = [];
-            const addedIDs: string[] = [];
-            const flattened = [...results[0], ...results[1]];
-            for (const result of flattened) {
-                if (!addedIDs.includes(result.id)) {
-                    events.push(result);
-                    addedIDs.push(result.id);
-                }
-            }
-
-            await resolveEventsFlow(this.handler)(
-                res,
-                Date.now(),
-                {
-                    status: 200,
-                    msg_id: -1,
-                    result: events,
-                },
-            );
+            assetID: request.params.id,
+            assetType: 'event',
+            poster: request.uemsUser.userID,
+            posted: Math.floor(Date.now() / 1000),
         };
+
+        await this.send(
+            ROUTING_KEY.event.comments.create,
+            msg,
+            res,
+            GenericHandlerFunctions.handleDefaultResponseFactory(),
+        );
+    }
+
+    @endpoint(
+        Method.POST,
+        ['events', {
+            key: 'id',
+            description: 'The unique identifier for this event',
+        }, 'comments', {
+            key: 'commentID',
+            description: 'The unique identifier for the comment associated with this event',
+        }, 'attention'],
+        ['ModifyResponse', zod.array(zod.string())],
+        ['ops', 'ents', 'admin'],
+    )
+    @tag('event', 'comment')
+    @describe(
+        'Marks this comment as requiring attention',
+        'This will flag this comment as needing attention from another member of staff before the event can go ahead',
+    )
+    private async markCommentAsRequiringAttention(req: Request, res: Response, _0: undefined, _1: undefined) {
+        const {
+            id: eventID,
+            commentID,
+        } = req.params;
+
+        const msg: UpdateCommentMessage = {
+            msg_id: MessageUtilities.generateMessageIdentifier(),
+            status: 0,
+            msg_intention: 'UPDATE',
+            id: commentID,
+            userID: req.uemsUser.userID,
+            requiresAttention: true,
+            userScoped: false,
+            attendedBy: undefined,
+            assetID: eventID,
+        };
+
+        await this.send(
+            ROUTING_KEY.event.comments.update,
+            msg,
+            res,
+            GenericHandlerFunctions.handleDefaultResponseFactory(),
+        );
+    }
+
+    @endpoint(
+        Method.POST,
+        ['events', {
+            key: 'id',
+            description: 'The unique identifier for this event',
+        }, 'comments', {
+            key: 'commentID',
+            description: 'The unique identifier for the comment associated with this event',
+        }, 'resolve'],
+        ['ModifyResponse', zod.array(zod.string())],
+        ['ops', 'ents', 'admin'],
+    )
+    @tag('event', 'comment')
+    @describe(
+        'Marks a comment as resolved',
+        'Marks the comment on the given event as resolved meaning it no longer requires attention by '
+        + 'another staff member',
+    )
+    private async markCommentAsResolved(req: Request, res: Response, _0: undefined, _1: undefined) {
+        const {
+            id: eventID,
+            commentID,
+        } = req.params;
+
+        const msg: UpdateCommentMessage = {
+            msg_id: MessageUtilities.generateMessageIdentifier(),
+            status: 0,
+            msg_intention: 'UPDATE',
+            id: commentID,
+            userID: req.uemsUser.userID,
+            requiresAttention: false,
+            userScoped: false,
+            attendedBy: req.uemsUser.userID,
+            assetID: eventID,
+        };
+
+        await this.send(
+            ROUTING_KEY.event.comments.update,
+            msg,
+            res,
+            GenericHandlerFunctions.handleDefaultResponseFactory(),
+        );
+    }
+
+    @endpoint(
+        Method.GET,
+        ['events', 'review'],
+        ['EventList', zod.array(ZEvent)],
+        ['ops', 'ents', 'admin'],
+    )
+    @tag('event', 'ops')
+    @describe(
+        'Retrieves all events requiring attention',
+        'This will return all events that are currently marked with the review state or who have not yet '
+        + 'had their time reserved in the booking system',
+    )
+    private async getReviewEvents(req: Request, res: Response, _0: undefined, _1: undefined) {
+        if (!this.config) {
+            _(req.requestID)
+                .error('event gateway attachment configuration was not defined');
+            res.status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
+                .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
+            logResolve(req.requestID,
+                constants.HTTP_STATUS_INTERNAL_SERVER_ERROR, MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
+            return;
+        }
+
+        let states;
+        try {
+            states = await this.config.getReviewStates();
+        } catch (e: any) {
+            _(req.requestID)
+                .error('retrieving review states from configuration threw an error', e);
+            logInfo(req.requestID, `Failed to get review states due to error: ${e.message}`);
+            logResolve(req.requestID,
+                constants.HTTP_STATUS_INTERNAL_SERVER_ERROR, MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
+            return;
+        }
+
+        const msg: ReadEventMessage = {
+            msg_id: MessageUtilities.generateMessageIdentifier(),
+            status: 0,
+            msg_intention: 'READ',
+            userID: req.uemsUser.userID,
+            stateIn: states,
+        };
+
+        const msgNotReserved: ReadEventMessage = {
+            msg_id: MessageUtilities.generateMessageIdentifier(),
+            status: 0,
+            msg_intention: 'READ',
+            userID: req.uemsUser.userID,
+            reserved: false,
+        };
+
+        const msgPromise = new Promise((resolve, reject) => {
+            this.handler?.buildSend(
+                ROUTING_KEY.event.read,
+                msg
+            )
+                .name('request-statuses')
+                .fail(reject)
+                .reply(resolve)
+                .submit(req.requestID);
+        });
+        const msgReservedPromise = new Promise((resolve, reject) => {
+            this.handler?.buildSend(
+                ROUTING_KEY.event.read,
+                msgNotReserved
+            )
+                .name('request-statuses')
+                .fail(reject)
+                .reply(resolve)
+                .submit(req.requestID);
+        });
+
+        let results: [EventRepresentation[], EventRepresentation[]];
+        try {
+            results = await Promise.all([msgPromise, msgReservedPromise]) as any;
+        } catch (e) {
+            _(req.requestID)
+                .debug('failed to fetch events matching', e);
+            res
+                .status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
+                .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
+            return;
+        }
+
+        // Now deduplicate
+        const events: EventRepresentation[] = [];
+        const addedIDs: string[] = [];
+        const flattened = [...results[0], ...results[1]];
+        for (const result of flattened) {
+            if (!addedIDs.includes(result.id)) {
+                events.push(result);
+                addedIDs.push(result.id);
+            }
+        }
+
+        await resolveEventsFlow(this.handler)(
+            res,
+            Date.now(),
+            {
+                status: 200,
+                msg_id: -1,
+                result: events,
+            },
+        );
     }
 }
