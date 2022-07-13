@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { constants } from 'http2';
-import { ZodError, ZodSuberror } from 'zod';
+import { ZodError, ZodIssue } from 'zod';
 
 export namespace MessageUtilities {
 
@@ -251,11 +251,11 @@ export namespace MessageUtilities {
         return true;
     }
 
-    function zodErrorToString(error: ZodSuberror) {
+    function zodErrorToString(error: ZodIssue) {
         console.warn(error.message, error.code, error);
         switch (error.code) {
-            case 'custom_error':
-                return `Unknown error at ${error.path.join('.')}: ${error.message}`;
+            // case 'custom_error':
+            //     return `Unknown error at ${error.path.join('.')}: ${error.message}`;
             case 'invalid_union':
                 return `No possible value matched for ${error.path.join('.')}: ${error.unionErrors.map((e) => e.message)
                     .join(';  ')}`;

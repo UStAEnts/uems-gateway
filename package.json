@@ -31,7 +31,7 @@
     "@types/node": "^14.0.14",
     "@types/passport": "^1.0.4",
     "@uems/micro-builder": "1.1.3",
-    "@uems/uemscommlib": "2.0.0-beta.10",
+    "@uems/uemscommlib": "2.0.0-beta.11",
     "ajv": "^6.12.3",
     "amqplib": "^0.7.1",
     "body-parser": "^1.19.0",
@@ -48,12 +48,15 @@
     "morgan": "^1.10.0",
     "passport": "^0.4.1",
     "passport-http-bearer": "^1.0.1",
+    "reflect-metadata": "^0.1.13",
     "source-map-support": "^0.5.19",
     "uuid": "^8.3.2",
     "winston": "^3.3.3",
-    "zod": "^1.11.11"
+    "zod": "^3.17.3"
   },
   "devDependencies": {
+    "@asteasolutions/zod-to-openapi": "^1.2.3",
+    "@types/eslint": "^8.4.5",
     "@types/express": "^4.17.9",
     "@types/express-session": "^1.17.3",
     "@types/jest": "^26.0.20",
@@ -68,8 +71,12 @@
     "eslint-plugin-react": "^7.20.2",
     "jest": "^26.6.3",
     "jest-express": "^1.12.0",
+    "json-schema-to-zod": "^0.1.2",
+    "prettier": "^2.7.1",
     "ts-jest": "^26.4.4",
-    "ts-node": "^9.1.1",
-    "typescript": "^4.5.4"
+    "ts-node": "^10.8.2",
+    "typescript": "^4.7.4",
+    "zod-to-json-schema": "^3.17.0",
+    "zod-to-ts": "^1.1.1"
   }
 }
