@@ -2,261 +2,259 @@ import { Request, Response } from 'express';
 import { GatewayMk2 } from '../../Gateway';
 import { MessageUtilities } from '../../utilities/MessageUtilities';
 import { constants } from 'http2';
-import { VenueMessage, VenueResponseValidator } from '@uems/uemscommlib';
+import { VenueMessage } from '@uems/uemscommlib';
 import { EntityResolver } from '../../resolver/EntityResolver';
 import { GenericHandlerFunctions } from '../GenericHandlerFunctions';
 import { Resolver } from '../Resolvers';
 import { Constants } from '../../utilities/Constants';
 import { removeAndReply } from '../DeletePipelines';
 import { ErrorCodes } from '../../constants/ErrorCodes';
-import SendRequestFunction = GatewayMk2.SendRequestFunction;
-import GatewayAttachmentInterface = GatewayMk2.GatewayAttachmentInterface;
-import GatewayInterfaceActionType = GatewayMk2.GatewayInterfaceActionType;
+import * as zod from 'zod';
+import { Configuration } from '../../configuration/Configuration';
+import { asNumber, copyKeysIfDefined, describe, endpoint, Method, tag, warn } from '../../decorators/endpoint';
+import { VenueValidators } from '@uems/uemscommlib/build/venues/VenueValidators';
 import ReadVenueMessage = VenueMessage.ReadVenueMessage;
 import CreateVenueMessage = VenueMessage.CreateVenueMessage;
 import UpdateVenueMessage = VenueMessage.UpdateVenueMessage;
 import ROUTING_KEY = Constants.ROUTING_KEY;
-import GatewayMessageHandler = GatewayMk2.GatewayMessageHandler;
-import * as zod from 'zod';
-import sendZodError = MessageUtilities.sendZodError;
+import Attachment = GatewayMk2.Attachment;
+import ZVenue = VenueValidators.ZVenue;
 
-export class VenueGatewayInterface implements GatewayAttachmentInterface {
+const COLOR_REGEX = /^#?([\dA-Fa-f]{3}([\dA-Fa-f]{3})?)$/;
 
-    private readonly COLOR_REGEX = /^#?([0-9A-Fa-f]{3}([0-9A-Fa-f]{3})?)$/;
+type PostVenueBody = {
+    name: string,
+    capacity: number,
+    color: string,
+};
 
-    private resolver!: EntityResolver;
-    private handler?: GatewayMessageHandler;
+type GetVenueQuery = {
+    capacity?: number,
+    capacityGreater?: number,
+    capacityLess?: number,
+    name?: string,
+};
 
-    public generateInterfaces(
-        sendRequest: SendRequestFunction,
+type PatchVenueBody = {
+    name?: string,
+    capacity?: number,
+    color?: string,
+};
+
+export class VenueGatewayInterface extends Attachment {
+    constructor(
         resolver: EntityResolver,
-        handler: GatewayMessageHandler,
-    ): GatewayInterfaceActionType[] {
-        this.resolver = resolver;
-        this.handler = handler;
-
-        return [
-            {
-                action: 'get',
-                path: '/venues',
-                handle: this.handleReadRequest(sendRequest),
-                additionalValidator: new VenueResponseValidator(),
-            },
-            {
-                action: 'get',
-                path: '/venues/:id',
-                handle: this.handleGetRequest(sendRequest),
-                additionalValidator: new VenueResponseValidator(),
-            },
-            {
-                action: 'post',
-                path: '/venues',
-                handle: this.handleCreateRequest(sendRequest),
-                additionalValidator: new VenueResponseValidator(),
-                secure: ['admin', 'ops'],
-            },
-            {
-                action: 'delete',
-                path: '/venues/:id',
-                handle: this.handleDeleteRequest(sendRequest),
-                additionalValidator: new VenueResponseValidator(),
-                secure: ['admin', 'ops'],
-            },
-            {
-                action: 'patch',
-                path: '/venues/:id',
-                handle: this.handleUpdateRequest(sendRequest),
-                additionalValidator: new VenueResponseValidator(),
-                secure: ['admin', 'ops'],
-            },
-        ];
+        handler: GatewayMk2.GatewayMessageHandler,
+        send: GatewayMk2.SendRequestFunction,
+        config: Configuration,
+    ) {
+        super(resolver, handler, send, config);
     }
 
-    private handleGetRequest(sendRequest: SendRequestFunction) {
-        return (request: Request, response: Response) => {
-            const outgoingMessage: ReadVenueMessage = {
-                msg_id: MessageUtilities.generateMessageIdentifier(),
-                msg_intention: 'READ',
-                status: 0,
-                userID: request.uemsUser.userID,
-                id: request.params.id,
+    @endpoint(
+        Method.GET,
+        ['venues', {
+            key: 'id',
+            description: 'The unique identifier for this venue',
+        }],
+        ['Venue', ZVenue],
+    )
+    @tag('venue')
+    @describe(
+        'Get a venue',
+        'Get the properties of a single venue by ID',
+    )
+    public async handleGetRequest(request: Request, response: Response, _0: undefined, _1: undefined) {
+        const outgoingMessage: ReadVenueMessage = {
+            msg_id: MessageUtilities.generateMessageIdentifier(),
+            msg_intention: 'READ',
+            status: 0,
+            userID: request.uemsUser.userID,
+            id: request.params.id,
+        };
+
+        await this.send(
+            ROUTING_KEY.venues.read,
+            outgoingMessage,
+            response,
+            GenericHandlerFunctions.handleReadSingleResponseFactory(Resolver.resolveSingleVenue(
+                this.resolver,
+                request.uemsUser.userID,
+            )),
+        );
+    }
+
+    @endpoint(
+        Method.DELETE,
+        ['venues', {
+            key: 'id',
+            description: 'The unique identifier for this venue',
+        }],
+        ['ModifyResponse', zod.array(zod.string())],
+        ['admin', 'ops'],
+    )
+    @tag('venue')
+    @describe(
+        'Delete a venue',
+        'Removes a venue from the system (physical buildings are unfortunately not removed)',
+    )
+    public async handleDeleteRequest(request: Request, response: Response, _0: undefined, _1: undefined) {
+        if (this.resolver && this.handler) {
+            await removeAndReply({
+                assetID: request.params.id,
+                assetType: 'venue',
+            }, this.resolver, this.handler, response);
+        } else {
+            response.status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
+                .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
+        }
+    }
+
+    @endpoint(
+        Method.POST,
+        ['venues'],
+        ['ModifyResponse', zod.array(zod.string())],
+        ['admin', 'ops'],
+        undefined,
+        zod.object({
+            name: zod.string(),
+            capacity: zod.number(),
+            color: zod.string()
+                .regex(COLOR_REGEX),
+        }),
+    )
+    @tag('venue')
+    @describe(
+        'Create a new venue',
+        'Adds a new venue with the associated properties, building construction is left as an exercise '
+        + 'to the reader',
+    )
+    public async handleCreateRequest(request: Request, response: Response, _: undefined, body: PostVenueBody) {
+        const outgoingMessage: CreateVenueMessage = {
+            msg_id: MessageUtilities.generateMessageIdentifier(),
+            msg_intention: 'CREATE',
+            status: 0,
+            userID: request.uemsUser.userID,
+            name: body.name,
+            capacity: body.capacity,
+            color: body.color,
+            user: request.uemsUser.userID,
+        };
+
+        await this.send(
+            ROUTING_KEY.venues.create,
+            outgoingMessage,
+            response,
+            GenericHandlerFunctions.handleDefaultResponseFactory(),
+        );
+    }
+
+    // {
+    //     action: 'get',
+    //     path: '/venues',
+    //     handle: this.handleReadRequest(sendRequest),
+    //     additionalValidator: new VenueResponseValidator(),
+    // },
+    @endpoint(
+        Method.GET,
+        ['venues'],
+        ['VenueList', zod.array(ZVenue)],
+        undefined,
+        zod.object({
+            capacity: asNumber(),
+            capacityGreater: asNumber(),
+            capacityLess: asNumber(),
+            name: zod.string(),
+        })
+            .partial(),
+    )
+    @tag('venue')
+    @describe(
+        'Find a venue',
+        'Search for venues against a range of properties',
+    )
+    @warn('Query parameters are incomplete against the range of possible options defined in uemscommlib')
+    public async handleReadRequest(request: Request, response: Response, query: GetVenueQuery, _: undefined) {
+        const outgoingMessage: ReadVenueMessage = {
+            msg_id: MessageUtilities.generateMessageIdentifier(),
+            msg_intention: 'READ',
+            status: 0,
+            userID: request.uemsUser.userID,
+        };
+
+        copyKeysIfDefined([
+            'name', 'capacity',
+        ], query, outgoingMessage);
+
+        // TODO: rest of the properties
+        if (query.capacityLess || query.capacityGreater) {
+            outgoingMessage.capacity = {
+                greater: query.capacityGreater,
+                less: query.capacityLess,
             };
+        }
 
-            sendRequest(
-                ROUTING_KEY.venues.read,
-                outgoingMessage,
-                response,
-                GenericHandlerFunctions.handleReadSingleResponseFactory(Resolver.resolveSingleVenue(
-                    this.resolver,
-                    request.uemsUser.userID,
-                )),
-            );
-        };
+        await this.send(
+            ROUTING_KEY.venues.read,
+            outgoingMessage,
+            response,
+            GenericHandlerFunctions.handleDefaultResponseFactory(Resolver.resolveVenues(
+                this.resolver,
+                request.uemsUser.userID,
+            )),
+        );
     }
 
-    private handleDeleteRequest(sendRequest: SendRequestFunction) {
-        return async (request: Request, response: Response) => {
-            if (this.resolver && this.handler) {
-                await removeAndReply({
-                    assetID: request.params.id,
-                    assetType: 'venue',
-                }, this.resolver, this.handler, response);
-            } else {
-                response.status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
-                    .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
-            }
+    // {
+    //     action: 'patch',
+    //     path: '/venues/:id',
+    //     handle: this.handleUpdateRequest(sendRequest),
+    //     additionalValidator: new VenueResponseValidator(),
+    //     secure: ['admin', 'ops'],
+    // },
+    @endpoint(
+        Method.PATCH,
+
+        ['venues', {
+            key: 'id',
+            description: 'The unique identifier for this venue',
+        }],
+        ['ModifyResponse', zod.array(zod.string())],
+        ['admin', 'ops'],
+        undefined,
+        zod.object({
+            name: zod.string()
+                .optional(),
+            capacity: zod.number()
+                .optional(),
+            color: zod.string()
+                .regex(COLOR_REGEX)
+                .optional(),
+        }),
+    )
+    @tag('venue')
+    @describe(
+        'Update a venue',
+        'Update the properties of a venue as listed',
+    )
+    public async handleUpdateRequest(request: Request, response: Response, _: undefined, body: PatchVenueBody) {
+        const outgoingMessage: UpdateVenueMessage = {
+            msg_id: MessageUtilities.generateMessageIdentifier(),
+            msg_intention: 'UPDATE',
+            status: 0,
+            userID: request.uemsUser.userID,
+            id: request.params.id,
         };
-    }
 
-    private handleCreateRequest(sendRequest: SendRequestFunction) {
-        return (request: Request, response: Response) => {
-            const validate = zod.object({
-                name: zod.string(),
-                capacity: zod.number(),
-                color: zod.string()
-                    .regex(this.COLOR_REGEX),
-            })
-                .safeParse(request.body);
+        copyKeysIfDefined([
+            'name', 'capacity', 'color',
+        ], body, outgoingMessage);
 
-            if (!validate.success) {
-                sendZodError(response, validate.error);
-                return;
-            }
-
-            const body = validate.data;
-
-            // @ts-ignore
-            const outgoingMessage: CreateVenueMessage = {
-                msg_id: MessageUtilities.generateMessageIdentifier(),
-                msg_intention: 'CREATE',
-                status: 0,
-                userID: request.uemsUser.userID,
-                name: body.name,
-                capacity: body.capacity,
-                color: body.color,
-            };
-
-            sendRequest(
-                ROUTING_KEY.venues.create,
-                outgoingMessage,
-                response,
-                GenericHandlerFunctions.handleDefaultResponseFactory(),
-            );
-        };
-    }
-
-    private handleReadRequest(sendRequest: SendRequestFunction) {
-        return (request: Request, response: Response) => {
-            const parameters = request.query;
-            const validProperties = [
-                'name',
-                'capacity',
-                'approximate_capacity',
-                'approximate_fuzziness',
-                'minimum_capacity',
-                'maximum_capacity',
-            ];
-
-            const validate = MessageUtilities.coerceAndVerifyQuery(
-                request,
-                response,
-                [],
-                {
-                    approximate_capacity: { primitive: 'number' },
-                    approximate_fuzziness: { primitive: 'number' },
-                    capacity: { primitive: 'number' },
-                    maximum_capacity: { primitive: 'number' },
-                    minimum_capacity: { primitive: 'number' },
-                    name: { primitive: 'string' },
-                },
-            );
-
-            if (!validate) {
-                return;
-            }
-
-            const outgoingMessage: ReadVenueMessage = {
-                msg_id: MessageUtilities.generateMessageIdentifier(),
-                msg_intention: 'READ',
-                status: 0,
-                userID: request.uemsUser.userID,
-            };
-
-            // Copy any of the search properties into the request if they are present
-            // There's no real point in validating this here because it will be done
-            // at the venue microservice and that should have less load than the gateway
-            // This may need to be reconsidered in the future
-            validProperties.forEach((key) => {
-                if (MessageUtilities.has(parameters, key)) {
-                    // @ts-ignore
-                    outgoingMessage[key] = parameters[key];
-                }
-            });
-
-            sendRequest(
-                ROUTING_KEY.venues.read,
-                outgoingMessage,
-                response,
-                GenericHandlerFunctions.handleDefaultResponseFactory(Resolver.resolveVenues(
-                    this.resolver,
-                    request.uemsUser.userID,
-                )),
-            );
-        };
-    }
-
-    private handleUpdateRequest(sendRequest: SendRequestFunction) {
-        return (request: Request, response: Response) => {
-            const validate = zod.object({
-                name: zod.string()
-                    .optional(),
-                capacity: zod.number()
-                    .optional(),
-                color: zod.string()
-                    .regex(this.COLOR_REGEX)
-                    .optional(),
-            })
-                .safeParse(request.body);
-
-            if (!validate.success) {
-                sendZodError(response, validate.error);
-                return;
-            }
-
-            const outgoingMessage: UpdateVenueMessage = {
-                msg_id: MessageUtilities.generateMessageIdentifier(),
-                msg_intention: 'UPDATE',
-                status: 0,
-                userID: request.uemsUser.userID,
-                id: request.params.id,
-            };
-
-            const parameters = request.body;
-            const validProperties = [
-                'name',
-                'capacity',
-                'color',
-            ];
-
-            // Copy any of the search properties into the request if they are present
-            // There's no real point in validating this here because it will be done
-            // at the venue microservice and that should have less load than the gateway
-            // This may need to be reconsidered in the future
-            validProperties.forEach((key) => {
-                if (MessageUtilities.has(parameters, key)) {
-                    // @ts-ignore
-                    outgoingMessage[key] = parameters[key];
-                }
-            });
-
-            console.log(outgoingMessage);
-
-            sendRequest(
-                ROUTING_KEY.venues.update,
-                outgoingMessage,
-                response,
-                GenericHandlerFunctions.handleDefaultResponseFactory(),
-            );
-        };
+        await this.send(
+            ROUTING_KEY.venues.update,
+            outgoingMessage,
+            response,
+            GenericHandlerFunctions.handleDefaultResponseFactory(),
+        );
     }
 }

@@ -2,243 +2,223 @@ import { GatewayMk2 } from '../../Gateway';
 import { Request, Response } from 'express';
 import { MessageUtilities } from '../../utilities/MessageUtilities';
 import { constants } from 'http2';
-import { EntStateMessage, EntStateResponseValidator } from '@uems/uemscommlib';
+import { EntStateMessage } from '@uems/uemscommlib';
 import { GenericHandlerFunctions } from '../GenericHandlerFunctions';
 import { Constants } from '../../utilities/Constants';
 import { removeAndReply } from '../DeletePipelines';
 import { EntityResolver } from '../../resolver/EntityResolver';
 import { ErrorCodes } from '../../constants/ErrorCodes';
 import * as zod from 'zod';
-import GatewayAttachmentInterface = GatewayMk2.GatewayAttachmentInterface;
-import SendRequestFunction = GatewayMk2.SendRequestFunction;
-import EntStateReadSchema = EntStateMessage.ReadEntStateMessage;
+import { copyKeysIfDefined, describe, endpoint, Method, tag } from '../../decorators/endpoint';
+import { EntStateValidators } from '@uems/uemscommlib/build/ent/EntStateValidators';
 import ReadEntStateMessage = EntStateMessage.ReadEntStateMessage;
 import CreateEntStateMessage = EntStateMessage.CreateEntStateMessage;
 import UpdateEntStateMessage = EntStateMessage.UpdateEntStateMessage;
 import ROUTING_KEY = Constants.ROUTING_KEY;
-import GatewayMessageHandler = GatewayMk2.GatewayMessageHandler;
-import sendZodError = MessageUtilities.sendZodError;
+import ZEntState = EntStateValidators.ZEntState;
+import Attachment = GatewayMk2.Attachment;
+import { Configuration } from "../../configuration/Configuration";
 
-export class EntStateGatewayInterface implements GatewayAttachmentInterface {
-    private readonly COLOR_REGEX = /^#?([0-9A-Fa-f]{3}([0-9A-Fa-f]{3})?)$/;
+type QueryQueryType = {
+    id?: string,
+    name?: string,
+    color?: string,
+    icon?: string,
+};
 
-    private resolver?: EntityResolver;
+type CreateBodyType = {
+    name: string,
+    icon: string,
+    color: string,
+};
 
-    private handler?: GatewayMessageHandler;
+type UpdateBodyType = {
+    name?: string,
+    icon?: string,
+    color?: string,
+};
 
-    generateInterfaces(
-        send: GatewayMk2.SendRequestFunction,
+const COLOR_REGEX = /^#?([\dA-Fa-f]{3}([\dA-Fa-f]{3})?)$/;
+
+export class EntStateGatewayInterface extends Attachment {
+    constructor(
         resolver: EntityResolver,
-        handler: GatewayMessageHandler,
-    ): GatewayMk2.GatewayInterfaceActionType[] | Promise<GatewayMk2.GatewayInterfaceActionType[]> {
-        const validator = new EntStateResponseValidator();
-        this.resolver = resolver;
-        this.handler = handler;
-
-        return [
-            {
-                action: 'get',
-                path: '/ents',
-                handle: this.queryEntStatesHandler(send),
-                additionalValidator: validator,
-            },
-            {
-                action: 'post',
-                path: '/ents',
-                handle: this.createEntStateHandler(send),
-                additionalValidator: validator,
-                secure: ['ents', 'admin', 'ops'],
-            },
-            {
-                action: 'delete',
-                path: '/ents/:id',
-                handle: this.deleteEntStateHandler(),
-                additionalValidator: validator,
-                secure: ['ents', 'admin', 'ops'],
-            },
-            {
-                action: 'get',
-                path: '/ents/:id',
-                handle: this.getEntStateHandler(send),
-                additionalValidator: validator,
-            },
-            {
-                action: 'patch',
-                path: '/ents/:id',
-                handle: this.updateEntStateHandler(send),
-                additionalValidator: validator,
-                secure: ['ents', 'admin', 'ops'],
-            },
-        ];
+        handler: GatewayMk2.GatewayMessageHandler,
+        send: GatewayMk2.SendRequestFunction,
+        config: Configuration,
+    ) {
+        super(resolver, handler, send, config);
     }
 
-    private queryEntStatesHandler(send: SendRequestFunction) {
-        return async (req: Request, res: Response) => {
-            const outgoing: ReadEntStateMessage = {
-                msg_id: MessageUtilities.generateMessageIdentifier(),
-                msg_intention: 'READ',
-                status: 0,
-                userID: req.uemsUser.userID,
-            };
-
-            const validate = MessageUtilities.coerceAndVerifyQuery(
-                req,
-                res,
-                [],
-                {
-                    id: { primitive: 'string' },
-                    name: { primitive: 'string' },
-                    color: {
-                        primitive: 'string',
-                        validator: (x) => this.COLOR_REGEX.test(x),
-                    },
-                    icon: { primitive: 'string' },
-                },
-            );
-
-            if (!validate) {
-                return;
-            }
-
-            const parameters = req.query;
-            const validProperties: (keyof EntStateReadSchema)[] = [
-                'name',
-                'icon',
-                'color',
-                'id',
-            ];
-
-            validProperties.forEach((key) => {
-                if (MessageUtilities.has(parameters, key)) {
-                    // @ts-ignore
-                    outgoing[key] = parameters[key];
-                }
-            });
-
-            await send(
-                ROUTING_KEY.ent.read,
-                outgoing,
-                res,
-                GenericHandlerFunctions.handleDefaultResponseFactory(),
-            );
+    @endpoint(
+        Method.GET,
+        ['ents'],
+        ['EntStateList', zod.array(ZEntState)],
+        undefined,
+        zod.object({
+            id: zod.string(),
+            name: zod.string(),
+            color: zod.string()
+                .regex(COLOR_REGEX),
+            icon: zod.string(),
+        }).partial(),
+    )
+    @tag('ents')
+    @describe(
+        'Queries ent state',
+        'Supports querying a set of ents states based on a range of properties',
+    )
+    public async queryEntStatesHandler(req: Request, res: Response, query: QueryQueryType, _: undefined) {
+        const outgoing: ReadEntStateMessage = {
+            msg_id: MessageUtilities.generateMessageIdentifier(),
+            msg_intention: 'READ',
+            status: 0,
+            userID: req.uemsUser.userID,
         };
+
+        copyKeysIfDefined(['id', 'name', 'color', 'icon'], query, outgoing);
+
+        await this.send(
+            ROUTING_KEY.ent.read,
+            outgoing,
+            res,
+            GenericHandlerFunctions.handleDefaultResponseFactory(),
+        );
     }
 
-    private getEntStateHandler(send: SendRequestFunction) {
-        return async (req: Request, res: Response) => {
-            const outgoingMessage: ReadEntStateMessage = {
-                msg_id: MessageUtilities.generateMessageIdentifier(),
-                msg_intention: 'READ',
-                status: 0,
-                userID: req.uemsUser.userID,
-                id: req.params.id,
-            };
-
-            await send(
-                ROUTING_KEY.ent.read,
-                outgoingMessage,
-                res,
-                GenericHandlerFunctions.handleReadSingleResponseFactory(),
-            );
+    @endpoint(
+        Method.GET,
+        ['ents', {
+            key: 'id',
+            description: 'The unique ID of this ent state',
+        }],
+        ['EntState', ZEntState],
+    )
+    @tag('ents')
+    @describe(
+        'Retrieve a single ent state',
+        'Returns a single ent state record based on its unique ID',
+    )
+    public async getEntStateHandler(req: Request, res: Response, _0: undefined, _1: undefined) {
+        const outgoingMessage: ReadEntStateMessage = {
+            msg_id: MessageUtilities.generateMessageIdentifier(),
+            msg_intention: 'READ',
+            status: 0,
+            userID: req.uemsUser.userID,
+            id: req.params.id,
         };
+
+        await this.send(
+            ROUTING_KEY.ent.read,
+            outgoingMessage,
+            res,
+            GenericHandlerFunctions.handleReadSingleResponseFactory(),
+        );
     }
 
-    private createEntStateHandler(send: SendRequestFunction) {
-        return async (req: Request, res: Response) => {
-            const bodyValidate = zod.object({
-                name: zod.string(),
-                icon: zod.string(),
-                color: zod.string()
-                    .regex(this.COLOR_REGEX),
-            })
-                .safeParse(req.body);
-
-            if (!bodyValidate.success) {
-                sendZodError(res, bodyValidate.error);
-                return;
-            }
-
-            const body = bodyValidate.data;
-
-            const outgoingMessage: CreateEntStateMessage = {
-                msg_id: MessageUtilities.generateMessageIdentifier(),
-                msg_intention: 'CREATE',
-                status: 0,
-                userID: req.uemsUser.userID,
-                color: body.color,
-                icon: body.icon,
-                name: body.name,
-            };
-
-            await send(
-                ROUTING_KEY.ent.create,
-                outgoingMessage,
-                res,
-                GenericHandlerFunctions.handleDefaultResponseFactory(),
-            );
+    @endpoint(
+        Method.POST,
+        ['ents'],
+        ['ModifyResponse', zod.array(zod.string())],
+        ['ents', 'admin', 'ops'],
+        undefined,
+        zod.object({
+            name: zod.string(),
+            icon: zod.string(),
+            color: zod.string()
+                .regex(COLOR_REGEX),
+        }),
+    )
+    @tag('ents')
+    @describe(
+        'Create a new ent state',
+        'Creates a new ent state and returns its identifier based on the body provided',
+    )
+    public async createEntStateHandler(req: Request, res: Response, _: undefined, body: CreateBodyType) {
+        const outgoingMessage: CreateEntStateMessage = {
+            msg_id: MessageUtilities.generateMessageIdentifier(),
+            msg_intention: 'CREATE',
+            status: 0,
+            userID: req.uemsUser.userID,
+            color: body.color,
+            icon: body.icon,
+            name: body.name,
         };
+
+        await this.send(
+            ROUTING_KEY.ent.create,
+            outgoingMessage,
+            res,
+            GenericHandlerFunctions.handleDefaultResponseFactory(),
+        );
     }
 
-    private deleteEntStateHandler() {
-        return async (req: Request, res: Response) => {
-            if (this.resolver && this.handler) {
-                await removeAndReply({
-                    assetID: req.params.id,
-                    assetType: 'ent',
-                }, this.resolver, this.handler, res);
-            } else {
-                res.status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
-                    .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
-            }
-        };
+    @endpoint(
+        Method.DELETE,
+        ['ents', {
+            key: 'id',
+            description: 'The unique ID for the ent state',
+        }],
+        ['ModifyResponse', zod.array(zod.string())],
+        ['ents', 'admin', 'ops'],
+    )
+    @tag('ents')
+    @describe(
+        'Delete an ents state',
+        'Deletes an ent state from the system provided there are no other objects depending on this object',
+    )
+    public async deleteEntStateHandler(req: Request, res: Response, _0: undefined, _1: undefined) {
+        if (this.resolver && this.handler) {
+            await removeAndReply({
+                assetID: req.params.id,
+                assetType: 'ent',
+            }, this.resolver, this.handler, res);
+        } else {
+            res.status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
+                .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
+        }
     }
 
-    private updateEntStateHandler(send: SendRequestFunction) {
-        return async (req: Request, res: Response) => {
-            const validate = zod.object({
-                name: zod.string()
-                    .optional(),
-                icon: zod.string()
-                    .optional(),
-                color: zod.string()
-                    .regex(this.COLOR_REGEX)
-                    .optional(),
-            })
-                .safeParse(req.body);
-
-            if (!validate.success) {
-                sendZodError(res, validate.error);
-                return;
-            }
-
-            const parameters = validate.data;
-            const validProperties: (keyof UpdateEntStateMessage)[] = [
-                'name',
-                'icon',
-                'color',
-            ];
-
-            const outgoing: UpdateEntStateMessage = {
-                msg_id: MessageUtilities.generateMessageIdentifier(),
-                msg_intention: 'UPDATE',
-                status: 0,
-                userID: req.uemsUser.userID,
-                id: req.params.id,
-            };
-
-            validProperties.forEach((key) => {
-                if (MessageUtilities.has(parameters, key)) {
-                    // @ts-ignore
-                    outgoing[key] = parameters[key];
-                }
-            });
-
-            await send(
-                ROUTING_KEY.ent.update,
-                outgoing,
-                res,
-                GenericHandlerFunctions.handleDefaultResponseFactory(),
-            );
+    @endpoint(
+        Method.PATCH,
+        ['ents', {
+            key: 'id',
+            description: 'The unique ID for this ent state',
+        }],
+        ['ModifyResponse', zod.array(zod.string())],
+        ['ents', 'admin', 'ops'],
+        undefined,
+        zod.object({
+            name: zod.string()
+                .optional(),
+            icon: zod.string()
+                .optional(),
+            color: zod.string()
+                .regex(COLOR_REGEX)
+                .optional(),
+        }),
+    )
+    @tag('ents')
+    @describe(
+        'Updates an ent state',
+        'Updates the properties of an ents state with the modifications specified in the body',
+    )
+    public async updateEntStateHandler(req: Request, res: Response, _: undefined, body: UpdateBodyType) {
+        const outgoing: UpdateEntStateMessage = {
+            msg_id: MessageUtilities.generateMessageIdentifier(),
+            msg_intention: 'UPDATE',
+            status: 0,
+            userID: req.uemsUser.userID,
+            id: req.params.id,
         };
+
+        copyKeysIfDefined(['name', 'icon', 'color'], body, outgoing);
+
+        await this.send(
+            ROUTING_KEY.ent.update,
+            outgoing,
+            res,
+            GenericHandlerFunctions.handleDefaultResponseFactory(),
+        );
     }
 }

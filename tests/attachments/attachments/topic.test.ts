@@ -1,91 +1,88 @@
-import { TopicGatewayInterface } from '../../../src/attachments/attachments/TopicGatewayInterface';
-import { GatewayMk2 } from '../../../src/Gateway';
 import { GET_TOPICS_INVALID, GET_TOPICS_VALID, PATCH_TOPICS_TOPICID_INVALID, PATCH_TOPICS_TOPICID_VALID, POST_TOPICS_INVALID, POST_TOPICS_MISSING, POST_TOPICS_VALID } from '../../test-api-data';
-import { testMissingParameters, testParameterTypes, testValidRoute } from '../../utils';
-import GatewayInterfaceActionType = GatewayMk2.GatewayInterfaceActionType;
-import { EntityResolver } from "../../../src/resolver/EntityResolver";
+import { ExpressApplication } from '../../../src/express/ExpressApplication';
+import { EntStateGatewayInterface } from '../../../src/attachments/attachments/EntStateGatewayInterface';
+import request from 'supertest';
+import { constants } from 'http2';
+import { MsgStatus } from '@uems/uemscommlib';
+import { TopicGatewayInterface } from '../../../src/attachments/attachments/TopicGatewayInterface';
 
 describe('TopicGatewayInterface.ts', () => {
     const send = jest.fn();
-    let routes: {
-        'get.topics': GatewayInterfaceActionType,
-        'post.topics': GatewayInterfaceActionType,
-        'get.topics.id': GatewayInterfaceActionType,
-        'delete.topics.id': GatewayInterfaceActionType,
-        'patch.topics.id': GatewayInterfaceActionType,
-    };
+    const app = new ExpressApplication(null as any, null as any);
+    app.attach(send, null as any, null as any, null as any, [
+        TopicGatewayInterface,
+    ]);
 
     beforeEach(() => {
         send.mockReset();
     });
 
-    beforeAll(async () => {
-        // @ts-ignore
-        const resolver: EntityResolver = null;
-        // @ts-ignore
-        const handler: GatewayMessageHandler = null;
-        const entries = await new TopicGatewayInterface().generateInterfaces(send, resolver, handler);
-
-        routes = {
-            'get.topics': entries
-                .find((e) => e.action === 'get' && e.path === '/topics') as GatewayInterfaceActionType,
-            'post.topics': entries
-                .find((e) => e.action === 'post' && e.path === '/topics') as GatewayInterfaceActionType,
-            'get.topics.id': entries
-                .find((e) => e.action === 'get' && e.path === '/topics/:id') as GatewayInterfaceActionType,
-            'delete.topics.id': entries
-                .find((e) => e.action === 'delete' && e.path === '/topics/:id') as GatewayInterfaceActionType,
-            'patch.topics.id': entries
-                .find((e) => e.action === 'patch' && e.path === '/topics/:id') as GatewayInterfaceActionType,
-        };
-    });
-
     describe('GET /topics', () => {
         it('rejects on wrong parameter types', async () => {
-            await testParameterTypes(
-                routes['get.topics'],
-                GET_TOPICS_INVALID,
-                'query',
-                send,
-            );
+            await request(app.app)
+                .get('/api/topics')
+                .query(GET_TOPICS_INVALID)
+                .expect(constants.HTTP_STATUS_BAD_REQUEST);
+
+            expect(send)
+                .not
+                .toHaveBeenCalled();
         });
 
         it('sends on a valid message', async () => {
-            await testValidRoute(
-                routes['get.topics'],
-                GET_TOPICS_VALID,
-                'query',
-                send,
-            );
+            send.mockImplementation((_0, _1, res, cb) => cb(res, 0, {
+                msg_id: 0,
+                status: MsgStatus.SUCCESS,
+                result: [],
+            }, 200));
+
+            await request(app.app)
+                .get('/api/topics')
+                .query(GET_TOPICS_VALID)
+                .expect(200);
+
+            expect(send)
+                .toHaveBeenCalled();
         });
     });
 
     describe('POST /topics', () => {
         it('rejects on missing parameters', async () => {
-            await testMissingParameters(
-                routes['post.topics'],
-                POST_TOPICS_MISSING,
-                'body',
-                send,
-            );
+            await request(app.app)
+                .post('/api/topics')
+                .send(POST_TOPICS_MISSING)
+                .expect(constants.HTTP_STATUS_BAD_REQUEST);
+
+            expect(send)
+                .not
+                .toHaveBeenCalled();
         });
 
         it('rejects on wrong parameter types', async () => {
-            await testParameterTypes(
-                routes['post.topics'],
-                POST_TOPICS_INVALID,
-                'body',
-                send,
-            );
+            await request(app.app)
+                .post('/api/topics')
+                .send(POST_TOPICS_INVALID)
+                .expect(constants.HTTP_STATUS_BAD_REQUEST);
+
+            expect(send)
+                .not
+                .toHaveBeenCalled();
         });
 
         it('sends on a valid message', async () => {
-            await testValidRoute(
-                routes['post.topics'],
-                POST_TOPICS_VALID,
-                'body',
-                send,
-            );
+            send.mockImplementation((_0, _1, res, cb) => cb(res, 0, {
+                msg_id: 0,
+                status: MsgStatus.SUCCESS,
+                result: [],
+            }, 200));
+
+            await request(app.app)
+                .post('/api/topics')
+                .send(POST_TOPICS_VALID)
+                .expect(200);
+
+            expect(send)
+                .toHaveBeenCalled();
         });
     });
 
@@ -103,35 +100,47 @@ describe('TopicGatewayInterface.ts', () => {
 
     describe('GET /topics/:id', () => {
         it('sends on a valid message', async () => {
-            await testValidRoute(
-                routes['get.topics.id'],
-                undefined,
-                'query',
-                send,
-                { id: 'abc' },
-            );
+            send.mockImplementation((_0, _1, res, cb) => cb(res, 0, {
+                msg_id: 0,
+                status: MsgStatus.SUCCESS,
+                result: [{}],
+            }, 200));
+
+            await request(app.app)
+                .get('/api/topics/abc')
+                .expect(200);
+
+            expect(send)
+                .toHaveBeenCalled();
         });
     });
 
     describe('PATCH /topics/:id', () => {
         it('rejects on wrong parameter types', async () => {
-            await testParameterTypes(
-                routes['patch.topics.id'],
-                PATCH_TOPICS_TOPICID_INVALID,
-                'body',
-                send,
-                { id: 'abc' },
-            );
+            await request(app.app)
+                .patch('/api/topics/abc')
+                .send(PATCH_TOPICS_TOPICID_INVALID)
+                .expect(constants.HTTP_STATUS_BAD_REQUEST);
+
+            expect(send)
+                .not
+                .toHaveBeenCalled();
         });
 
         it('sends on a valid message', async () => {
-            await testValidRoute(
-                routes['patch.topics.id'],
-                PATCH_TOPICS_TOPICID_VALID,
-                'body',
-                send,
-                { id: 'abc' },
-            );
+            send.mockImplementation((_0, _1, res, cb) => cb(res, 0, {
+                msg_id: 0,
+                status: MsgStatus.SUCCESS,
+                result: [],
+            }, 200));
+
+            await request(app.app)
+                .patch('/api/topics/abc')
+                .send(PATCH_TOPICS_TOPICID_VALID)
+                .expect(200);
+
+            expect(send)
+                .toHaveBeenCalled();
         });
     });
 });

@@ -15,6 +15,7 @@ import { LogIdentifier, logIncoming, logOutgoing, logResolve } from "./log/Reque
 import { inspect } from "util";
 import { Configuration } from "./configuration/Configuration";
 import log from '@uems/micro-builder/build/src/logging/Log';
+import { SimpleValidator } from "@uems/uemscommlib/build/MessageValidator";
 
 const _ = log.auto;
 // const _l = _byFile(__filename);
@@ -31,7 +32,7 @@ const GATEWAY_EXCHANGE: string = 'gateway';
 // The exchange used for fanning / distributing requests out to the microservices.
 const REQUEST_EXCHANGE: string = 'request';
 
-type SecureRoles = 'admin' | 'extended' | 'ops' | 'ents';
+export type SecureRoles = 'admin' | 'extended' | 'ops' | 'ents';
 
 type OutStandingReq = {
     unique_id: Number,
@@ -72,7 +73,7 @@ export namespace GatewayMk2 {
         action: 'get' | 'delete' | 'post' | 'patch',
         path: string,
         handle: RequestHandler,
-        additionalValidator?: MessageValidator,
+        additionalValidator?: SimpleValidator,
         secure?: SecureRoles[] | false,
     };
 
@@ -100,20 +101,13 @@ export namespace GatewayMk2 {
         /**
          * The basic validator to be run against incoming messages, before entry specific validators are executed
          */
-        private basicValidator: MessageValidator | undefined;
+        private basicValidator: SimpleValidator | undefined;
 
         /**
          * The interval bound to the terminator function which closes requests after minimum amounts of time
          * @private
          */
         private terminatorInterval: NodeJS.Timeout;
-
-        /**
-         * The entity resolver instance which will be used to intercept results for resolved entities
-         * @private
-         */
-        private _resolver?: EntityResolver;
-
         /**
          * Contains the message IDs and callback information for messages which need to be intercepted rather than
          * handled via the normal paths. These messages tend to be used for things like entity resolving and control
@@ -195,81 +189,13 @@ export namespace GatewayMk2 {
         }
 
         /**
-         * Terminates requests after 15 seconds of waiting. Will free up in use keys as well. This also handles
-         * terminating intercepts which have not been handled within 10 seconds.
+         * The entity resolver instance which will be used to intercept results for resolved entities
          * @private
          */
-        private readonly terminateTimedOut = () => {
-            const now = new Date().getTime();
+        private _resolver?: EntityResolver;
 
-            for (const key of this.outstandingRequests.keys()) {
-                const entry = this.outstandingRequests.get(key);
-                if (entry !== undefined && now - entry.timestamp > 15000) {
-                    _(entry.response.requestID)
-                        .debug(`terminating request ${entry.uid}@${entry.timestamp}`);
-
-                    // The request has been waiting more than 15 seconds so we tell them that it has timed out
-                    entry.response.status(constants.HTTP_STATUS_GATEWAY_TIMEOUT)
-                        .json(MessageUtilities.wrapInFailure(ErrorCodes.SERVICE_TIMEOUT));
-
-                    logResolve(
-                        entry.response.requestID,
-                        constants.HTTP_STATUS_GATEWAY_TIMEOUT,
-                        MessageUtilities.wrapInFailure(ErrorCodes.SERVICE_TIMEOUT),
-                    );
-
-                    // Then remove this request from the outstanding requests
-                    this.outstandingRequests.delete(key);
-
-                    // And free up its message ID
-                    MessageUtilities.identifierConsumed(entry.uid);
-                }
-            }
-
-            for (const entry of Object.keys(this._pendingInterceptMessageIDs) as unknown as number[]) {
-                if (now - this._pendingInterceptMessageIDs[entry].submitted > 10000) {
-                    // TODO: logging ids for this?
-                    _.system.debug(`failed to resolve ${this._pendingInterceptMessageIDs[entry]
-                        .name} after 10 seconds, rejecting`);
-                    this._pendingInterceptMessageIDs[entry].conclude.reject(new Error('timed out'));
-                    delete this._pendingInterceptMessageIDs[entry];
-                    _.system.trace(`(-${entry}) - in flight ${Object.keys(this._pendingInterceptMessageIDs).length}`,
-                        Object.keys(this._pendingInterceptMessageIDs));
-                }
-            }
-        };
-
-        /**
-         * Returns whether the message with the given ID should be intercepted and now handled via the normal channels.
-         * If so this should be looked up {@link _pendingInterceptMessageIDs}.
-         * @param id the ID of the message
-         * @protected
-         */
-        protected intercept(id: number): boolean {
-            return has(this._pendingInterceptMessageIDs, id);
-        }
-
-        protected consumeInterceptedMessage(message: MinimalMessageType) {
-            const entry = this._pendingInterceptMessageIDs[message.msg_id];
-            if (!entry) return;
-
-            delete this._pendingInterceptMessageIDs[message.msg_id];
-            _.system.trace(`(-${message.msg_id}) - in flight ${Object.keys(this._pendingInterceptMessageIDs).length}`,
-                Object.keys(this._pendingInterceptMessageIDs));
-
-            if (message.status !== MsgStatus.SUCCESS) {
-                _.system.warn(`failed to resolve ${entry.name} because message status ${message.status}`);
-                entry.conclude.reject(message);
-                return;
-            }
-
-            if (!has(message, 'result')) {
-                _.system.warn(`resolving message for ${entry.name} contained no result, resolving with default`, { message });
-                entry.conclude.resolve(message);
-                return;
-            }
-
-            entry.conclude.resolve(message.result);
+        set resolver(value: EntityResolver) {
+            this._resolver = value;
         }
 
         /**
@@ -317,10 +243,6 @@ export namespace GatewayMk2 {
 
             (requestID ? _(requestID) : _.system)
                 .trace(`(+${messageID}) - in flight ${Object.keys(this._pendingInterceptMessageIDs).length}`, Object.keys(this._pendingInterceptMessageIDs));
-        }
-
-        set resolver(value: EntityResolver) {
-            this._resolver = value;
         }
 
         public async configure(resolver: EntityResolver) {
@@ -395,72 +317,6 @@ export namespace GatewayMk2 {
                 throw e;
             }
         }
-
-        private readonly handleRawIncoming = (message: Message | null) => {
-            if (this._resolver === undefined) throw new Error('Gateway not configured properly, no resolver');
-
-            if (message === null) {
-                _.system.warn('[gateway raw incoming]: null message received, ignoring it');
-                return;
-            }
-
-            const stringContent = message.content.toString('utf8');
-            const json = JSON.parse(stringContent);
-
-            if (!MessageUtilities.has(json, 'msg_id') || typeof (json.msg_id) !== 'number') {
-                _.system.warn('[gateway raw incoming]: message was received without an ID. Ignoring');
-                return;
-            }
-            if (!MessageUtilities.has(json, 'status') || typeof (json.status) !== 'number') {
-                _.system.warn('[gateway raw incoming]: message was received without a status. Ignoring');
-                return;
-            }
-
-            if (MessageUtilities.has(json, 'requestID')) {
-                _(json.requestID)
-                    .trace(`incoming message ${json.msg_id} (${json.status})`, json, message);
-            } else {
-                _.system.trace(`incoming message ${json.msg_id} (${json.status})`, json, message);
-            }
-
-            // If this message ID has been sent by the resolver, it will mark it as requiring an intercept
-            // in that case we want to send it to it to be consumed
-            if (this.intercept(json.msg_id)) {
-                MessageUtilities.identifierConsumed(json.msg_id);
-                this.consumeInterceptedMessage(json);
-                return;
-            }
-
-            const request = this.outstandingRequests.get(json.msg_id);
-            if (request === undefined) {
-                _.system.warn('[gateway raw incoming]: message was received that did not match a pending '
-                    + 'request. has it already timed out?', json.msg_id);
-                return;
-            }
-
-            logIncoming(request.response.requestID, message.properties.userId, json, message.fields.routingKey);
-            this.outstandingRequests.delete(json.msg_id);
-
-            if (request.additionalValidator !== undefined) {
-                request.additionalValidator.validate(json)
-                    .then((validated) => {
-                        if (validated) {
-                            request.callback(request.response, request.timestamp, json, json.status);
-                        } else {
-                            _.system.warn('[gateway raw incoming]: message was rejected because it didn\'t '
-                                + 'pass the additional validator');
-                        }
-                    })
-                    .catch((err) => {
-                        _.system.error(
-                            '[gateway raw incoming]: message was rejected because the validator errored out',
-                            err,
-                        );
-                    });
-            } else {
-                request.callback(request.response, request.timestamp, json, json.status);
-            }
-        };
 
         public publish(key: string, data: any, requestID?: string) {
             if (this.sendChannel === undefined) {
@@ -567,6 +423,150 @@ export namespace GatewayMk2 {
 
             return builder;
         }
+
+        /**
+         * Returns whether the message with the given ID should be intercepted and now handled via the normal channels.
+         * If so this should be looked up {@link _pendingInterceptMessageIDs}.
+         * @param id the ID of the message
+         * @protected
+         */
+        protected intercept(id: number): boolean {
+            return has(this._pendingInterceptMessageIDs, id);
+        }
+
+        protected consumeInterceptedMessage(message: MinimalMessageType) {
+            const entry = this._pendingInterceptMessageIDs[message.msg_id];
+            if (!entry) return;
+
+            delete this._pendingInterceptMessageIDs[message.msg_id];
+            _.system.trace(`(-${message.msg_id}) - in flight ${Object.keys(this._pendingInterceptMessageIDs).length}`,
+                Object.keys(this._pendingInterceptMessageIDs));
+
+            if (message.status !== MsgStatus.SUCCESS) {
+                _.system.warn(`failed to resolve ${entry.name} because message status ${message.status}`);
+                entry.conclude.reject(message);
+                return;
+            }
+
+            if (!has(message, 'result')) {
+                _.system.warn(`resolving message for ${entry.name} contained no result, resolving with default`, { message });
+                entry.conclude.resolve(message);
+                return;
+            }
+
+            entry.conclude.resolve(message.result);
+        }
+
+        /**
+         * Terminates requests after 15 seconds of waiting. Will free up in use keys as well. This also handles
+         * terminating intercepts which have not been handled within 10 seconds.
+         * @private
+         */
+        private readonly terminateTimedOut = () => {
+            const now = new Date().getTime();
+
+            for (const key of this.outstandingRequests.keys()) {
+                const entry = this.outstandingRequests.get(key);
+                if (entry !== undefined && now - entry.timestamp > 15000) {
+                    _(entry.response.requestID)
+                        .debug(`terminating request ${entry.uid}@${entry.timestamp}`);
+
+                    // The request has been waiting more than 15 seconds so we tell them that it has timed out
+                    entry.response.status(constants.HTTP_STATUS_GATEWAY_TIMEOUT)
+                        .json(MessageUtilities.wrapInFailure(ErrorCodes.SERVICE_TIMEOUT));
+
+                    logResolve(
+                        entry.response.requestID,
+                        constants.HTTP_STATUS_GATEWAY_TIMEOUT,
+                        MessageUtilities.wrapInFailure(ErrorCodes.SERVICE_TIMEOUT),
+                    );
+
+                    // Then remove this request from the outstanding requests
+                    this.outstandingRequests.delete(key);
+
+                    // And free up its message ID
+                    MessageUtilities.identifierConsumed(entry.uid);
+                }
+            }
+
+            for (const entry of Object.keys(this._pendingInterceptMessageIDs) as unknown as number[]) {
+                if (now - this._pendingInterceptMessageIDs[entry].submitted > 10000) {
+                    // TODO: logging ids for this?
+                    _.system.debug(`failed to resolve ${this._pendingInterceptMessageIDs[entry]
+                        .name} after 10 seconds, rejecting`);
+                    this._pendingInterceptMessageIDs[entry].conclude.reject(new Error('timed out'));
+                    delete this._pendingInterceptMessageIDs[entry];
+                    _.system.trace(`(-${entry}) - in flight ${Object.keys(this._pendingInterceptMessageIDs).length}`,
+                        Object.keys(this._pendingInterceptMessageIDs));
+                }
+            }
+        };
+
+        private readonly handleRawIncoming = (message: Message | null) => {
+            if (this._resolver === undefined) throw new Error('Gateway not configured properly, no resolver');
+
+            if (message === null) {
+                _.system.warn('[gateway raw incoming]: null message received, ignoring it');
+                return;
+            }
+
+            const stringContent = message.content.toString('utf8');
+            const json = JSON.parse(stringContent);
+
+            if (!MessageUtilities.has(json, 'msg_id') || typeof (json.msg_id) !== 'number') {
+                _.system.warn('[gateway raw incoming]: message was received without an ID. Ignoring');
+                return;
+            }
+            if (!MessageUtilities.has(json, 'status') || typeof (json.status) !== 'number') {
+                _.system.warn('[gateway raw incoming]: message was received without a status. Ignoring');
+                return;
+            }
+
+            if (MessageUtilities.has(json, 'requestID')) {
+                _(json.requestID)
+                    .trace(`incoming message ${json.msg_id} (${json.status})`, json, message);
+            } else {
+                _.system.trace(`incoming message ${json.msg_id} (${json.status})`, json, message);
+            }
+
+            // If this message ID has been sent by the resolver, it will mark it as requiring an intercept
+            // in that case we want to send it to it to be consumed
+            if (this.intercept(json.msg_id)) {
+                MessageUtilities.identifierConsumed(json.msg_id);
+                this.consumeInterceptedMessage(json);
+                return;
+            }
+
+            const request = this.outstandingRequests.get(json.msg_id);
+            if (request === undefined) {
+                _.system.warn('[gateway raw incoming]: message was received that did not match a pending '
+                    + 'request. has it already timed out?', json.msg_id);
+                return;
+            }
+
+            logIncoming(request.response.requestID, message.properties.userId, json, message.fields.routingKey);
+            this.outstandingRequests.delete(json.msg_id);
+
+            if (request.additionalValidator !== undefined) {
+                request.additionalValidator.validate(json)
+                    .then((validated) => {
+                        if (validated) {
+                            request.callback(request.response, request.timestamp, json, json.status);
+                        } else {
+                            _.system.warn('[gateway raw incoming]: message was rejected because it didn\'t '
+                                + 'pass the additional validator');
+                        }
+                    })
+                    .catch((err) => {
+                        _.system.error(
+                            '[gateway raw incoming]: message was rejected because the validator errored out',
+                            err,
+                        );
+                    });
+            } else {
+                request.callback(request.response, request.timestamp, json, json.status);
+            }
+        };
     }
 
     export interface GatewayAttachmentInterface {
@@ -578,5 +578,13 @@ export namespace GatewayMk2 {
             configuration: Configuration,
         ): GatewayInterfaceActionType[] | Promise<GatewayInterfaceActionType[]>;
 
+    }
+
+    export abstract class Attachment {
+        public constructor(protected resolver: EntityResolver,
+            protected handler: GatewayMk2.GatewayMessageHandler,
+            protected send: GatewayMk2.SendRequestFunction,
+            protected config: Configuration) {
+        }
     }
 }

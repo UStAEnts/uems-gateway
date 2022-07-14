@@ -10,7 +10,7 @@ import StateRepresentation = StateValidators.StateRepresentation;
 import { EntStateValidators } from '@uems/uemscommlib/build/ent/EntStateValidators';
 import EntStateRepresentation = EntStateValidators.EntStateRepresentation;
 import { VenueValidators } from '@uems/uemscommlib/build/venues/VenueValidators';
-import ShallowVenueRepresentation = VenueValidators.ShallowVenueRepresentation;
+import ShallowVenueRepresentation = VenueValidators.VenueShallowRepresentation;
 
 export const mapToValue = <T extends { id: string }>(id: string, options: T[]) => {
     const result = options.find((e) => e.id === id);

@@ -1,104 +1,89 @@
-import { FileGatewayInterface } from '../../../src/attachments/attachments/FileGatewayInterface';
-import { EntityResolver } from '../../../src/resolver/EntityResolver';
-import { GatewayMk2 } from '../../../src/Gateway';
-import GatewayInterfaceActionType = GatewayMk2.GatewayInterfaceActionType;
 import { GET_FILES_INVALID, GET_FILES_VALID, PATCH_FILES_FILEID_VALID, POST_EVENTS_EVENTID_FILES_MISSING, POST_EVENTS_EVENTID_FILES_VALID, POST_FILES_INVALID, POST_FILES_MISSING, POST_FILES_VALID } from '../../test-api-data';
-import { testMissingParameters, testParameterTypes, testValidRoute } from '../../utils';
+import { ExpressApplication } from "../../../src/express/ExpressApplication";
+import request from "supertest";
+import { constants } from "http2";
+import { MsgStatus } from "@uems/uemscommlib";
+import { FileGatewayInterface } from "../../../src/attachments/attachments/FileGatewayInterface";
 
 describe('FileGatewayInterface.ts', () => {
     const send = jest.fn();
-    let routes: {
-        'get.files': GatewayInterfaceActionType,
-        'post.files': GatewayInterfaceActionType,
-        'get.files.id': GatewayInterfaceActionType,
-        'patch.files.id': GatewayInterfaceActionType,
-        'delete.files.id': GatewayInterfaceActionType,
-        'get.files.id.events': GatewayInterfaceActionType,
-        'get.events.id.files': GatewayInterfaceActionType,
-        'post.events.id.files': GatewayInterfaceActionType,
-        'delete.events.eventID.files.fileID': GatewayInterfaceActionType,
-    };
+    const app = new ExpressApplication(null as any, null as any);
+    app.attach(send, {
+        resolveUser: () => ({})
+    } as any, null as any, null as any, [
+        FileGatewayInterface,
+    ]);
 
     beforeEach(() => {
         send.mockReset();
     });
 
-    beforeAll(async () => {
-        // @ts-ignore
-        const resolver: EntityResolver = null;
-        // @ts-ignore
-        const handler: GatewayMessageHandler = null;
-        const entries = await new FileGatewayInterface().generateInterfaces(send, resolver, handler);
-
-        routes = {
-            'get.files': entries
-                .find((e) => e.action === 'get' && e.path === '/files') as GatewayInterfaceActionType,
-            'post.files': entries
-                .find((e) => e.action === 'post' && e.path === '/files') as GatewayInterfaceActionType,
-            'get.files.id': entries
-                .find((e) => e.action === 'get' && e.path === '/files/:id') as GatewayInterfaceActionType,
-            'patch.files.id': entries
-                .find((e) => e.action === 'patch' && e.path === '/files/:id') as GatewayInterfaceActionType,
-            'delete.files.id': entries
-                .find((e) => e.action === 'delete' && e.path === '/files/:id') as GatewayInterfaceActionType,
-            'get.files.id.events': entries
-                .find((e) => e.action === 'get' && e.path === '/files/:id/events') as GatewayInterfaceActionType,
-
-            'get.events.id.files': entries
-                .find((e) => e.action === 'get' && e.path === '/events/:id/files') as GatewayInterfaceActionType,
-            'post.events.id.files': entries
-                .find((e) => e.action === 'post' && e.path === '/events/:id/files') as GatewayInterfaceActionType,
-            'delete.events.eventID.files.fileID': entries
-                .find((e) => e.action === 'delete' && e.path === '/events/:eventID/files/:fileID') as GatewayInterfaceActionType,
-        };
-    });
-
     describe('GET /files', () => {
         it('rejects on wrong parameter types', async () => {
-            await testParameterTypes(
-                routes['get.files'],
-                GET_FILES_INVALID,
-                'query',
-                send,
-            );
+            await request(app.app)
+                .get('/api/files')
+                .query(GET_FILES_INVALID)
+                .expect(constants.HTTP_STATUS_BAD_REQUEST);
+
+            expect(send)
+                .not
+                .toHaveBeenCalled();
         });
 
         it('sends on a valid message', async () => {
-            await testValidRoute(
-                routes['get.files'],
-                GET_FILES_VALID,
-                'query',
-                send,
-            );
+            send.mockImplementation((_0, _1, res, cb) => cb(res, 0, {
+                msg_id: 0,
+                status: MsgStatus.SUCCESS,
+                result: [],
+            }, 200));
+
+            await request(app.app)
+                .get('/api/files')
+                .query(GET_FILES_VALID)
+                .expect(200);
+
+            expect(send)
+                .toHaveBeenCalled();
         });
     });
 
     describe('POST /files', () => {
         it('rejects on missing parameters', async () => {
-            await testMissingParameters(
-                routes['post.files'],
-                POST_FILES_MISSING,
-                'body',
-                send,
-            );
+            await request(app.app)
+                .post('/api/files')
+                .send(POST_FILES_MISSING)
+                .expect(constants.HTTP_STATUS_BAD_REQUEST);
+
+            expect(send)
+                .not
+                .toHaveBeenCalled();
         });
 
         it('rejects on wrong parameter types', async () => {
-            await testParameterTypes(
-                routes['post.files'],
-                POST_FILES_INVALID,
-                'body',
-                send,
-            );
+            await request(app.app)
+                .post('/api/files')
+                .send(POST_FILES_INVALID)
+                .expect(constants.HTTP_STATUS_BAD_REQUEST);
+
+            expect(send)
+                .not
+                .toHaveBeenCalled();
         });
 
         it('sends on a valid message', async () => {
-            await testValidRoute(
-                routes['post.files'],
-                POST_FILES_VALID,
-                'body',
-                send,
-            );
+            send.mockImplementation((_0, _1, res, cb) => cb(res, 0, {
+                msg_id: 0,
+                status: MsgStatus.SUCCESS,
+                result: [],
+            }, 200));
+
+            await request(app.app)
+                .post('/api/files')
+                .send(POST_FILES_VALID)
+                .expect(200);
+
+            expect(send)
+                .toHaveBeenCalled();
         });
     });
 
@@ -116,87 +101,116 @@ describe('FileGatewayInterface.ts', () => {
 
     describe('GET /files/:id', () => {
         it('sends on a valid message', async () => {
-            await testValidRoute(
-                routes['get.files.id'],
-                undefined,
-                'query',
-                send,
-                { id: 'abc' },
-            );
+            send.mockImplementation((_0, _1, res, cb) => cb(res, 0, {
+                msg_id: 0,
+                status: MsgStatus.SUCCESS,
+                result: [{}],
+            }, 200));
+
+            await request(app.app)
+                .get('/api/files/abc')
+                .expect(200);
+
+            expect(send)
+                .toHaveBeenCalled();
         });
     });
 
     describe('PATCH /files/:id', () => {
         it('sends on a valid message', async () => {
-            await testValidRoute(
-                routes['patch.files.id'],
-                PATCH_FILES_FILEID_VALID,
-                'body',
-                send,
-                { id: 'abc' },
-            );
+            send.mockImplementation((_0, _1, res, cb) => cb(res, 0, {
+                msg_id: 0,
+                status: MsgStatus.SUCCESS,
+                result: [],
+            }, 200));
+
+            await request(app.app)
+                .patch('/api/files/abc')
+                .send(PATCH_FILES_FILEID_VALID)
+                .expect(200);
+
+            expect(send)
+                .toHaveBeenCalled();
         });
     });
 
     describe('GET /files/:id/events', () => {
         it('sends on a valid message', async () => {
-            await testValidRoute(
-                routes['get.files.id.events'],
-                undefined,
-                'query',
-                send,
-                { id: 'abc' },
-            );
+            send.mockImplementation((_0, _1, res, cb) => cb(res, 0, {
+                msg_id: 0,
+                status: MsgStatus.SUCCESS,
+                result: [],
+            }, 200));
+
+            await request(app.app)
+                .get('/api/files/abc/events')
+                .expect(200);
+
+            expect(send)
+                .toHaveBeenCalled();
         });
     });
 
     describe('GET /events/:id/files', () => {
         it('sends on a valid message', async () => {
-            await testValidRoute(
-                routes['get.events.id.files'],
-                undefined,
-                'query',
-                send,
-                { id: 'abc' },
-            );
+            send.mockImplementation((_0, _1, res, cb) => cb(res, 0, {
+                msg_id: 0,
+                status: MsgStatus.SUCCESS,
+                result: [],
+            }, 200));
+
+            await request(app.app)
+                .get('/api/events/abc/files')
+                .expect(200);
+
+            expect(send)
+                .toHaveBeenCalled();
         });
     });
 
     describe('POST /events/:id/files', () => {
         it('rejects on missing parameters', async () => {
-            await testMissingParameters(
-                routes['post.events.id.files'],
-                POST_EVENTS_EVENTID_FILES_MISSING,
-                'body',
-                send,
-                { id: 'abc' },
-            );
+            await request(app.app)
+                .post('/api/events/abc/files')
+                .send(POST_EVENTS_EVENTID_FILES_MISSING)
+                .expect(constants.HTTP_STATUS_BAD_REQUEST);
+
+            expect(send)
+                .not
+                .toHaveBeenCalled();
         });
 
         it('sends on a valid message', async () => {
-            await testValidRoute(
-                routes['post.events.id.files'],
-                POST_EVENTS_EVENTID_FILES_VALID,
-                'body',
-                send,
-                { id: 'abc' },
-                true,
-            );
+            send.mockImplementation((_0, _1, res, cb) => cb(res, 0, {
+                msg_id: 0,
+                status: MsgStatus.SUCCESS,
+                result: [],
+            }, 200));
+
+            await request(app.app)
+                .post('/api/events/abc/files')
+                .send(POST_EVENTS_EVENTID_FILES_VALID)
+                .expect(200);
+
+            expect(send)
+                .toHaveBeenCalled();
         });
     });
 
     describe('DELETE /events/:id/files/:id', () => {
         it('sends on a valid message', async () => {
-            await testValidRoute(
-                routes['delete.events.eventID.files.fileID'],
-                undefined,
-                'query',
-                send,
-                {
-                    eventID: 'abc',
-                    fileID: 'abc',
-                },
-            );
+            send.mockImplementation((_0, _1, res, cb) => cb(res, 0, {
+                msg_id: 0,
+                status: MsgStatus.SUCCESS,
+                result: [],
+            }, 200));
+
+            await request(app.app)
+                .delete('/api/events/abc/files/abc')
+                .expect(200);
+
+            expect(send)
+                .toHaveBeenCalled();
         });
     });
 });

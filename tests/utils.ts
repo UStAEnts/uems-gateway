@@ -1,12 +1,16 @@
 import { GatewayMk2 } from "../src/Gateway";
 import GatewayInterfaceActionType = GatewayMk2.GatewayInterfaceActionType;
 import { Response } from "jest-express/lib/response";
-import express from "express";
+import express, { Application, Request } from "express";
 import { GET_VENUES_INVALID, request } from "./test-api-data";
 import { constants } from "http2";
 
+export type AttachmentFunction = (req: Request, res: express.Response, query: any, body: any) => Promise<void>;
+
 export async function testParameterTypes(
-    route: GatewayInterfaceActionType,
+    app: Application,
+    route: string,
+    method: string,
     data: any,
     location: 'query' | 'body',
     send: jest.Mock,
@@ -15,15 +19,18 @@ export async function testParameterTypes(
     const response = new Response();
     const fake = response as unknown as express.Response;
     const req = request(
+        route,
+        method,
         location === 'query' ? data : undefined,
         location === 'body' ? data : undefined,
         params,
     );
-    await route.handle(req, fake, () => false);
+    await app(req, response as any);
+    // await route(req, fake, location === 'query' ? data : undefined, location === 'body' ? data : undefined);
 
-    if (send.mock.calls.length !== 0) {
+    // if (send.mock.calls.length !== 0) {
         console.warn(response);
-    }
+    // }
     expect(send)
         .not
         .toHaveBeenCalled();
@@ -37,7 +44,7 @@ export async function testParameterTypes(
 }
 
 export async function testMissingParameters(
-    route: GatewayInterfaceActionType,
+    route: AttachmentFunction,
     data: any,
     location: 'query' | 'body',
     send: jest.Mock,
@@ -52,7 +59,7 @@ export async function testMissingParameters(
         params,
         roles,
     );
-    await route.handle(req, fake, () => false);
+    await route(req, fake, location === 'query' ? data : undefined, location === 'body' ? data : undefined);
 
     if (send.mock.calls.length !== 0) {
         console.warn(response);
@@ -68,7 +75,7 @@ export async function testMissingParameters(
 }
 
 export async function testRouteWithoutSend(
-    route: GatewayInterfaceActionType,
+    route: AttachmentFunction,
     data: any,
     location: 'query' | 'body',
     send: jest.Mock,
@@ -83,18 +90,20 @@ export async function testRouteWithoutSend(
         params,
         roles,
     );
-    await route.handle(req, fake, () => false);
+    await route(req, fake, location === 'query' ? data : undefined, location === 'body' ? data : undefined);
+
     return response;
 }
 
 export async function testValidRoute(
-    route: GatewayInterfaceActionType,
+    route: AttachmentFunction,
     data: any,
     location: 'query' | 'body',
     send: jest.Mock,
     params?: any,
     skipChild: boolean = false,
     roles?: string[],
+    comparisonData?: any,
 ) {
     const response = new Response();
     const fake = response as unknown as express.Response;
@@ -104,7 +113,8 @@ export async function testValidRoute(
         params,
         roles,
     );
-    await route.handle(req, fake, () => false);
+    await route(req, fake, location === 'query' ? data : undefined, location === 'body' ? data : undefined);
+
 
     if (send.mock.calls.length !== 1) {
         console.warn(response);
@@ -114,7 +124,7 @@ export async function testValidRoute(
         .toHaveBeenCalledTimes(1);
     if (data !== undefined && !skipChild) {
         expect(send.mock.calls[0][1])
-            .toEqual(expect.objectContaining(data));
+            .toEqual(expect.objectContaining(comparisonData ?? data));
     }
     return response;
 }

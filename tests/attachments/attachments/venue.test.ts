@@ -1,103 +1,106 @@
-import { GatewayMk2 } from '../../../src/Gateway';
 import { VenueGatewayInterface } from '../../../src/attachments/attachments/VenueGatewayInterface';
-import { EntityResolver } from '../../../src/resolver/EntityResolver';
 import { GET_VENUES_INVALID, GET_VENUES_VALID, PATCH_VENUES_VENUEID_INVALID, PATCH_VENUES_VENUEID_VALID, POST_VENUES_INVALID, POST_VENUES_MISSING, POST_VENUES_VALID } from '../../test-api-data';
-import { testMissingParameters, testParameterTypes, testValidRoute } from '../../utils';
-import GatewayInterfaceActionType = GatewayMk2.GatewayInterfaceActionType;
+import { ExpressApplication } from '../../../src/express/ExpressApplication';
+import request from 'supertest';
+import { constants } from 'http2';
+import { MsgStatus } from '@uems/uemscommlib';
 
 describe('VenueGatewayInterface.ts', () => {
     const send = jest.fn();
-    let routes: {
-        'get.venues': GatewayInterfaceActionType,
-        'get.venues.id': GatewayInterfaceActionType,
-        'post.venues': GatewayInterfaceActionType,
-        'delete.venues.id': GatewayInterfaceActionType,
-        'patch.venues.id': GatewayInterfaceActionType,
-    };
+    const app = new ExpressApplication(null as any, null as any);
+    app.attach(send, {
+        resolveUser: () => ({}),
+    } as any, null as any, null as any, [
+        VenueGatewayInterface,
+    ]);
 
     beforeEach(() => {
         send.mockReset();
     });
 
-    beforeAll(async () => {
-        // @ts-ignore
-        const resolver: EntityResolver = null;
-        // @ts-ignore
-        const handler: GatewayMessageHandler = null;
-        const entries = await new VenueGatewayInterface().generateInterfaces(send, resolver, handler);
-
-        routes = {
-            'get.venues': entries
-                .find((e) => e.action === 'get' && e.path === '/venues') as GatewayInterfaceActionType,
-            'get.venues.id': entries
-                .find((e) => e.action === 'get' && e.path === '/venues/:id') as GatewayInterfaceActionType,
-            'post.venues': entries
-                .find((e) => e.action === 'post' && e.path === '/venues') as GatewayInterfaceActionType,
-            'delete.venues.id': entries
-                .find((e) => e.action === 'delete' && e.path === '/venues/:id') as GatewayInterfaceActionType,
-            'patch.venues.id': entries
-                .find((e) => e.action === 'patch' && e.path === '/venues/:id') as GatewayInterfaceActionType,
-        };
-    });
-
     describe('GET /venues', () => {
         it('rejects on wrong parameter types', async () => {
-            await testParameterTypes(
-                routes['get.venues'],
-                GET_VENUES_INVALID,
-                'query',
-                send,
-            );
+            await request(app.app)
+                .get('/api/venues')
+                .query(GET_VENUES_INVALID)
+                .expect(constants.HTTP_STATUS_BAD_REQUEST);
+
+            expect(send)
+                .not
+                .toHaveBeenCalled();
         });
 
         it('sends on a valid message', async () => {
-            await testValidRoute(
-                routes['get.venues'],
-                GET_VENUES_VALID,
-                'query',
-                send,
-            );
+            send.mockImplementation((_0, _1, res, cb) => cb(res, 0, {
+                msg_id: 0,
+                status: MsgStatus.SUCCESS,
+                result: [],
+            }, 200));
+
+            await request(app.app)
+                .get('/api/venues')
+                .query(GET_VENUES_VALID)
+                .expect(200);
+
+            expect(send)
+                .toHaveBeenCalled();
         });
     });
 
     describe('GET /venues/:id', () => {
         it('sends on a valid message', async () => {
-            await testValidRoute(
-                routes['get.venues.id'],
-                undefined,
-                'query',
-                send,
-                { id: 'abc' },
-            );
+            send.mockImplementation((_0, _1, res, cb) => cb(res, 0, {
+                msg_id: 0,
+                status: MsgStatus.SUCCESS,
+                result: [{}],
+            }, 200));
+
+            await request(app.app)
+                .get('/api/venues/abc')
+                .expect(200);
+
+            expect(send)
+                .toHaveBeenCalled();
         });
     });
 
     describe('POST /venues', () => {
         it('rejects on missing parameters', async () => {
-            await testMissingParameters(
-                routes['post.venues'],
-                POST_VENUES_MISSING,
-                'body',
-                send,
-            );
+            await request(app.app)
+                .post('/api/venues')
+                .send(POST_VENUES_MISSING)
+                .expect(constants.HTTP_STATUS_BAD_REQUEST);
+
+            expect(send)
+                .not
+                .toHaveBeenCalled();
         });
 
         it('rejects on wrong parameter types', async () => {
-            await testParameterTypes(
-                routes['post.venues'],
-                POST_VENUES_INVALID,
-                'body',
-                send,
-            );
+            await request(app.app)
+                .post('/api/venues')
+                .send(POST_VENUES_INVALID)
+                .expect(constants.HTTP_STATUS_BAD_REQUEST);
+
+            expect(send)
+                .not
+                .toHaveBeenCalled();
         });
 
         it('sends on a valid message', async () => {
-            await testValidRoute(
-                routes['post.venues'],
-                POST_VENUES_VALID,
-                'body',
-                send,
-            );
+            send.mockImplementation((_0, _1, res, cb) => cb(res, 0, {
+                msg_id: 0,
+                status: MsgStatus.SUCCESS,
+                result: [],
+            }, 200));
+
+            await request(app.app)
+                .post('/api/venues')
+                .send(POST_VENUES_VALID)
+                .expect(200);
+
+            expect(send)
+                .toHaveBeenCalled();
         });
     });
 
@@ -115,23 +118,30 @@ describe('VenueGatewayInterface.ts', () => {
 
     describe('PATCH /venues/:id', () => {
         it('rejects on wrong parameter types', async () => {
-            await testParameterTypes(
-                routes['patch.venues.id'],
-                PATCH_VENUES_VENUEID_INVALID,
-                'body',
-                send,
-                { id: 'abc' },
-            );
+            await request(app.app)
+                .patch('/api/venues/id')
+                .send(PATCH_VENUES_VENUEID_INVALID)
+                .expect(constants.HTTP_STATUS_BAD_REQUEST);
+
+            expect(send)
+                .not
+                .toHaveBeenCalled();
         });
 
         it('sends on a valid message', async () => {
-            await testValidRoute(
-                routes['patch.venues.id'],
-                PATCH_VENUES_VENUEID_VALID,
-                'body',
-                send,
-                { id: 'abc' },
-            );
+            send.mockImplementation((_0, _1, res, cb) => cb(res, 0, {
+                msg_id: 0,
+                status: MsgStatus.SUCCESS,
+                result: [],
+            }, 200));
+
+            await request(app.app)
+                .patch('/api/venues/abc')
+                .send(PATCH_VENUES_VENUEID_VALID)
+                .expect(200);
+
+            expect(send)
+                .toHaveBeenCalled();
         });
     });
 });

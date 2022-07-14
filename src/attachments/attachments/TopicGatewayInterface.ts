@@ -2,249 +2,236 @@ import { GatewayMk2 } from '../../Gateway';
 import { Request, Response } from 'express';
 import { MessageUtilities } from '../../utilities/MessageUtilities';
 import { constants } from 'http2';
-import { TopicMessage, TopicResponseValidator } from '@uems/uemscommlib';
+import { TopicMessage } from '@uems/uemscommlib';
 import { GenericHandlerFunctions } from '../GenericHandlerFunctions';
 import { Constants } from '../../utilities/Constants';
 import { EntityResolver } from '../../resolver/EntityResolver';
 import { removeAndReply } from '../DeletePipelines';
 import { ErrorCodes } from '../../constants/ErrorCodes';
-import GatewayAttachmentInterface = GatewayMk2.GatewayAttachmentInterface;
-import SendRequestFunction = GatewayMk2.SendRequestFunction;
+import * as zod from 'zod';
+import { Configuration } from '../../configuration/Configuration';
+import { copyKeysIfDefined, describe, endpoint, Method, tag } from '../../decorators/endpoint';
+import { TopicValidators } from '@uems/uemscommlib/build/topic/TopicValidators';
 import ReadTopicMessage = TopicMessage.ReadTopicMessage;
-import TopicReadSchema = TopicMessage.ReadTopicMessage;
 import CreateTopicMessage = TopicMessage.CreateTopicMessage;
 import UpdateTopicMessage = TopicMessage.UpdateTopicMessage;
 import ROUTING_KEY = Constants.ROUTING_KEY;
-import GatewayMessageHandler = GatewayMk2.GatewayMessageHandler;
-import * as zod from 'zod';
-import sendZodError = MessageUtilities.sendZodError;
+import Attachment = GatewayMk2.Attachment;
+import ZTopic = TopicValidators.ZTopic;
 
-export class TopicGatewayInterface implements GatewayAttachmentInterface {
+const COLOR_REGEX = /^#?([0-9A-Fa-f]{3}([0-9A-Fa-f]{3})?)$/;
 
-    private readonly COLOR_REGEX = /^#?([0-9A-Fa-f]{3}([0-9A-Fa-f]{3})?)$/;
-    private resolver?: EntityResolver;
-    private handler?: GatewayMessageHandler;
+type QueryTopicQuery = {
+    name?: string,
+    icon?: string,
+    color?: string,
+    description?: string,
+    id?: string,
+};
 
-    generateInterfaces(
-        send: GatewayMk2.SendRequestFunction,
+type PostTopicBody = {
+    name: string,
+    icon: string,
+    color: string
+    description: string,
+};
+
+type PatchTopicBody = {
+    name?: string,
+    icon?: string,
+    color?: string,
+    description?: string,
+};
+
+export class TopicGatewayInterface extends Attachment {
+    constructor(
         resolver: EntityResolver,
-        handler: GatewayMessageHandler,
-    ): GatewayMk2.GatewayInterfaceActionType[] | Promise<GatewayMk2.GatewayInterfaceActionType[]> {
-        const validator = new TopicResponseValidator();
-        this.resolver = resolver;
-        this.handler = handler;
-
-        return [
-            {
-                action: 'get',
-                path: '/topics',
-                handle: this.queryTopicsHandler(send),
-                additionalValidator: validator,
-            },
-            {
-                action: 'post',
-                path: '/topics',
-                handle: this.createTopicHandler(send),
-                additionalValidator: validator,
-                secure: ['admin', 'ops'],
-            },
-            {
-                action: 'delete',
-                path: '/topics/:id',
-                handle: this.deleteTopicHandler(send),
-                additionalValidator: validator,
-                secure: ['admin', 'ops'],
-            },
-            {
-                action: 'get',
-                path: '/topics/:id',
-                handle: this.getTopicHandler(send),
-                additionalValidator: validator,
-            },
-            {
-                action: 'patch',
-                path: '/topics/:id',
-                handle: this.updateTopicHandler(send),
-                additionalValidator: validator,
-                secure: ['admin', 'ops'],
-            },
-        ];
+        handler: GatewayMk2.GatewayMessageHandler,
+        send: GatewayMk2.SendRequestFunction,
+        config: Configuration,
+    ) {
+        super(resolver, handler, send, config);
     }
 
-    private queryTopicsHandler(send: SendRequestFunction) {
-        return async (req: Request, res: Response) => {
-            const outgoing: ReadTopicMessage = {
-                msg_id: MessageUtilities.generateMessageIdentifier(),
-                msg_intention: 'READ',
-                status: 0,
-                userID: req.uemsUser.userID,
-            };
-
-            const validate = MessageUtilities.coerceAndVerifyQuery(
-                req,
-                res,
-                [],
-                {
-                    name: { primitive: 'string' },
-                    icon: { primitive: 'string' },
-                    color: {
-                        primitive: 'string',
-                        validator: (x) => this.COLOR_REGEX.test(x)
-                    },
-                    description: { primitive: 'string' },
-                    id: { primitive: 'string' },
-                }
-            );
-
-            if (!validate) {
-                return;
-            }
-
-            const parameters = req.query;
-            const validProperties: (keyof TopicReadSchema)[] = [
-                'name',
-                'icon',
-                'color',
-                'id',
-                'description',
-            ];
-
-            validProperties.forEach((key) => {
-                if (MessageUtilities.has(parameters, key)) {
-                    // @ts-ignore
-                    outgoing[key] = parameters[key];
-                }
-            });
-
-            await send(
-                ROUTING_KEY.topic.read,
-                outgoing,
-                res,
-                GenericHandlerFunctions.handleDefaultResponseFactory(),
-            );
+    @endpoint(
+        Method.GET,
+        ['topics'],
+        ['TopicList', zod.array(ZTopic)],
+        undefined,
+        zod.object({
+            name: zod.string(),
+            icon: zod.string(),
+            color: zod.string()
+                .regex(COLOR_REGEX),
+            description: zod.string(),
+            id: zod.string(),
+        })
+            .partial(),
+    )
+    @tag('topic')
+    @describe(
+        'Search topics',
+        'This will return all topics matching the provided filters',
+    )
+    public async queryTopicsHandler(req: Request, res: Response, query: QueryTopicQuery, _: undefined) {
+        const outgoing: ReadTopicMessage = {
+            msg_id: MessageUtilities.generateMessageIdentifier(),
+            msg_intention: 'READ',
+            status: 0,
+            userID: req.uemsUser.userID,
         };
+
+        copyKeysIfDefined([
+            'name', 'icon', 'color', 'id', 'description',
+        ], query, outgoing);
+
+        await this.send(
+            ROUTING_KEY.topic.read,
+            outgoing,
+            res,
+            GenericHandlerFunctions.handleDefaultResponseFactory(),
+        );
     }
 
-    private getTopicHandler(send: SendRequestFunction) {
-        return async (req: Request, res: Response) => {
-            const outgoingMessage: ReadTopicMessage = {
-                msg_id: MessageUtilities.generateMessageIdentifier(),
-                msg_intention: 'READ',
-                status: 0,
-                userID: req.uemsUser.userID,
-                id: req.params.id,
-            };
-
-            await send(
-                ROUTING_KEY.topic.read,
-                outgoingMessage,
-                res,
-                GenericHandlerFunctions.handleReadSingleResponseFactory(),
-            );
+    @endpoint(
+        Method.GET,
+        ['topics', {
+            key: 'id',
+            description: 'The unique ID for this topic',
+        }],
+        ['Topic', ZTopic],
+    )
+    @tag('topic')
+    @describe(
+        'Get a topic',
+        'Returns all properties associated with the given topic',
+    )
+    public async getTopicHandler(req: Request, res: Response, _0: undefined, _1: undefined) {
+        const outgoingMessage: ReadTopicMessage = {
+            msg_id: MessageUtilities.generateMessageIdentifier(),
+            msg_intention: 'READ',
+            status: 0,
+            userID: req.uemsUser.userID,
+            id: req.params.id,
         };
+
+        await this.send(
+            ROUTING_KEY.topic.read,
+            outgoingMessage,
+            res,
+            GenericHandlerFunctions.handleReadSingleResponseFactory(),
+        );
     }
 
-    private createTopicHandler(send: SendRequestFunction) {
-        return async (req: Request, res: Response) => {
-            const validate = zod.object({
-                name: zod.string(),
-                icon: zod.string(),
-                color: zod.string()
-                    .regex(this.COLOR_REGEX),
-                description: zod.string(),
-            })
-                .safeParse(req.body);
-
-            if (!validate.success) {
-                sendZodError(res, validate.error);
-                return;
-            }
-
-            const body = validate.data;
-
-            const outgoingMessage: CreateTopicMessage = {
-                msg_id: MessageUtilities.generateMessageIdentifier(),
-                msg_intention: 'CREATE',
-                status: 0,
-                userID: req.uemsUser.userID,
-                name: body.name,
-                color: body.color,
-                icon: body.icon,
-                description: body.description,
-            };
-
-            await send(
-                ROUTING_KEY.topic.create,
-                outgoingMessage,
-                res,
-                GenericHandlerFunctions.handleDefaultResponseFactory(),
-            );
+    @endpoint(
+        Method.POST,
+        ['topics'],
+        ['ModifyResponse', zod.array(zod.string())],
+        ['admin', 'ops'],
+        undefined,
+        zod.object({
+            name: zod.string(),
+            icon: zod.string(),
+            color: zod.string()
+                .regex(COLOR_REGEX),
+            description: zod.string(),
+        }),
+    )
+    @tag('topic')
+    @describe(
+        'Create a new topic',
+        'This will create a new topic with the specified details, returning the newly generated ID',
+    )
+    public async createTopicHandler(req: Request, res: Response, _: undefined, body: PostTopicBody) {
+        const outgoingMessage: CreateTopicMessage = {
+            msg_id: MessageUtilities.generateMessageIdentifier(),
+            msg_intention: 'CREATE',
+            status: 0,
+            userID: req.uemsUser.userID,
+            name: body.name,
+            color: body.color,
+            icon: body.icon,
+            description: body.description,
         };
+
+        await this.send(
+            ROUTING_KEY.topic.create,
+            outgoingMessage,
+            res,
+            GenericHandlerFunctions.handleDefaultResponseFactory(),
+        );
     }
 
-    private deleteTopicHandler(send: SendRequestFunction) {
-        return async (req: Request, res: Response) => {
-            if (this.resolver && this.handler) {
-                await removeAndReply({
-                    assetID: req.params.id,
-                    assetType: 'topic',
-                }, this.resolver, this.handler, res);
-            } else {
-                res.status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
-                    .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
-            }
-        };
+    @endpoint(
+        Method.DELETE,
+        ['topics', {
+            key: 'id',
+            description: 'The unique ID for this topic',
+        }],
+        ['ModifyResponse', zod.array(zod.string())],
+        ['admin', 'ops'],
+    )
+    @tag('topic')
+    @describe(
+        'Delete a topic',
+        'This will remove a topic provided there are no critical dependencies on it',
+    )
+    public async deleteTopicHandler(req: Request, res: Response, _0: undefined, _1: undefined) {
+        if (this.resolver && this.handler) {
+            await removeAndReply({
+                assetID: req.params.id,
+                assetType: 'topic',
+            }, this.resolver, this.handler, res);
+        } else {
+            res.status(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR)
+                .json(MessageUtilities.wrapInFailure(ErrorCodes.FAILED));
+        }
     }
 
-    private updateTopicHandler(send: SendRequestFunction) {
-        return async (req: Request, res: Response) => {
-            const validate = zod.object({
-                name: zod.string()
-                    .optional(),
-                icon: zod.string()
-                    .optional(),
-                color: zod.string()
-                    .regex(this.COLOR_REGEX)
-                    .optional(),
-                description: zod.string()
-                    .optional(),
-            })
-                .safeParse(req.body);
-
-            if (!validate.success) {
-                sendZodError(res, validate.error);
-                return;
-            }
-
-            const outgoing: UpdateTopicMessage = {
-                msg_id: MessageUtilities.generateMessageIdentifier(),
-                msg_intention: 'UPDATE',
-                status: 0,
-                userID: req.uemsUser.userID,
-                id: req.params.id,
-            };
-
-            const parameters = req.body;
-            const validProperties: (keyof TopicReadSchema)[] = [
-                'name',
-                'icon',
-                'color',
-                'description',
-            ];
-
-            validProperties.forEach((key) => {
-                if (MessageUtilities.has(parameters, key)) {
-                    // @ts-ignore
-                    outgoing[key] = parameters[key];
-                }
-            });
-
-            await send(
-                ROUTING_KEY.topic.update,
-                outgoing,
-                res,
-                GenericHandlerFunctions.handleDefaultResponseFactory(),
-            );
+    @endpoint(
+        Method.PATCH,
+        ['topics', {
+            key: 'id',
+            description: 'The unique ID for this topic',
+        }],
+        ['ModifyResponse', zod.array(zod.string())],
+        ['admin', 'ops'],
+        undefined,
+        zod.object({
+            name: zod.string()
+                .optional(),
+            icon: zod.string()
+                .optional(),
+            color: zod.string()
+                .regex(COLOR_REGEX)
+                .optional(),
+            description: zod.string()
+                .optional(),
+        }),
+    )
+    @tag('topic')
+    @describe(
+        'Update a topic',
+        'This will update the specified properties against the provided topic',
+    )
+    public async updateTopicHandler(req: Request, res: Response, _: undefined, body: PatchTopicBody) {
+        const outgoing: UpdateTopicMessage = {
+            msg_id: MessageUtilities.generateMessageIdentifier(),
+            msg_intention: 'UPDATE',
+            status: 0,
+            userID: req.uemsUser.userID,
+            id: req.params.id,
         };
+
+        copyKeysIfDefined([
+            'name', 'icon', 'color', 'description',
+        ], body, outgoing);
+
+        await this.send(
+            ROUTING_KEY.topic.update,
+            outgoing,
+            res,
+            GenericHandlerFunctions.handleDefaultResponseFactory(),
+        );
     }
 }

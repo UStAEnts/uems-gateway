@@ -1,137 +1,156 @@
 import { EntStateGatewayInterface } from '../../../src/attachments/attachments/EntStateGatewayInterface';
-import { GatewayMk2 } from '../../../src/Gateway';
 import { GET_ENTS_INVALID, GET_ENTS_VALID, PATCH_ENTS_ENTID_INVALID, PATCH_ENTS_ENTID_VALID, POST_ENTS_INVALID, POST_ENTS_MISSING, POST_ENTS_VALID } from '../../test-api-data';
-import { testMissingParameters, testParameterTypes, testValidRoute } from '../../utils';
-import GatewayInterfaceActionType = GatewayMk2.GatewayInterfaceActionType;
-import { EntityResolver } from "../../../src/resolver/EntityResolver";
+import { ExpressApplication } from '../../../src/express/ExpressApplication';
+import request from 'supertest';
+import { constants } from 'http2';
+import { MsgStatus } from '@uems/uemscommlib';
 
 describe('EntStateGatewayInterface.ts', () => {
     const send = jest.fn();
-    let routes: {
-        'get.ents': GatewayInterfaceActionType,
-        'post.ents': GatewayInterfaceActionType,
-        'get.ents.id': GatewayInterfaceActionType,
-        'delete.ents.id': GatewayInterfaceActionType,
-        'patch.ents.id': GatewayInterfaceActionType,
-    };
+    const app = new ExpressApplication(null as any, null as any);
+    app.attach(send, null as any, null as any, null as any, [
+        EntStateGatewayInterface,
+    ]);
 
     beforeEach(() => {
         send.mockReset();
     });
 
-    beforeAll(async () => {
-        // @ts-ignore
-        const resolver: EntityResolver = null;
-        // @ts-ignore
-        const handler: GatewayMessageHandler = null;
-        const entries = await new EntStateGatewayInterface().generateInterfaces(send, resolver, handler);
-
-        routes = {
-            'get.ents': entries
-                .find((e) => e.action === 'get' && e.path === '/ents') as GatewayInterfaceActionType,
-            'post.ents': entries
-                .find((e) => e.action === 'post' && e.path === '/ents') as GatewayInterfaceActionType,
-            'get.ents.id': entries
-                .find((e) => e.action === 'get' && e.path === '/ents/:id') as GatewayInterfaceActionType,
-            'delete.ents.id': entries
-                .find((e) => e.action === 'delete' && e.path === '/ents/:id') as GatewayInterfaceActionType,
-            'patch.ents.id': entries
-                .find((e) => e.action === 'patch' && e.path === '/ents/:id') as GatewayInterfaceActionType,
-        };
-    });
-
     describe('GET /ents', () => {
         it('rejects on wrong parameter types', async () => {
-            await testParameterTypes(
-                routes['get.ents'],
-                GET_ENTS_INVALID,
-                'query',
-                send,
-            );
+            await request(app.app)
+                .get('/api/ents')
+                .query(GET_ENTS_INVALID)
+                .expect(constants.HTTP_STATUS_BAD_REQUEST);
+
+            expect(send)
+                .not
+                .toHaveBeenCalled();
         });
 
         it('sends on a valid message', async () => {
-            await testValidRoute(
-                routes['get.ents'],
-                GET_ENTS_VALID,
-                'query',
-                send,
-            );
+            send.mockImplementation((_0, _1, res, cb) => cb(res, 0, {
+                msg_id: 0,
+                status: MsgStatus.SUCCESS,
+                result: [],
+            }, 200));
+
+            await request(app.app)
+                .get('/api/ents')
+                .query(GET_ENTS_VALID)
+                .expect(200);
+
+            expect(send)
+                .toHaveBeenCalled();
         });
     });
 
     describe('POST /ents', () => {
         it('rejects on missing parameters', async () => {
-            await testMissingParameters(
-                routes['post.ents'],
-                POST_ENTS_MISSING,
-                'body',
-                send,
-            );
+            await request(app.app)
+                .post('/api/ents')
+                .send(POST_ENTS_MISSING)
+                .expect(constants.HTTP_STATUS_BAD_REQUEST);
+
+            expect(send)
+                .not
+                .toHaveBeenCalled();
+            // await testMissingParameters(
+            //     routes['post.ents'],
+            //     POST_ENTS_MISSING,
+            //     'body',
+            //     send,
+            // );
         });
 
         it('rejects on wrong parameter types', async () => {
-            await testParameterTypes(
-                routes['post.ents'],
-                POST_ENTS_INVALID,
-                'body',
-                send,
-            );
+            await request(app.app)
+                .post('/api/ents')
+                .send(POST_ENTS_INVALID)
+                .expect(constants.HTTP_STATUS_BAD_REQUEST);
+
+            expect(send)
+                .not
+                .toHaveBeenCalled();
         });
 
         it('sends on a valid message', async () => {
-            await testValidRoute(
-                routes['post.ents'],
-                POST_ENTS_VALID,
-                'body',
-                send,
-            );
+            send.mockImplementation((_0, _1, res, cb) => cb(res, 0, {
+                msg_id: 0,
+                status: MsgStatus.SUCCESS,
+                result: [],
+            }, 200));
+
+            await request(app.app)
+                .post('/api/ents')
+                .send(POST_ENTS_VALID)
+                .expect(200);
+
+            expect(send)
+                .toHaveBeenCalled();
         });
     });
 
     // describe('DELETE /ents/:id', () => {
     //     it('sends on a valid message', async () => {
-    //         await testValidRoute(
-    //             routes['delete.ents.id'],
-    //             undefined,
-    //             'body',
-    //             send,
-    //             { id: 'abc' },
-    //         );
+    //         send.mockImplementation((_0, _1, res, cb) => cb(res, 0, {
+    //             msg_id: 0,
+    //             status: MsgStatus.SUCCESS,
+    //             result: [],
+    //         }, 200));
+    //
+    //         await request(app.app)
+    //             .delete('/api/ents/abc')
+    //             .expect(200);
+    //
+    //         expect(send)
+    //             .toHaveBeenCalled();
     //     });
     // });
 
     describe('GET /ents/:id', () => {
         it('sends on a valid message', async () => {
-            await testValidRoute(
-                routes['get.ents.id'],
-                undefined,
-                'query',
-                send,
-                { id: 'abc' },
-            );
+            send.mockImplementation((_0, _1, res, cb) => cb(res, 0, {
+                msg_id: 0,
+                status: MsgStatus.SUCCESS,
+                result: [{}],
+            }, 200));
+
+            await request(app.app)
+                .get('/api/ents/abc')
+                .expect(200);
+
+            expect(send)
+                .toHaveBeenCalled();
         });
     });
 
     describe('PATCH /ents/:id', () => {
         it('rejects on wrong parameter types', async () => {
-            await testParameterTypes(
-                routes['patch.ents.id'],
-                PATCH_ENTS_ENTID_INVALID,
-                'body',
-                send,
-                { id: 'abc' },
-            );
+            await request(app.app)
+                .patch('/api/ents/abc')
+                .send(PATCH_ENTS_ENTID_INVALID)
+                .expect(constants.HTTP_STATUS_BAD_REQUEST);
+
+            expect(send)
+                .not
+                .toHaveBeenCalled();
         });
 
         it('sends on a valid message', async () => {
-            await testValidRoute(
-                routes['patch.ents.id'],
-                PATCH_ENTS_ENTID_VALID,
-                'body',
-                send,
-                { id: 'abc' },
-            );
+            send.mockImplementation((_0, _1, res, cb) => cb(res, 0, {
+                msg_id: 0,
+                status: MsgStatus.SUCCESS,
+                result: [],
+            }, 200));
+
+            await request(app.app)
+                .patch('/api/ents/abc')
+                .send(PATCH_ENTS_ENTID_VALID)
+                .expect(200);
+
+            expect(send)
+                .toHaveBeenCalled();
         });
     });
 });

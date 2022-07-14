@@ -123,6 +123,7 @@ async function main() {
     const handler = new GatewayMessageHandler(connection, {
         schemaValidator: () => Promise.resolve(true),
         validate: () => Promise.resolve(true),
+        validateWithErrors: () => Promise.resolve({ success: true }),
     });
     const resolver = new EntityResolver(handler);
     try {
@@ -141,18 +142,6 @@ async function main() {
     try {
         expressApp = new ExpressApplication(expressValidation.data, client);
         await expressApp.attach(
-            [
-                new VenueGatewayInterface(),
-                new EventGatewayAttachment(),
-                new SystemGatewayInterface(),
-                new EntStateGatewayInterface(),
-                new StateGatewayInterface(),
-                new UserGatewayInterface(),
-                new EquipmentGatewayInterface(),
-                new TopicGatewayInterface(),
-                new FileGatewayInterface(),
-                new SignupGatewayInterface(),
-            ],
             handler.sendRequest.bind(handler),
             resolver,
             handler,
