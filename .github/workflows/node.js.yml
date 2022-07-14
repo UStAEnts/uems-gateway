@@ -48,7 +48,7 @@ jobs:
     - name: Install dependencies
       run: pnpm install
 
-    - run: pnpm run build --if-present
+    - run: pnpm run --if-present build
     
     - run: pnpm test -- --coverage
     - name: Coveralls
