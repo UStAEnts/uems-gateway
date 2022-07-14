@@ -2,7 +2,7 @@ import * as z from 'zod';
 import express, { Application, Request, RequestHandler, Response, Router } from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
-import session from 'express-session';
+import session, { MemoryStore } from 'express-session';
 import MongoStore from 'connect-mongo';
 import { GatewayMk2 } from '../Gateway';
 import { EntityResolver } from '../resolver/EntityResolver';
@@ -26,6 +26,7 @@ import orProtect = AuthUtilities.orProtect;
 import ROUTES from "../routes";
 import { getAPIEndpoints, methodToString } from "../decorators/endpoint";
 import sendZodError = MessageUtilities.sendZodError;
+import Attachment = GatewayMk2.Attachment;
 
 // const MongoStore = connectMongo(session);
 
@@ -85,6 +86,8 @@ export class ExpressApplication {
 
     private _protector: (...x: any[]) => RequestHandler;
 
+    private _debuggingRoleDecider: ((role: string) => boolean) = () => true;
+
     /**
      * Contains the last set of requests that were successful (anything except internal errors) and failed (internal
      * errors). This is to be synced with the health-check system
@@ -92,8 +95,38 @@ export class ExpressApplication {
      */
     private _requestQueue: ('success' | 'fail')[] = [];
 
-    constructor(configuration: ExpressConfigurationType, client: MongoClient) {
-        this._configuration = configuration;
+    constructor(configuration: ExpressConfigurationType|null, client: MongoClient|null) {
+        this._configuration = configuration ?? {
+            auth: {
+                manifestSrc: [],
+            },
+            cors: {
+                origins: [],
+            },
+            keycloak: {
+                authServerBase: '',
+                clientID: '',
+                secret: '',
+                realm: '',
+                confidentialPort: 0,
+                sslRequired: '',
+            },
+            session: {
+                name: 'name',
+                secure: false,
+                domain: 'domain',
+                secrets: {
+                    session: 'session',
+                    mongo: 'mongo',
+                },
+                mongoURL: 'mongourl',
+            },
+            uems: {
+                hashes: [],
+                index: '',
+                serve: '',
+            },
+        };
         this._app = express();
 
         // Assign the request identifier for logging
@@ -109,6 +142,7 @@ export class ExpressApplication {
             next();
         });
 
+
         // Bind helmet
         //   Overriding content security policies to try and keep them tight
         //   We will restrict the sources to being from here or to those identified with specific hashes
@@ -117,8 +151,8 @@ export class ExpressApplication {
             contentSecurityPolicy: {
                 directives: {
                     ...helmet.contentSecurityPolicy.getDefaultDirectives(),
-                    'manifest-src': ["'self'", ...configuration.auth.manifestSrc],
-                    'script-src': ["'self'", ...configuration.uems.hashes.map((e) => `'${e}'`)],
+                    'manifest-src': ["'self'", ...this._configuration.auth.manifestSrc],
+                    'script-src': ["'self'", ...this._configuration.uems.hashes.map((e) => `'${e}'`)],
                     'connect-src': ["'self'"],
                     'img-src': ['*'],
                 },
@@ -127,7 +161,7 @@ export class ExpressApplication {
 
         // Cors from domains in the config on all the CRUD HTTP operations
         this._app.use(cors({
-            origin: configuration.cors.origins,
+            origin: this._configuration.cors.origins,
             methods: ['GET', 'POST', 'DELETE', 'PATCH', 'PUT'],
         }));
 
@@ -135,40 +169,43 @@ export class ExpressApplication {
         this._app.use(express.json());
         this._app.use(express.urlencoded({ extended: false }));
 
-        const store = new MongoStore({
+        const store = client ? new MongoStore({
             client,
-        });
+        }) : new MemoryStore();
 
         // Configure sessions for users that need to be backed by the database using connect-mongo.
         this._app.use(session({
             saveUninitialized: true,
             resave: true,
-            secret: configuration.session.secrets.session,
-            name: configuration.session.name,
+            secret: this._configuration.session.secrets.session,
+            name: this._configuration.session.name,
             cookie: {
-                domain: configuration.session.domain,
+                domain: this._configuration.session.domain,
                 path: '/',
                 maxAge: 24 * 60 * 60 * 1000,
-                secure: configuration.session.secure,
+                secure: this._configuration.session.secure,
             },
             store,
         }));
 
-        const keycloak = new KeycloakConnect({
-            store,
-        }, {
-            'auth-server-url': configuration.keycloak.authServerBase,
-            realm: configuration.keycloak.realm,
-            resource: configuration.keycloak.clientID,
-            'confidential-port': configuration.keycloak.confidentialPort,
-            'ssl-required': configuration.keycloak.sslRequired,
-            // @ts-ignore - see https://github.com/keycloak/keycloak-nodejs-connect/pull/289
-            secret: configuration.keycloak.secret,
-        });
-        this._app.use(keycloak.middleware({
-            logout: '/logout',
-            admin: '/',
-        }));
+        let keycloak!: KeycloakConnect.Keycloak;
+        if (!ExpressApplication.DISABLE_PROTECTIONS) {
+            keycloak = new KeycloakConnect({
+                store,
+            }, {
+                'auth-server-url': this._configuration.keycloak.authServerBase,
+                realm: this._configuration.keycloak.realm,
+                resource: this._configuration.keycloak.clientID,
+                'confidential-port': this._configuration.keycloak.confidentialPort,
+                'ssl-required': this._configuration.keycloak.sslRequired,
+                // @ts-ignore - see https://github.com/keycloak/keycloak-nodejs-connect/pull/289
+                secret: this._configuration.keycloak.secret,
+            });
+            this._app.use(keycloak.middleware({
+                logout: '/logout',
+                admin: '/',
+            }));
+        }
 
         this._protector = ExpressApplication.DISABLE_PROTECTIONS
             ? () => ((req, res, next) => next())
@@ -216,7 +253,7 @@ export class ExpressApplication {
                     grant: {
                         access_token: {
                             isExpired: () => false,
-                            hasRole: () => true,
+                            hasRole: this._debuggingRoleDecider.bind(this),
                         },
                     },
                 };
@@ -242,13 +279,13 @@ export class ExpressApplication {
     }
 
     async attach(
-        attachments: GatewayAttachmentInterface[],
         send: SendRequestFunction,
         resolver: EntityResolver,
         handler: GatewayMessageHandler,
         configuration: Configuration,
+        routes: (typeof Attachment)[] = ROUTES,
     ) {
-        const endpoints = ROUTES.map((Class) => {
+        const endpoints = routes.map((Class) => {
             // @ts-ignore
             const entry = new Class(resolver, handler, send, configuration);
             return getAPIEndpoints(entry);
@@ -283,7 +320,6 @@ export class ExpressApplication {
                     body = parse.data;
                 }
 
-                console.log(endpoint.handler);
                 endpoint.handler(req, res, query, body);
             };
 
@@ -385,5 +421,13 @@ export class ExpressApplication {
 
     listen() {
         this._app.listen(this._configuration.port ?? 15450);
+    }
+
+    get app(): Application {
+        return this._app;
+    }
+
+    set debuggingRoleDecider(value: (role: string) => boolean) {
+        this._debuggingRoleDecider = value;
     }
 }

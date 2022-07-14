@@ -255,7 +255,7 @@ export class EventGatewayAttachment extends Attachment {
             startBefore: zod.preprocess((v) => Number(v), zod.number()),
             stateID: zod.string(),
             venueCriteria: zod.string(),
-            venueIDs: zod.array(zod.string()),
+            venueIDs: zod.preprocess((v) => typeof(v) === 'string' ? v.split(',') : v, zod.array(zod.string())),
         }).partial(),
     )
     @tag('event')

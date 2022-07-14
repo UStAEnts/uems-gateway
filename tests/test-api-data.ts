@@ -1,6 +1,8 @@
 import { Request } from "express";
 
-export const request = (query?: any, body?: any, params?: any, roles?: string[]): Request => ({
+export const request = (route: string, method: string, query?: any, body?: any, params?: any, roles?: string[]): Request => ({
+    method,
+    url: route,
     query,
     body,
     params,
@@ -163,14 +165,14 @@ export const GET_EVENTS_VALID = {
     start: '696',
     end: '178',
     attendance: '183',
-    venueIDs: ['SHh2H5fi01Gafodw0CF1Mg=='],
+    venueIDs: 'SHh2H5fi01Gafodw0CF1Mg==,SHh2H5fi01Gafodw0CF1Mg==',
     venueCriteria: 'TSBBBd34hu0f8DaBEoTJtw==',
     entsID: 'is/YT0P7QV8QFqGntGlbJQ==',
     stateID: '9oFgV87Bggl1plcbmO0t2A==',
-    startafter: '687',
-    startbefore: '67',
-    endafter: '770',
-    endbefore: '155',
+    startAfter: '687',
+    startBefore: '67',
+    endAfter: '770',
+    endBefore: '155',
     attendanceGreater: '287',
     attendanceLess: '288'
 }

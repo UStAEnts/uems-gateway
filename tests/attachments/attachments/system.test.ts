@@ -3,7 +3,7 @@ import { GatewayMk2 } from '../../../src/Gateway';
 import { Response } from 'jest-express/lib/response';
 import express from 'express';
 import { MOCK_UEMS_USER, request } from '../../test-api-data';
-import { AttachmentFunction } from "../../utils";
+import { AttachmentFunction } from '../../utils';
 
 describe('SystemGatewayInterface.ts', () => {
     let routes: {
@@ -14,7 +14,7 @@ describe('SystemGatewayInterface.ts', () => {
         const entries = new SystemGatewayInterface(null as any, null as any, null as any, null as any);
 
         routes = {
-            'get.whoami': entries.me,
+            'get.whoami': entries.me.bind(entries),
         };
     });
 
@@ -22,7 +22,7 @@ describe('SystemGatewayInterface.ts', () => {
         it('sends a valid response', async () => {
             const response = new Response();
             const fake = response as unknown as express.Response;
-            const req = request();
+            const req = request('/whoami', 'GET');
 
             await routes['get.whoami'](req, fake, undefined, undefined);
 

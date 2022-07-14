@@ -1,131 +1,159 @@
-import { EntityResolver } from '../../../src/resolver/EntityResolver';
-import { EventGatewayAttachment } from '../../../src/attachments/attachments/EventGatewayAttachment';
 import { GET_EVENTS_INVALID, GET_EVENTS_VALID, PATCH_EVENTS_EVENTID_INVALID, PATCH_EVENTS_EVENTID_VALID, POST_EVENTS_EVENTID_COMMENTS_INVALID, POST_EVENTS_EVENTID_COMMENTS_MISSING, POST_EVENTS_EVENTID_COMMENTS_VALID, POST_EVENTS_INVALID, POST_EVENTS_MISSING, POST_EVENTS_VALID } from '../../test-api-data';
-import { AttachmentFunction, testMissingParameters, testParameterTypes, testValidRoute } from '../../utils';
+import { ExpressApplication } from "../../../src/express/ExpressApplication";
+import { EntStateGatewayInterface } from "../../../src/attachments/attachments/EntStateGatewayInterface";
+import request from "supertest";
+import { constants } from "http2";
+import { MsgStatus } from "@uems/uemscommlib";
+import { EventGatewayAttachment } from "../../../src/attachments/attachments/EventGatewayAttachment";
+import { resolveEventsFlow } from "../../../src/flows/EventResolveFlow";
+import { MessageUtilities } from "../../../src/utilities/MessageUtilities";
 
+jest.mock('../../../src/flows/EventResolveFlow', () => {
+    const original = jest.requireActual('../../../src/flows/EventResolveFlow');
+    return {
+        resolveEventsFlow: () => (h:any, _0:any, r:any) => {
+            h.status(200).json(MessageUtilities.wrapInSuccess(r));
+        },
+    };
+});
+jest.mock('../../../src/attachments/Resolvers', () => {
+    return {
+        Resolver: {
+            resolveSingleEvent: (data: any) => (() => ({
+                status: 'success',
+                data,
+            })),
+            resolveComments: (data: any) => (() => ({
+                status: 'success',
+                data,
+            })),
+        },
+    };
+});
 describe('EventGatewayAttachment.ts', () => {
     const send = jest.fn();
-    let routes: {
-        'get.events': AttachmentFunction,
-        'post.events': AttachmentFunction,
-        'get.events.id': AttachmentFunction,
-        'patch.events.id': AttachmentFunction,
-        'delete.events.id': AttachmentFunction,
-        'get.events.id.comments': AttachmentFunction,
-        'post.events.id.comments': AttachmentFunction,
-        'get.states.id.events': AttachmentFunction,
-        'get.venues.id.events': AttachmentFunction,
-    };
+    const app = new ExpressApplication(null as any, null as any);
+    app.attach(send, null as any, null as any, null as any, [
+        EventGatewayAttachment,
+    ]);
 
     beforeEach(() => {
         send.mockReset();
     });
 
-    beforeAll(async () => {
-        // @ts-ignore
-        const resolver: EntityResolver = null;
-        // @ts-ignore
-        const handler: GatewayMessageHandler = null;
-        const entries = new EventGatewayAttachment(resolver, handler, send, null as any);
-
-        routes = {
-            'get.events': entries.getEventsHandler,
-            'post.events': entries.createEventHandler,
-            'get.events.id': entries.getEventHandler,
-            'patch.events.id': entries.updateEventHandler,
-            'delete.events.id': entries.deleteEventHandler,
-            'get.events.id.comments': entries.getCommentsForEvent,
-            'post.events.id.comments': entries.postCommentsForEvent,
-            'get.states.id.events': entries.getEventsByState,
-            'get.venues.id.events': entries.getEventsByVenue,
-        };
-    });
-
     describe('POST /events', () => {
         it('rejects on missing parameters', async () => {
-            await testMissingParameters(
-                routes['post.events'],
-                POST_EVENTS_MISSING,
-                'body',
-                send,
-            );
+            await request(app.app)
+                .post('/api/events')
+                .send(POST_EVENTS_MISSING)
+                .expect(constants.HTTP_STATUS_BAD_REQUEST);
+
+            expect(send)
+                .not
+                .toHaveBeenCalled();
         });
 
         it('rejects on wrong parameter types', async () => {
-            await testParameterTypes(
-                routes['post.events'],
-                POST_EVENTS_INVALID,
-                'body',
-                send,
-            );
+            await request(app.app)
+                .post('/api/events')
+                .send(POST_EVENTS_INVALID)
+                .expect(constants.HTTP_STATUS_BAD_REQUEST);
+
+            expect(send)
+                .not
+                .toHaveBeenCalled();
         });
 
         it('sends on a valid message', async () => {
-            await testValidRoute(
-                routes['post.events'],
-                POST_EVENTS_VALID,
-                'body',
-                send,
-                undefined,
-                true,
-            );
+            send.mockImplementation((_0, _1, res, cb, trans) => cb(res, 0, {
+                msg_id: 0,
+                status: MsgStatus.SUCCESS,
+                result: [],
+            }, 200, trans));
+
+            await request(app.app)
+                .post('/api/events')
+                .send(POST_EVENTS_VALID)
+                .expect(200);
+
+            expect(send)
+                .toHaveBeenCalled();
         });
     });
 
     describe('GET /events', () => {
         it('rejects on wrong parameter types', async () => {
-            await testParameterTypes(
-                routes['get.events'],
-                GET_EVENTS_INVALID,
-                'query',
-                send,
-            );
+            await request(app.app)
+                .get('/api/events')
+                .query(GET_EVENTS_INVALID)
+                .expect(constants.HTTP_STATUS_BAD_REQUEST);
+
+            expect(send)
+                .not
+                .toHaveBeenCalled();
         });
 
         it('sends on a valid message', async () => {
-            await testValidRoute(
-                routes['get.events'],
-                GET_EVENTS_VALID,
-                'query',
-                send,
-                undefined,
-                true,
-            );
+            send.mockImplementation((_0, _1, res, cb, trans) => cb(res, 0, {
+                msg_id: 0,
+                status: MsgStatus.SUCCESS,
+                result: [],
+            }, 200, trans));
+
+            await request(app.app)
+                .get('/api/events')
+                .query(GET_EVENTS_VALID)
+                .expect((r) => console.log(r.body))
+                .expect(200);
+
+            expect(send)
+                .toHaveBeenCalled();
         });
     });
 
     describe('GET /events/:id', () => {
         it('sends on a valid message', async () => {
-            await testValidRoute(
-                routes['get.events.id'],
-                undefined,
-                'body',
-                send,
-                { id: 'abc' },
-            );
+            send.mockImplementation((_0, _1, res, cb, trans) => cb(res, 0, {
+                msg_id: 0,
+                status: MsgStatus.SUCCESS,
+                result: [{}],
+            }, 200, trans));
+
+            await request(app.app)
+                .get('/api/events/abc')
+                .expect(200);
+
+            expect(send)
+                .toHaveBeenCalled();
         });
     });
 
     describe('PATCH /events/:id', () => {
         it('rejects on wrong parameter types', async () => {
-            await testParameterTypes(
-                routes['patch.events.id'],
-                PATCH_EVENTS_EVENTID_INVALID,
-                'body',
-                send,
-                { id: 'abc' },
-            );
+            await request(app.app)
+                .patch('/api/events/abc')
+                .send(PATCH_EVENTS_EVENTID_INVALID)
+                .expect(constants.HTTP_STATUS_BAD_REQUEST);
+
+            expect(send)
+                .not
+                .toHaveBeenCalled();
         });
 
         it('sends on a valid message', async () => {
-            await testValidRoute(
-                routes['patch.events.id'],
-                PATCH_EVENTS_EVENTID_VALID,
-                'body',
-                send,
-                { id: 'abc' },
-                true,
-            );
+            send.mockImplementation((_0, _1, res, cb, trans) => cb(res, 0, {
+                msg_id: 0,
+                status: MsgStatus.SUCCESS,
+                result: [],
+            }, 200, trans));
+
+            await request(app.app)
+                .patch('/api/events/abc')
+                .send(PATCH_EVENTS_EVENTID_VALID)
+                .expect(200);
+
+            expect(send)
+                .toHaveBeenCalled();
         });
     });
 
@@ -143,69 +171,92 @@ describe('EventGatewayAttachment.ts', () => {
 
     describe('GET /states/:id/events', () => {
         it('sends on a valid message', async () => {
-            await testValidRoute(
-                routes['get.states.id.events'],
-                undefined,
-                'query',
-                send,
-                { id: 'abc' },
-            );
+            send.mockImplementation((_0, _1, res, cb, trans) => cb(res, 0, {
+                msg_id: 0,
+                status: MsgStatus.SUCCESS,
+                result: [],
+            }, 200, trans));
+
+            await request(app.app)
+                .get('/api/states/abc/events')
+                .expect(200);
+
+            expect(send)
+                .toHaveBeenCalled();
         });
     });
 
     describe('GET /venues/:id/events', () => {
         it('sends on a valid message', async () => {
-            await testValidRoute(
-                routes['get.venues.id.events'],
-                undefined,
-                'query',
-                send,
-                { id: 'abc' },
-            );
+            send.mockImplementation((_0, _1, res, cb, trans) => cb(res, 0, {
+                msg_id: 0,
+                status: MsgStatus.SUCCESS,
+                result: [],
+            }, 200, trans));
+
+            await request(app.app)
+                .get('/api/venues/abc/events')
+                .expect(200);
+
+            expect(send)
+                .toHaveBeenCalled();
         });
     });
 
     describe('GET /events/:id/comments', () => {
         it('sends on a valid message', async () => {
-            await testValidRoute(
-                routes['get.events.id.comments'],
-                undefined,
-                'query',
-                send,
-                { id: 'abc' },
-            );
+            send.mockImplementation((_0, _1, res, cb, trans) => cb(res, 0, {
+                msg_id: 0,
+                status: MsgStatus.SUCCESS,
+                result: [],
+            }, 200, trans));
+
+            await request(app.app)
+                .get('/api/events/abc/comments')
+                .expect(200);
+
+            expect(send)
+                .toHaveBeenCalled();
         });
     });
 
     describe('POST /events/:id/comments', () => {
         it('rejects on missing parameters', async () => {
-            await testMissingParameters(
-                routes['post.events.id.comments'],
-                POST_EVENTS_EVENTID_COMMENTS_MISSING,
-                'body',
-                send,
-                { id: 'abc' },
-            );
+            await request(app.app)
+                .post('/api/events/abc/comments')
+                .send(POST_EVENTS_EVENTID_COMMENTS_MISSING)
+                .expect(constants.HTTP_STATUS_BAD_REQUEST);
+
+            expect(send)
+                .not
+                .toHaveBeenCalled();
         });
 
         it('rejects on wrong parameter types', async () => {
-            await testParameterTypes(
-                routes['post.events.id.comments'],
-                POST_EVENTS_EVENTID_COMMENTS_INVALID,
-                'body',
-                send,
-                { id: 'abc' },
-            );
+            await request(app.app)
+                .post('/api/events/abc/comments')
+                .send(POST_EVENTS_EVENTID_COMMENTS_INVALID)
+                .expect(constants.HTTP_STATUS_BAD_REQUEST);
+
+            expect(send)
+                .not
+                .toHaveBeenCalled();
         });
 
         it('sends on a valid message', async () => {
-            await testValidRoute(
-                routes['post.events.id.comments'],
-                POST_EVENTS_EVENTID_COMMENTS_VALID,
-                'body',
-                send,
-                { id: 'abc' },
-            );
+            send.mockImplementation((_0, _1, res, cb, trans) => cb(res, 0, {
+                msg_id: 0,
+                status: MsgStatus.SUCCESS,
+                result: [],
+            }, 200, trans));
+
+            await request(app.app)
+                .post('/api/events/abc/comments')
+                .send(POST_EVENTS_EVENTID_COMMENTS_VALID)
+                .expect(200);
+
+            expect(send)
+                .toHaveBeenCalled();
         });
     });
 });

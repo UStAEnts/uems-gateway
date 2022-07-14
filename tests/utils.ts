@@ -1,14 +1,16 @@
 import { GatewayMk2 } from "../src/Gateway";
 import GatewayInterfaceActionType = GatewayMk2.GatewayInterfaceActionType;
 import { Response } from "jest-express/lib/response";
-import express, { Request } from "express";
+import express, { Application, Request } from "express";
 import { GET_VENUES_INVALID, request } from "./test-api-data";
 import { constants } from "http2";
 
 export type AttachmentFunction = (req: Request, res: express.Response, query: any, body: any) => Promise<void>;
 
 export async function testParameterTypes(
-    route: AttachmentFunction,
+    app: Application,
+    route: string,
+    method: string,
     data: any,
     location: 'query' | 'body',
     send: jest.Mock,
@@ -17,15 +19,18 @@ export async function testParameterTypes(
     const response = new Response();
     const fake = response as unknown as express.Response;
     const req = request(
+        route,
+        method,
         location === 'query' ? data : undefined,
         location === 'body' ? data : undefined,
         params,
     );
-    await route(req, fake, location === 'query' ? data : undefined, location === 'body' ? data : undefined);
+    await app(req, response as any);
+    // await route(req, fake, location === 'query' ? data : undefined, location === 'body' ? data : undefined);
 
-    if (send.mock.calls.length !== 0) {
+    // if (send.mock.calls.length !== 0) {
         console.warn(response);
-    }
+    // }
     expect(send)
         .not
         .toHaveBeenCalled();

@@ -1,47 +1,35 @@
 import { UserGatewayInterface } from '../../../src/attachments/attachments/UserGatewayInterface';
-import { GatewayMk2 } from '../../../src/Gateway';
-import { GET_USER_INVALID, GET_USER_VALID, PATCH_USER_USERID_VALID, POST_USER_MISSING, POST_USER_VALID } from '../../test-api-data';
-import { AttachmentFunction, testMissingParameters, testParameterTypes, testValidRoute } from '../../utils';
-import { EntityResolver } from "../../../src/resolver/EntityResolver";
+import { GET_USER_VALID, PATCH_USER_USERID_VALID } from '../../test-api-data';
+import { ExpressApplication } from '../../../src/express/ExpressApplication';
+import { MsgStatus } from '@uems/uemscommlib';
+import request from 'supertest';
 
 describe('UserGatewayInterface.ts', () => {
     const send = jest.fn();
-    let routes: {
-        'get.user': AttachmentFunction,
-        // 'post.user': AttachmentFunction,
-        'get.user.id': AttachmentFunction,
-        'delete.user.id': AttachmentFunction,
-        'patch.user.id': AttachmentFunction,
-    };
+    const app = new ExpressApplication(null as any, null as any);
+    app.attach(send, null as any, null as any, null as any, [
+        UserGatewayInterface,
+    ]);
 
     beforeEach(() => {
         send.mockReset();
     });
 
-    beforeAll(async () => {
-        // @ts-ignore
-        const resolver: EntityResolver = null;
-        // @ts-ignore
-        const handler: GatewayMessageHandler = null;
-        const entries = new UserGatewayInterface(resolver, handler, send, null as any);
-
-        routes = {
-            'get.user': entries.queryUsersHandler,
-            // 'post.user': entries.cre,
-            'get.user.id': entries.getUserHandler,
-            'delete.user.id': entries.deleteUserHandler,
-            'patch.user.id': entries.updateUserHandler,
-        };
-    });
     describe('GET /user', () => {
-
         it('sends on a valid message', async () => {
-            await testValidRoute(
-                routes['get.user'],
-                GET_USER_VALID,
-                'query',
-                send,
-            );
+            send.mockImplementation((_0, _1, res, cb) => cb(res, 0, {
+                msg_id: 0,
+                status: MsgStatus.SUCCESS,
+                result: [],
+            }, 200));
+
+            await request(app.app)
+                .get('/api/user')
+                .send(GET_USER_VALID)
+                .expect(200);
+
+            expect(send)
+                .toHaveBeenCalled();
         });
     });
 
@@ -59,26 +47,36 @@ describe('UserGatewayInterface.ts', () => {
 
     describe('GET /user/:id', () => {
         it('sends on a valid message', async () => {
-            await testValidRoute(
-                routes['get.user.id'],
-                undefined,
-                'query',
-                send,
-                { id: 'abc' },
-            );
+            send.mockImplementation((_0, _1, res, cb) => cb(res, 0, {
+                msg_id: 0,
+                status: MsgStatus.SUCCESS,
+                result: [{}],
+            }, 200));
+
+            await request(app.app)
+                .get('/api/user/abc')
+                .expect(200);
+
+            expect(send)
+                .toHaveBeenCalled();
         });
     });
 
     describe('PATCH /user/:id', () => {
-
         it('sends on a valid message', async () => {
-            await testValidRoute(
-                routes['patch.user.id'],
-                PATCH_USER_USERID_VALID,
-                'body',
-                send,
-                { id: 'abc' },
-            );
+            send.mockImplementation((_0, _1, res, cb) => cb(res, 0, {
+                msg_id: 0,
+                status: MsgStatus.SUCCESS,
+                result: [],
+            }, 200));
+
+            await request(app.app)
+                .patch('/api/user/abc')
+                .send(PATCH_USER_USERID_VALID)
+                .expect(200);
+
+            expect(send)
+                .toHaveBeenCalled();
         });
     });
 });

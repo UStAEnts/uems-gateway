@@ -20,12 +20,12 @@ import orProtect = AuthUtilities.orProtect;
 import Attachment = GatewayMk2.Attachment;
 import ZUser = UserValidators.ZUser;
 
-type GetUserQuery = {
+type GetUserQuery = Partial<{
     email: string,
     id: string,
     name: string,
     username: string,
-};
+}>;
 
 type PatchUserQuery = {
     name?: string,
@@ -56,7 +56,7 @@ export class UserGatewayInterface extends Attachment {
             id: zod.string(),
             name: zod.string(),
             username: zod.string(),
-        }),
+        }).partial(),
     )
     @tag('user')
     @describe(

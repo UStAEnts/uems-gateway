@@ -168,7 +168,7 @@ export class SignupGatewayInterface extends Attachment {
     )
     public async createSignupHandler(req: Request, res: Response, _: undefined, body: PostSignupBody) {
         if (req.kauth && req.kauth.grant && req.kauth.grant.access_token) {
-            if (req.params.signupUser && req.params.signupUser !== req.uemsUser.userID) {
+            if (body.signupUser && body.signupUser !== req.uemsUser.userID) {
                 // Signing up another user, mu for now
                 if (!orProtect('admin')(req.kauth.grant.access_token)) {
                     res.status(constants.HTTP_STATUS_UNAUTHORIZED)
