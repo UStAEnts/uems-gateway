@@ -142,18 +142,6 @@ async function main() {
     try {
         expressApp = new ExpressApplication(expressValidation.data, client);
         await expressApp.attach(
-            [
-                // new VenueGatewayInterface(),
-                // new EventGatewayAttachment(),
-                // new SystemGatewayInterface(),
-                // new EntStateGatewayInterface(),
-                // new StateGatewayInterface(),
-                // new UserGatewayInterface(),
-                // // new EquipmentGatewayInterface(),
-                // new TopicGatewayInterface(),
-                // new FileGatewayInterface(),
-                // new SignupGatewayInterface(),
-            ],
             handler.sendRequest.bind(handler),
             resolver,
             handler,
