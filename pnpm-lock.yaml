@@ -19,7 +19,7 @@ specifiers:
   '@typescript-eslint/eslint-plugin': ^3.6.0
   '@typescript-eslint/parser': ^3.6.0
   '@uems/micro-builder': 1.1.4
-  '@uems/uemscommlib': 2.0.0-beta.13
+  '@uems/uemscommlib': 2.0.0-beta.15
   ajv: ^6.12.3
   amqplib: ^0.7.1
   body-parser: ^1.19.0
@@ -66,7 +66,7 @@ dependencies:
   '@types/node': 14.18.22
   '@types/passport': 1.0.9
   '@uems/micro-builder': 1.1.4
-  '@uems/uemscommlib': 2.0.0-beta.13
+  '@uems/uemscommlib': 2.0.0-beta.15
   ajv: 6.12.6
   amqplib: 0.7.1
   body-parser: 1.20.0
@@ -1199,8 +1199,8 @@ packages:
       zod: 3.17.3
     dev: false
 
-  /@uems/uemscommlib/2.0.0-beta.13:
-    resolution: {integrity: sha512-QN0kODn7RjUl0OzuHQKPseMpGu9j5/cfJ5v9v2sBToCs8dQm6RLqqO8/XV7lSQHDt6drlhY+JUxjnBqe1N/ZDw==}
+  /@uems/uemscommlib/2.0.0-beta.15:
+    resolution: {integrity: sha512-UxD0T5POpFzJA4hwGq6XwsG0dJ3Q9VADmf9g1CDa6h27WKGArrErJN9JisoV4JN+s0hxVyWQBT2paToEkB+IBw==}
     dependencies:
       ajv: 6.12.6
       zod: 3.17.3
