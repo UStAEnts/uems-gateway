@@ -9,7 +9,8 @@ import { StateGatewayInterface } from './attachments/attachments/StateGatewayInt
 import { TopicGatewayInterface } from './attachments/attachments/TopicGatewayInterface';
 import { UserGatewayInterface } from './attachments/attachments/UserGatewayInterface';
 import { VenueGatewayInterface } from './attachments/attachments/VenueGatewayInterface';
-import { SystemGatewayInterface } from "./attachments/system/SystemGatewayInterface";
+import { SystemGatewayInterface } from './attachments/system/SystemGatewayInterface';
+import { AutomationGatewayInterface } from './attachments/attachments/AutomationGatewayInterface';
 
 const ROUTES: (typeof Attachment)[] = [
     EquipmentGatewayInterface,
@@ -22,6 +23,7 @@ const ROUTES: (typeof Attachment)[] = [
     UserGatewayInterface,
     VenueGatewayInterface,
     SystemGatewayInterface,
+    AutomationGatewayInterface,
 ];
 
 export default ROUTES;
