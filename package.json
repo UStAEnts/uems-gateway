@@ -47,7 +47,7 @@
     "keycloak-connect": "^16.1.0",
     "mongodb": "^4.3.0",
     "morgan": "^1.10.0",
-    "passport": "^0.4.1",
+    "passport": "^0.6.0",
     "passport-http-bearer": "^1.0.1",
     "reflect-metadata": "^0.1.13",
     "source-map-support": "^0.5.19",
